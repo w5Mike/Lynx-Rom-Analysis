@@ -1,4 +1,160 @@
 
+;***********************************************************************
+;*
+;*          Camputers Lynx 48k ROM disassembly (version L014)
+;*          -------------------------------------------------
+;*
+;*   Reconstructed from lynx eprom memory images and supplemented with
+;*   information from Lynx User Magazine Issue 1 (Camputers, June 1983, 
+;*   pages 16-18) and Nilug News (Issue 6) by R.B.Poate
+;*
+;*   Disassembly, collation and formatting by: Mike Panter 10/10/2021
+;*
+;*   Additional credits to: Russell Davis  (online archive of materials)
+;*                          Pete Todd      (knowledge, insight and Pale)
+;*
+;*   WARNING: May contain inaccuracies - use at own risk.
+;*
+;*   Feel free to distribute. Please include attribution.
+;*
+;********************** LABELS/SYMBOLS/PREFIXES ************************
+;*
+;*      SYSVAR_     - RAM addresses used by the Lynx ROM routines
+;*      RST_        - Z80 Restarts
+;*      DATA_       - Data tables stored in rom (eg. PI)
+;*      LYNX_       - Lynx internal system routines
+;*      BASIC_COM_  - Lynx BASIC commands 
+;*      BASIC_FN_   - Lynx BASIC functions/operators
+;*      MONITOR_    - Lynx MONITOR commands
+;*      VDU_        - VDU commands
+;*      SUB_        - internal subroutines used by ROM
+;*
+;
+;
+; Lynx Global Symbol Definitions (RAM addresses)
+;
+SYSVAR_STACK    EQU $61EE    ; Stores address of Basic stack pointer (STACK) + 2 HIMEM. 
+SYSVAR_RNDNO    EQU $61F0    ; 31 bit random number seed. 
+SYSVAR_HLSTORE  EQU $61F4    ; Used to store HL after a CALL. 
+SYSVAR_CURRLP   EQU $61F6    ; Pointer to first byte of line Basic is currently executing. 
+SYSVAR_DATAP    EQU $61F8    ; Pointer used by READ, DATA, points to end of last entry read. 
+SYSVAR_SOB      EQU $61FA    ; Points to start of Basic. 
+SYSVAR_EOB      EQU $61FC    ; Points to end of Basic. 
+SYSVAR_POLBUF   EQU $61FE    ; Pointer to buffer used for conversion to internal language. 
+SYSVAR_PRINTD   EQU $6200    ; Address of display driver. 
+SYSVAR_LPRNTD   EQU $6202    ; Address of printer driver. 
+SYSVAR_KEYB     EQU $6204    ; Address of keyboard driver. 
+SYSVAR_OTYPE    EQU $6206    ; Current output type and LINK status.
+SYSVAR_LASTDSP  EQU $6207    ; Last character output to screen (used for VDU VDU 2,n). 
+SYSVAR_VTYPE    EQU $6208    ; Current variable type. 
+SYSVAR_CONTLP   EQU $6209    ; Pointer to CONTinue line. 0 if cannot continue. 
+SYSVAR_RSTACK   EQU $620B    ; Pointer to return stack. 
+SYSVAR_RSP      EQU $620D    ; Return stack pointer. 
+SYSVAR_VTBL     EQU $620F    ; Pointer to variables A-Z, a-z. 
+SYSVAR_ATBL     EQU $6211    ; Pointer to array variables A-Z, a-z.
+SYSVAR_STBL     EQU $6213    ; Pointer to string variables. 
+SYSVAR_FTBL     EQU $6215    ; Pointer to function evaluation table.
+SYSVAR_TTBL     EQU $6217    ; Pointer to non-command token table.
+SYSVAR_XTTBL    EQU $6219    ; Pointer to command token table.
+SYSVAR_XITBL    EQU $621B    ; Pointer to Input syntax checking table. 
+SYSVAR_XETBL    EQU $621D    ; Pointer to command execution table.
+SYSVAR_TOV      EQU $621F    ; Top of variables (strings and arrays).
+SYSVAR_IEXT     EQU $6221    ; Jump to EXT syntax checking. 
+SYSVAR_EEXT     EQU $6224    ; Jump to EXT execution. 
+SYSVAR_INPLSUB  EQU $6227    ; RAM call from line input routine.
+SYSVAR_EXECSUB  EQU $622A    ; Called before execution of every line. 
+SYSVAR_ZFLAG    EQU $622D    ; Number flag gives TRAIL and ROUND status.
+SYSVAR_AUTOFL   EQU $622E    ; Auto line numbering on/off flag.
+SYSVAR_CRST     EQU $622F    ; Pointer to message used to generate CR (0DH) in display driver.
+SYSVAR_KSMS     EQU $6231    ; Single key entry. 
+SYSVAR_RPTDLY   EQU $6233    ; Repeat delay on keyboard. 
+SYSVAR_LASTK    EQU $6235    ; Last character from keyboard. 
+SYSVAR_STATUS   EQU $6236    ; Used by keyboard driver. 
+SYSVAR_RPT      EQU $6237    ; Length of time between key repeats. 
+SYSVAR_SHLKT    EQU $6239    ; Used by shift lock. 
+SYSVAR_KTBL     EQU $623A    ; 26 bytes storing tokens for shorthand. Only command tokens allowed. In order A-Z. 
+SYSVAR_CURSORX  EQU $6254    ; X component of cursor (0-126). 
+SYSVAR_CURSORY  EQU $6255    ; Y component of cursor (0-247). 
+SYSVAR_WINDST   EQU $6256    ; Window size. 
+SYSVAR_CURSTAT  EQU $625A    ; Cursor on/off. 
+SYSVAR_INKST    EQU $625B    ; Stores ink colour. 
+SYSVAR_PAPST    EQU $625C    ; Stores paper colour. 
+SYSVAR_FLASH    EQU $625D    ; Cursor flash rate. 
+SYSVAR_INPCUR   EQU $625F    ; Cursor characters. 
+SYSVAR_EXFLAG   EQU $6261    ; TRACE, SPEED on/off store. 
+SYSVAR_GLINE    EQU $6262    ; Jump to line draw routine. 
+SYSVAR_GOLDX    EQU $6265    ; Graphic cursor position X. 
+SYSVAR_GOLDY    EQU $6267    ; Y co-ordinate of graphics cursor. 
+SYSVAR_GNEWX    EQU $6268    ; Stores new X co-ordinate before LINE draw. 
+SYSVAR_GNEWY    EQU $626A    ; Stores new Y co-ordinate before LINE draw. 
+SYSVAR_PROTST   EQU $626B    ; Protect store. 
+SYSVAR_OUTB     EQU $626C    ; Jump to routine which outputs byte with data in A, mask in C and relative displacement from top left in HL. Uses colour selected by INK and PAPER.
+SYSVAR_CHRTBL   EQU $626F    ; Pointer used to generate characters 32-127. 
+SYSVAR_GPHTBL   EQU $6271    ; Pointer used to generate characters 128-255. 
+SYSVAR_BPERL    EQU $6273    ; Bytes per line: 20H normally, 40H in double height mode. 
+SYSVAR_MASK     EQU $6275    ; Mask used by display driver: change with VDU 20/21. 
+SYSVAR_FLIGHT   EQU $6276    ; Jump to lightpen function. 
+SYSVAR_FJOY     EQU $6279    ; Jump to joystick function. 
+SYSVAR_FUSER0   EQU $627C    ; Jump to USER0 function. 
+SYSVAR_FUSER1   EQU $627F    ; Jump to USER I function. 
+SYSVAR_FUSER2   EQU $6282    ; Jump to USER2 function. 
+SYSVAR_FUSER3   EQU $6285    ; Jump to USER3 function. 
+SYSVAR_ERRAM    EQU $6288    ; Called during error. 
+SYSVAR_SLFRAM   EQU $628B    ; Called when line feed occurs. 
+SYSVAR_BLUBNK   EQU $628E    ; Pointer to BLUE bank. 
+SYSVAR_REDBNK   EQU $6290    ; Pointer to RED bank. 
+SYSVAR_GRNBNK   EQU $6292    ; Pointer to GREEN bank. 
+SYSVAR_NMIRAM   EQU $6294    ; Jump here on NMI. Jump  to 3B32H (not implemented)
+SYSVAR_RSTRAM   EQU $6297    ; Jumps here on RST 38H. 
+SYSVAR_ERRTBL   EQU $629A    ; Pointer to error messages. 
+SYSVAR_CASLEV   EQU $629C    ; Cassette input threshold level. 
+SYSVAR_COARSE   EQU $629D    ; Coarse adjustment on cassette speed. 
+SYSVAR_FINE     EQU $629E    ; Fine adjustment on cassette speed. 
+SYSVAR_SYNCLEN  EQU $629F    ; Length of sync. 
+SYSVAR_PLYLEV   EQU $62A0    ; Voltage reference for comparator. Used by LOAD instruction. 
+SYSVAR_CASTBL   EQU $62A1    ; Pointer to table used to generate wave. (SOUND?)
+SYSVAR_RBIT     EQU $62A3    ; Jumps to read bit routine. 
+SYSVAR_WBYTE    EQU $62A6    ; Jumps to write byte routine. 
+SYSVAR_PP       EQU $62A9    ; Jump to print a polish expression. 
+SYSVAR_NTP      EQU $62AC    ; Jump to normal to internal language conversion routine. 
+SYSVAR_EE       EQU $62AF    ; Jump to evaluate expression. 
+SYSVAR_DBASLN   EQU $62B2    ; Jump to display basic line. 
+SYSVAR_DEBUG    EQU $62B5    ; Jump to SPEED and TRACE routines. 
+SYSVAR_VIDEO    EQU $62B8    ; Jump to routine which outputs character in A to current cursor position. 
+SYSVAR_LINP     EQU $62BB    ; Jump to line input routine. 
+SYSVAR_VRPTS    EQU $62BE    ; Jump to string variable pointer routine. 
+SYSVAR_SPEEDST  EQU $62C1    ; Used by SPEED. 
+SYSVAR_STORE    EQU $62C2    ; General purpose store. 
+SYSVAR_OLDESC   EQU $62C4    ; ESC key roll over. 
+SYSVAR_OLDKEY   EQU $62C5    ; Rest of keyboard roll over. 
+SYSVAR_WRA4     EQU $62CF    ; WORKING REGISTER AREA 4 
+SYSVAR_WRA3     EQU $62D4    ; WORKING REGISTER AREA 3 
+SYSVAR_WRAE     EQU $62DD    ; WORKING REGISTER AREA 2 EXTENDED. 
+SYSVAR_WRA2     EQU $62E0    ; WORKING REGISTER AREA 2 
+SYSVAR_WRA1     EQU $62E5    ; WORKING REGISTER AREA I 
+SYSVAR_SYNL     EQU $62EA    ; .
+SYSVAR_SYNP     EQU $62EB    ; .
+SYSVAR_SYNC     EQU $62EC    ; .
+SYSVAR_NPM      EQU $62ED    ; All used by NTP. 
+SYSVAR_SBC      EQU $62EE    ; Space before command on line listing (used for indentation). 
+SYSVAR_PROCST   EQU $62EF    ; Pointer to first DEFPROC. 
+SYSVAR_EDST     EQU $62F1    ; EDIT buffer driver. 
+SYSVAR_AUTOST   EQU $62F3    ; Auto line number, increment. 
+SYSVAR_PRTBUF   EQU $62FD    ; Used during printing number. 
+SYSVAR_POLBUFS  EQU $6301    ; Internal language buffer. 
+SYSVAR_STRBUF   EQU $6407    ; String calculation buffer. 
+SYSVAR_CSTACK   EQU $6507    ; Calculator stack. 
+SYSVAR_RSTACKS  EQU $6607    ; Return stack. 
+SYSVAR_VTBLS    EQU $6707    ; (53*5) Variable table. 
+SYSVAR_ATBLS    EQU $6810    ; (53*4) Array table. 
+SYSVAR_STBLS    EQU $68E4    ; String table. 
+SYSVAR_DFTMRK   EQU $694C    ; Carriage return used in READ, DATA. 
+SYSVAR_SOBS     EQU $694D    ; START OF BASIC PROGRAM.
+
+;
+; START of Lynx 48k Eprom (1/2)
+;
+
 START:
     DI                              ;[0000] Start. Disable interrupts. Jump to 3B.
     LD A,$20                        ;[0001] 
@@ -4162,6 +4318,10 @@ BASIC_COM_UNTIL:
     PUSH DE                         ;[1FFA] UNTIL.
     CALL $1F55                      ;[1FFB] 
     CP $38                          ;[1FFE] 
+
+;
+; Lynx 48k Eprom (2/2)
+;
     CALL NZ,$3B0E                   ;[2000] 
     CALL $1F47                      ;[2003] 
     POP DE                          ;[2006] 
