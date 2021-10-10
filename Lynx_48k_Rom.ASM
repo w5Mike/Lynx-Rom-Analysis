@@ -155,6 +155,7 @@ SYSVAR_SOBS     EQU $694D    ; START OF BASIC PROGRAM.
 ; START of Lynx 48k Eprom (1/2)
 ;
 
+
 START:
     DI                              ;[0000] Start. Disable interrupts. Jump to 3B.
     LD A,$20                        ;[0001] 
@@ -1834,7 +1835,7 @@ VALIDATE_PRINT:
     DJNZ $0F10                      ;[0F18] 
     JP $2840                        ;[0F1A] 
 
-VALIDATE_CODE:
+VALIDATE_CODE1:
     LD A,(DE)                       ;[0F1D] Part of CODE validation.
     LD (HL),A                       ;[0F1E] 
     CP $0D                          ;[0F1F] 
@@ -1843,12 +1844,12 @@ VALIDATE_CODE:
     JR NZ,$0EFC                     ;[0F23] 
 
 VALIDATE_CODE:
-    CALL VALIDATE_CODE              ;[0F25] Validation for CODE.
+    CALL VALIDATE_CODE2             ;[0F25] Validation for CODE.
     LD (HL),C                       ;[0F28] 
     INC HL                          ;[0F29] 
-    JR VALIDATE_CODE                ;[0F2A] 
+    JR VALIDATE_CODE1               ;[0F2A] 
 
-VALIDATE_CODE:
+VALIDATE_CODE2:
     LD C,$00                        ;[0F2C] Part of CODE validation.
     LD A,(DE)                       ;[0F2E] 
     SUB $30                         ;[0F2F] 
@@ -1895,7 +1896,7 @@ BASIC_COM_DRAW:
     LD (SYSVAR_GNEWY),A             ;[0F65] 
     JP SYSVAR_GLINE                 ;[0F68] 
 
-SUB_PLOT:
+SUB_PLOT1:
     RST $18                         ;[0F6B] PLOT subroutine.
     INC DE                          ;[0F6C] 
     LD BC,(SYSVAR_GOLDX)            ;[0F6D] 
@@ -1907,7 +1908,7 @@ SUB_PLOT:
     LD (SYSVAR_GOLDY),A             ;[0F7A] 
     RET                             ;[0F7D] 
 
-SUB_PLOT:
+SUB_PLOT2:
     RST $18                         ;[0F7E] PLOT subroutine.
     INC DE                          ;[0F7F] 
     LD BC,(SYSVAR_GOLDX)            ;[0F80] 
@@ -1935,11 +1936,11 @@ BASIC_COM_PLOT:
     OR A                            ;[0FA7] 
     JP Z,BASIC_COM_MOVE             ;[0FA8] 
     DEC L                           ;[0FAB] 
-    JP Z,SUB_PLOT                   ;[0FAC] 
+    JP Z,SUB_PLOT1                  ;[0FAC] 
     DEC L                           ;[0FAF] 
     JP Z,BASIC_COM_DRAW             ;[0FB0] 
     DEC L                           ;[0FB3] 
-    JP Z,SUB_PLOT                   ;[0FB4] 
+    JP Z,SUB_PLOT2                  ;[0FB4] 
     DEC L                           ;[0FB7] 
     JP Z,BASIC_COM_DOT              ;[0FB8] 
     CALL $3B32                      ;[0FBB] 
@@ -1972,19 +1973,19 @@ BASIC_COM_PLOT:
     OR D                            ;[0FED] 
     JR Z,$1008                      ;[0FEE] 
     DEC B                           ;[0FF0] 
-    CALL SUB_PLOT                   ;[0FF1] 
+    CALL SUB_PLOT5                  ;[0FF1] 
     JR NZ,$1001                     ;[0FF4] 
     SCF                             ;[0FF6] 
     RR B                            ;[0FF7] 
-    CALL SUB_PLOT                   ;[0FF9] 
-    CALL SUB_PLOT                   ;[0FFC] 
+    CALL SUB_PLOT4                  ;[0FF9] 
+    CALL SUB_PLOT5                  ;[0FFC] 
     JR Z,$0FF7                      ;[0FFF] 
-    CALL SUB_PLOT                   ;[1001] 
+    CALL SUB_PLOT3                  ;[1001] 
     ADD HL,DE                       ;[1004] 
     EXX                             ;[1005] 
     ADD HL,DE                       ;[1006] 
     EXX                             ;[1007] 
-    CALL SUB_PLOT                   ;[1008] 
+    CALL SUB_PLOT3                  ;[1008] 
     DJNZ $1004                      ;[100B] 
     POP HL                          ;[100D] 
     LD A,L                          ;[100E] 
@@ -1993,7 +1994,7 @@ BASIC_COM_PLOT:
     LD (SYSVAR_GOLDX),HL            ;[1013] 
     RET                             ;[1016] 
 
-SUB_PLOT:
+SUB_PLOT3:
     EXX                             ;[1017] PLOT subroutine.
     LD A,H                          ;[1018] 
     EXX                             ;[1019] 
@@ -2030,7 +2031,7 @@ SUB_PLOT:
     POP HL                          ;[1044] 
     RET                             ;[1045] 
 
-SUB_PLOT:
+SUB_PLOT4:
     SLA E                           ;[1046] PLOT subroutine.
     RL D                            ;[1048] 
     EXX                             ;[104A] 
@@ -2039,7 +2040,7 @@ SUB_PLOT:
     EXX                             ;[104F] 
     RET                             ;[1050] 
 
-SUB_PLOT:
+SUB_PLOT5:
     EXX                             ;[1051] PLOT subroutine.
     LD A,D                          ;[1052] 
     XOR E                           ;[1053] 
@@ -4318,10 +4319,6 @@ BASIC_COM_UNTIL:
     PUSH DE                         ;[1FFA] UNTIL.
     CALL $1F55                      ;[1FFB] 
     CP $38                          ;[1FFE] 
-
-;
-; Lynx 48k Eprom (2/2)
-;
     CALL NZ,$3B0E                   ;[2000] 
     CALL $1F47                      ;[2003] 
     POP DE                          ;[2006] 
@@ -6827,7 +6824,7 @@ BASIC_FN_SQR:
     DJNZ $3070                      ;[3091] 
     RET                             ;[3093] 
 
-SUB_POWER:
+SUB_POWER1:
     CALL $2EF0                      ;[3094] Part of power routine
     JP LYNX_LONE                    ;[3097] 
 
@@ -6835,7 +6832,7 @@ BASIC_FN_POWER:
     CALL $2EF0                      ;[309A] ** Power routine.
     LD A,(SYSVAR_WRA1)              ;[309D] 
     CP $80                          ;[30A0] 
-    JR Z,SUB_POWER                  ;[30A2] 
+    JR Z,SUB_POWER1                 ;[30A2] 
     CP $C0                          ;[30A4] 
     JR NZ,$30D2                     ;[30A6] 
     CALL $3656                      ;[30A8] 
@@ -6844,7 +6841,7 @@ BASIC_FN_POWER:
     LD HL,$62E6                     ;[30AE] 
     XOR A                           ;[30B1] 
     CP (HL)                         ;[30B2] 
-    JR NZ,SUB_POWER                 ;[30B3] 
+    JR NZ,SUB_POWER2                ;[30B3] 
     INC HL                          ;[30B5] 
     DJNZ $30B2                      ;[30B6] 
     CALL $2EF0                      ;[30B8] 
@@ -6861,7 +6858,7 @@ BASIC_FN_POWER:
     DJNZ $30BF                      ;[30CB] 
     RET                             ;[30CD] 
 
-SUB_POWER:
+SUB_POWER2:
     EX AF,AF'                       ;[30CE] Part of power routine
     CALL $3643                      ;[30CF] 
     CALL $2F2C                      ;[30D2] 
@@ -7975,7 +7972,7 @@ SUB_MULTIPLY:
     DJNZ $38C8                      ;[38CD] 
     ADD D                           ;[38CF] 
     DAA                             ;[38D0] 
-    CALL SUB_MULTIPLY               ;[38D1] 
+    CALL SUB_MULTIPLY1              ;[38D1] 
     POP AF                          ;[38D4] 
     POP BC                          ;[38D5] 
     DJNZ $38C1                      ;[38D6] 
@@ -8533,7 +8530,7 @@ MONITOR_O:
     OUT (C),L                       ;[3DF3] 
     RET                             ;[3DF5] 
 
-MONITOR_B:
+MONITOR_B1:
     CALL SUB_ARGUMENT_INTO_HL       ;[3DF6] Monitor B command.
     JP (HL)                         ;[3DF9] 
     CP $40                          ;[3DFA] Test for a Monitor command letter.
@@ -8768,7 +8765,7 @@ BASIC_COM_MLOAD:
     LD ($61BA),HL                   ;[3F65] 
     JR $3F78                        ;[3F68] 
 
-MONITOR_P:
+MONITOR_P1:
     CALL $3F4E                      ;[3F6A] Monitor P command.
     LD HL,(SYSVAR_POLBUF)           ;[3F6D] 
     PUSH HL                         ;[3F70] 
@@ -8826,7 +8823,7 @@ SUB_MONITOR_R:
     RST $08                         ;[3FCF] 
     JP $3B94                        ;[3FD0] 
 
-SUB_MULTIPLY:
+SUB_MULTIPLY1:
     JR NC,$3FD6                     ;[3FD3] Multiply subroutine.
     INC E                           ;[3FD5] 
     LD (HL),A                       ;[3FD6] 
