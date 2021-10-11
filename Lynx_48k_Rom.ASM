@@ -2068,12 +2068,25 @@ LYNX_PRTSTR:
     JR    Z,$1066                   ;[106D] 
     RET                             ;[106F] 
 
-
-DATA_DISPLAY_BUFFER:
-    defb 0xE5,0xD5,0xED,0x5B,0x54,0x62,0x3E,0x20        ;[1070]
-    defb 0xCF,0x2B,0x23,0x7E,0xFE,0x0D,0x28,0x03        ;[1078]
-    defb 0xCF,0x18,0xF7,0x3E,0x20,0xCF,0xED,0x53        ;[1080]
-    defb 0x54,0x62,0xD1,0xE1,0xC9                       ;[1088]
+LYNX_DISPLAY_BUFFER:
+    PUSH  HL                        ;[1070] Display buffer.
+    PUSH  DE                        ;[1071] 
+    LD    DE,(SYSVAR_CURSORX)       ;[1072] 
+    LD    A,$20                     ;[1076] 
+    RST   $08                       ;[1078] 
+    DEC   HL                        ;[1079] 
+    INC   HL                        ;[107A] 
+    LD    A,(HL)                    ;[107B] 
+    CP    $0D                       ;[107C] 
+    JR    Z,$1083                   ;[107E] 
+    RST   $08                       ;[1080] 
+    JR    $107A                     ;[1081] 
+    LD    A,$20                     ;[1083] 
+    RST   $08                       ;[1085] 
+    LD    (SYSVAR_CURSORX),DE       ;[1086] 
+    POP   DE                        ;[108A] 
+    POP   HL                        ;[108B] 
+    RET                             ;[108C] 
 
     LD    A,(DE)                    ;[108D] Loop until CR.
     CP    $0D                       ;[108E] 
