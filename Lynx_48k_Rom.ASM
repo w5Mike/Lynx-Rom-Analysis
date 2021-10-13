@@ -228,7 +228,7 @@ INIT_CRT:
     INC   A                         ;[004E] 
     INC   HL                        ;[004F] 
     DJNZ  $0047                     ;[0050] 
-    JP    $168C                     ;[0052] 
+    JP    LYNX_MAIN                 ;[0052] 
     NOP                             ;[0055] 
 
 DATA_CRT:
@@ -2459,6 +2459,8 @@ DATA_XETBL:
     defb 0x6E,0x24,0x60,0x24,0x2D,0x21,0x05,0x0E        ;[167E]
     defb 0x92,0x0D,0x62,0x3F,0x32,0x21                  ;[1686]
 
+LYNX_MAIN:
+    DI                              ;[168C] Main routine.
     LD    HL,DATA_INIT              ;[168D] 
     LD    DE,SYSVAR_STACK           ;[1690] 
     LD    BC,$00D3                  ;[1693] 
