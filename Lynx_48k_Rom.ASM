@@ -6171,7 +6171,6 @@ DATA_ARCTAN:
 
 BASIC_FN_FACT:
     CALL  BASIC_FN_INT              ;[3010] FACT.
-    INC   (HL)                      ;[3012] 
     LD    A,(SYSVAR_WRA1)           ;[3013] 
     CP    $80                       ;[3016] 
     JP    Z,LYNX_LONE               ;[3018] 
