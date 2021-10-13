@@ -235,7 +235,6 @@ DATA_CRT:
     defb 0x2F,0x20,0x26,0x33,0x4D,0x02,0x3F,0x44        ;[0056]
     defb 0x00,0x03,0x03,0x03,0x00,0x00,0x07,0xDF        ;[005E]
 
-
 NMI_JUMP:
     JP    SYSVAR_NMIRAM             ;[0066] NMI jump
 
@@ -471,7 +470,6 @@ LYNX_FONT:
     DJNZ  $01BB                     ;[01D1] 
     RET                             ;[01D3] 
 
-
 DATA_CHARS:
     defb 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00        ;[01D4]
     defb 0x00,0x00,0x00,0x08,0x08,0x08,0x08,0x08        ;[01DC]
@@ -688,7 +686,6 @@ DATA_VDU_ROUTINES:
     defb 0x2A,0x07,0x30,0x07,0xCD,0x06,0xCD,0x06        ;[071A]
     defb 0x10,0x08,0x8B,0x07,0xC1,0x07,0x7B,0x07        ;[0722]
 
-
 VDU_24:
     LD    A,$40                     ;[072A] Turns double height characters on
     LD    (SYSVAR_BPERL),A          ;[072C] 
@@ -732,8 +729,10 @@ VDU_18:
 
 VDU_4:
     CALL  $08E5                     ;[0762] Clears screen and homes cursor
+
 VDU_23:
     CALL  $079B                     ;[0765] Homes cursor (takes cursor inside of window)
+
 VDU_16:
     LD    A,($6258)                 ;[0768] Moves cursor to top of screen
     LD    (SYSVAR_CURSORY),A        ;[076B] 
@@ -750,6 +749,7 @@ VDU_19:
 
 VDU_13_31:
     CALL  $079B                     ;[077B] Carriage return, linefeed, clears to end of line
+
 VDU_10:
     LD    DE,(SYSVAR_CURSORX)       ;[077E] Line feed (moves cursor down 10 pixel lines)
     CALL  $0754                     ;[0782] 
@@ -1234,7 +1234,6 @@ LYNX_KEYDVR:
     JR    NZ,$0A70                  ;[0A73] 
     RET                             ;[0A75] 
 
-
 DATA_KEYBOARD:
     defb 0x31,0x2A,0x2A,0x00,0x0B,0x0A,0x33,0x34        ;[0A76]
     defb 0x45,0x58,0x44,0x43,0x32,0x51,0x57,0x5A        ;[0A7E]
@@ -1547,7 +1546,6 @@ LYNX_MOTOFF:
     JR    NZ,$0D03                  ;[0D06] 
     RET                             ;[0D08] 
 
-
 DATA_CASTBL:
     defb 0x1D,0x1B,0x18,0x16,0x14,0x12,0x10,0x0E        ;[0D09]
     defb 0x0C,0x0A,0x09,0x07,0x06,0x05,0x04,0x03        ;[0D11]
@@ -1610,7 +1608,6 @@ BASIC_COM_TAPE:
     INC   HL                        ;[0DA9] 
     DJNZ  $0DA6                     ;[0DAA] 
     RET                             ;[0DAC] 
-
 
 DATA_TAPE:
     defb 0x50,0x01,0x04,0x03,0x38,0x01,0x01,0x04        ;[0DAD]
@@ -2275,7 +2272,6 @@ LYNX_DISPLAY_BUFFER:
     POP   AF                        ;[11B7] 
     RET                             ;[11B8] 
 
-
 DATA_LINE_NUMBER:
     defb 0x4C,0x69,0x6E,0x65,0x20,0x6E,0x75,0x6D        ;[11B9]
     defb 0x62,0x65,0x72,0x3F,0x20,0x00                  ;[11C1]
@@ -2347,13 +2343,11 @@ DATA_TTBL:
     defb 0x24,0xC7,0x45,0x54,0x24,0xD3,0x54,0x52        ;[1341]
     defb 0x24,0x28,0x80,0x80                            ;[1349]
 
-
 DATA_BLANK:
     defb 0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80        ;[134D]
     defb 0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80        ;[1355]
     defb 0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80        ;[135D]
     defb 0x80,0x80,0x80                                 ;[1365]
-
 
 DATA_FTBL:
     defb 0x69,0x1E,0x0C,0x36,0x26,0x20,0x57,0x1E        ;[1368]
@@ -2378,7 +2372,6 @@ DATA_FTBL:
     defb 0xBD,0x32,0xC2,0x32,0xD5,0x32,0xAF,0x32        ;[1400]
     defb 0xDF,0x32,0xF6,0x32,0x7F,0x0E,0x8B,0x0E        ;[1408]
     defb 0x95,0x0E,0x3F,0x0E,0x18,0x0E                  ;[1410]
-
 
 DATA_XTTBL:
     defb 0x4B,0xCC,0x45,0x54,0xD6,0x44,0x55,0xC4        ;[1416]
@@ -2424,7 +2417,6 @@ DATA_XTTBL:
     defb 0xCD,0x4C,0x4F,0x41,0x44,0xD4,0x45,0x58        ;[1556]
     defb 0x54,0x80                                      ;[155E]
 
-
 DATA_XITBL:
     defb 0x7C,0x26,0xD4,0x0E,0x6F,0x29,0x5D,0x29        ;[1560]
     defb 0xDB,0x26,0xD8,0x26,0x07,0x27,0x07,0x27        ;[1568]
@@ -2445,7 +2437,6 @@ DATA_XITBL:
     defb 0xDB,0x26,0x21,0x62,0x07,0x27,0x07,0x27        ;[15E0]
     defb 0x06,0x26,0x07,0x27,0x07,0x27,0x07,0x27        ;[15E8]
     defb 0x07,0x27,0x16,0x26,0xDB,0x26                  ;[15F0]
-
 
 DATA_XETBL:
     defb 0x48,0x21,0xE3,0x0E,0x4A,0x3B,0x04,0x29        ;[15F6]
@@ -2557,10 +2548,8 @@ DATA_INIT:
     defb 0xE5,0x24,0xC3,0x9A,0x00,0xC3,0xE2,0x10        ;[17DD]
     defb 0xC3,0x5C,0x2D,0x00                            ;[17E5]
 
-
 DATA_PROMPT:
     defb 0x04,0x07,0x04,0x07                            ;[17E9]
-
 
 DATA_LYNX_LOGO:
     defb 0x04,0x07,0x18,0xF3,0xF4,0xF5,0xF6,0xF7        ;[17ED]
@@ -3496,8 +3485,8 @@ BASIC_COM_STOP:
     CALL  $1E7F                     ;[1E48] 
     JP    $24E2                     ;[1E4B] 
     DEC   C                         ;[1E4E] 
-    defb 0x53,0x74,0x6F,0x70,0x70,0x65,0x64,0x00        ;[1E4F]
 
+    defb 0x53,0x74,0x6F,0x70,0x70,0x65,0x64,0x00        ;[1E4F]
 
 BASIC_FN_RND:
     CALL  LYNX_FRNDS                ;[1E57] RND.
@@ -3530,9 +3519,9 @@ BASIC_FN_MEM:
     LD    A,$0D                     ;[1E99] 
     RST   $08                       ;[1E9B] 
     JP    $1F0D                     ;[1E9C] 
+
     defb 0x20,0x69,0x6E,0x20,0x6C,0x69,0x6E,0x65        ;[1E9F]
     defb 0x20,0x00                                      ;[1EA7]
-
 
 BASIC:
     LD    IX,(SYSVAR_CURRLP)        ;[1EA9] Main process loop for BASIC
@@ -3589,6 +3578,7 @@ LYNX_ESC:
 
     LD    HL,$1F13                  ;[1F0D] Routine to print 'Ready!'.
     JP    LYNX_PLINE                ;[1F10] 
+
     defb 0x52,0x65,0x61,0x64,0x79,0x21,0x0D,0x1E        ;[1F13]
     defb 0x00                                           ;[1F1B]
 
@@ -5103,7 +5093,6 @@ BASIC_COM_AUTO:
     LD    (SYSVAR_AUTOFL),A         ;[28CB] 
     RET                             ;[28CE] 
 
-
 DATA_AUTO:
     defb 0xC2,0x10,0x00,0x00,0x00,0xC1,0x10,0x00        ;[28CF]
     defb 0x00,0x00                                      ;[28D7]
@@ -6178,7 +6167,6 @@ DATA_ARCTAN:
     defb 0x78,0x69,0x3F,0x33,0x31,0x73,0x76,0xBF        ;[3004]
     defb 0x99,0x99,0x96,0x11                            ;[300C]
 
-
 BASIC_FN_FACT:
     CALL  BASIC_FN_INT              ;[3010] FACT.
     INC   (HL)                      ;[3012] 
@@ -6346,7 +6334,6 @@ DATA_LOG:
     defb 0xBF,0x28,0x93,0x35,0x52,0xBF,0x86,0x85        ;[317A]
     defb 0x91,0x72                                      ;[3182]
 
-
 BASIC_FN_EXP:
     LD    HL,$35F1                  ;[3184] EXP.
     CALL  LYNX_LNUM2                ;[3187] 
@@ -6401,7 +6388,6 @@ BASIC_FN_ANTILOG:
     CALL  LYNX_SWAP                 ;[31EF] 
     CALL  LYNX_DIV                  ;[31F2] 
     RET                             ;[31F5] 
-
 
 DATA_ANTILOG:
     defb 0x06,0xBD,0x56,0x54,0x90,0x20,0xBE,0x13        ;[31F6]
@@ -6458,7 +6444,6 @@ DATA_SINCOS:
     defb 0x73,0x76,0x56,0xBE,0x79,0x68,0x96,0x79        ;[3293]
     defb 0x3F,0x64,0x59,0x63,0x71,0xC0,0x15,0x70        ;[329B]
     defb 0x79,0x63                                      ;[32A3]
-
 
 BASIC_FN_NOT:
     CALL  $2EF0                     ;[32A5] NOT.
@@ -7030,6 +7015,7 @@ DATA_PI:
 
 LYNX_SBT:
     CALL  $3554                     ;[366A] Basic Minus Function: Subtracts (WRA2) from (WRA1), stores result in WRA1.
+
 LYNX_AD:
     CALL  $3589                     ;[366D] Basic Add Function:  Adds (WRA1) and (WRA2), stores result in WRA1.
     CALL  NC,LYNX_SWAP              ;[3670] 
@@ -7600,6 +7586,7 @@ BASIC_COM_MON:
     RST   $10                       ;[3BC4] 
     CP    $0D                       ;[3BC5] 
     JP    (HL)                      ;[3BC7] 
+
     defb 0x3F,0x3F,0x3F,0x3F,0x0D,0x1E,0x00             ;[3BC8]
 
     ADC   A,E                       ;[3BCF] Two byte addresses for the monitor commands A-Z
@@ -7780,7 +7767,6 @@ MONITOR_Z:
     RST   $08                       ;[3CE6] 
     RET                             ;[3CE7] 
 
-
 DATA_MONITOR:
     defb 0x41,0x46,0x20,0x48,0x4C,0x20,0x44,0x45        ;[3CE8]
     defb 0x20,0x42,0x43,0x20,0x41,0x46,0x27,0x48        ;[3CF0]
@@ -7911,6 +7897,7 @@ MONITOR_A:
     CP    $80                       ;[3DC3] 
     JR    C,$3DAF                   ;[3DC5] 
     JR    $3DBD                     ;[3DC7] 
+
     defb 0x3F,0x3F,0x00                                 ;[3DC9]
 
     CALL  SUB_ARGUMENT_3            ;[3DCC] ???? Doesn't seem to be used!!!!
@@ -8090,7 +8077,6 @@ MONITOR_X:
 DATA_FLAGS:
     defb 0x53,0x5A,0x31,0x48,0x31,0x50,0x4E,0x43        ;[3ECB]
     defb 0x00                                           ;[3ED3]
-
 
 MONITOR_E:
     JR    Z,$3EDB                   ;[3ED4] Monitor E command.
