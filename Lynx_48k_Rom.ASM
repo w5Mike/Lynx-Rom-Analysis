@@ -7494,63 +7494,63 @@ DATA_ERROR_MSGS:
     defb 0x0D,0x42,0x61,0x64,0x20,0x54,0x61,0x70        ;[3AEF]  .Bad.Tap
     defb 0x65,0x00                                      ;[3AF7]  ad.Tape.
 
-    XOR   A                         ;[3AF9] Error message selection code.
+    XOR   A                         ;[3AF9] Bad Tape. Error message selection code.
     INC   A                         ;[3AFA] 
-    LD    B,$AF                     ;[3AFB] 
+    LD    B,$AF                     ;[3AFB] ENDPROC without PROC
     INC   A                         ;[3AFD] 
-    LD    B,$AF                     ;[3AFE] 
+    LD    B,$AF                     ;[3AFE] GOSUB without RETURN
     INC   A                         ;[3B00] 
-    LD    B,$AF                     ;[3B01] 
+    LD    B,$AF                     ;[3B01] REPEAT without UNTIL
     INC   A                         ;[3B03] 
-    LD    B,$AF                     ;[3B04] 
+    LD    B,$AF                     ;[3B04] Return stack full
     INC   A                         ;[3B06] 
-    LD    B,$AF                     ;[3B07] 
+    LD    B,$AF                     ;[3B07] WHILE without WEND
     INC   A                         ;[3B09] 
-    LD    B,$AF                     ;[3B0A] 
+    LD    B,$AF                     ;[3B0A] WEND without WHILE
     INC   A                         ;[3B0C] 
-    LD    B,$AF                     ;[3B0D] 
+    LD    B,$AF                     ;[3B0D] UNTIL without REPEAT
     INC   A                         ;[3B0F] 
-    LD    B,$AF                     ;[3B10] 
+    LD    B,$AF                     ;[3B10] Undefined variable
     INC   A                         ;[3B12] 
-    LD    B,$AF                     ;[3B13] 
+    LD    B,$AF                     ;[3B13] NEXT without FOR
     INC   A                         ;[3B15] 
-    LD    B,$AF                     ;[3B16] 
+    LD    B,$AF                     ;[3B16] RETURN without GOSUB
     INC   A                         ;[3B18] 
-    LD    B,$AF                     ;[3B19] 
+    LD    B,$AF                     ;[3B19] Out of Data
     INC   A                         ;[3B1B] 
-    LD    B,$AF                     ;[3B1C] 
+    LD    B,$AF                     ;[3B1C] Cannot continue
     INC   A                         ;[3B1E] 
-    LD    B,$AF                     ;[3B1F] 
+    LD    B,$AF                     ;[3B1F] Line too long
     INC   A                         ;[3B21] 
-    LD    B,$AF                     ;[3B22] 
+    LD    B,$AF                     ;[3B22] Type mismatch
     INC   A                         ;[3B24] 
-    LD    B,$AF                     ;[3B25] 
+    LD    B,$AF                     ;[3B25] Subscript out of range
     INC   A                         ;[3B27] 
-    LD    B,$AF                     ;[3B28] 
+    LD    B,$AF                     ;[3B28] Number out of range
     INC   A                         ;[3B2A] 
-    LD    B,$AF                     ;[3B2B] 
+    LD    B,$AF                     ;[3B2B] Line, LABEL or PROC not found
     INC   A                         ;[3B2D] 
-    LD    B,$AF                     ;[3B2E] 
+    LD    B,$AF                     ;[3B2E] Redimensioned array
     INC   A                         ;[3B30] 
-    LD    B,$AF                     ;[3B31] 
+    LD    B,$AF                     ;[3B31] NOT YET IMPLEMENTED
     INC   A                         ;[3B33] 
-    LD    B,$AF                     ;[3B34] 
+    LD    B,$AF                     ;[3B34] Function argument error
     INC   A                         ;[3B36] 
-    LD    B,$AF                     ;[3B37] 
+    LD    B,$AF                     ;[3B37] Something missing
     INC   A                         ;[3B39] 
-    LD    B,$AF                     ;[3B3A] 
+    LD    B,$AF                     ;[3B3A] Syntax error
     INC   A                         ;[3B3C] 
-    LD    B,$AF                     ;[3B3D] 
+    LD    B,$AF                     ;[3B3D] Overflow error
     INC   A                         ;[3B3F] 
-    LD    B,$AF                     ;[3B40] 
+    LD    B,$AF                     ;[3B40] Divide by zero error
     INC   A                         ;[3B42] 
-    LD    B,$AF                     ;[3B43] 
+    LD    B,$AF                     ;[3B43] Missing bracket
     INC   A                         ;[3B45] 
-    LD    B,$AF                     ;[3B46] 
+    LD    B,$AF                     ;[3B46] String error
     INC   A                         ;[3B48] 
-    LD    B,$AF                     ;[3B49] 
+    LD    B,$AF                     ;[3B49] Wrong Mode
     INC   A                         ;[3B4B] 
-    LD    B,$AF                     ;[3B4C] 
+    LD    B,$AF                     ;[3B4C] Out of Memory
     INC   A                         ;[3B4E] 
     CALL  SYSVAR_ERRAM              ;[3B4F] 
     LD    HL,(SYSVAR_ERRTBL)        ;[3B52] 
