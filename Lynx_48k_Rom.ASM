@@ -199,7 +199,7 @@ START:
     JP    INIT_CRT                  ;[0005] 
 
 RST_8H:
-    JP    $351B                     ;[0008] Output character in the A register
+    JP    LYNX_PUTCHAR              ;[0008] Output character in the A register
     JR    NZ,$0059                  ;[000B] 
     JR    NC,$0040                  ;[000D] 
     INC   (HL)                      ;[000F] 
@@ -1542,7 +1542,7 @@ BASIC_COM_LOAD:
     ADD   HL,DE                     ;[0CC1] 
     PUSH  HL                        ;[0CC2] 
     CALL  LYNX_MOTOFF               ;[0CC3] 
-    CALL  $1F6E                     ;[0CC6] 
+    CALL  LYNX_ZERO_MEM             ;[0CC6] 
     POP   IX                        ;[0CC9] 
     JP    $24C5                     ;[0CCB] 
     CALL  LYNX_MOTOFF               ;[0CCE] Escape route for read bit routine.
@@ -2510,7 +2510,7 @@ LYNX_MAIN:
     LD    A,($4000)                 ;[16A3] 
     OR    A                         ;[16A6] 
     CALL  Z,$4000                   ;[16A7] 
-    CALL  $1F6E                     ;[16AA] 
+    CALL  LYNX_ZERO_MEM             ;[16AA] 
     LD    HL,$6000                  ;[16AD] 
     LD    (HL),$0D                  ;[16B0] 
     ADD   HL,SP                     ;[16B2] 
@@ -2643,9 +2643,9 @@ SUB_LINE_ANALYSIS5:
     RES   6,A                       ;[183E] 
     ADD   A,$40                     ;[1840] 
     CP    $5B                       ;[1842] 
-    JP    C,$351B                   ;[1844] 
+    JP    C,LYNX_PUTCHAR            ;[1844] 
     ADD   A,$06                     ;[1847] 
-    JP    $351B                     ;[1849] 
+    JP    LYNX_PUTCHAR              ;[1849] 
     PUSH  DE                        ;[184C] 
     INC   DE                        ;[184D] 
     EX    DE,HL                     ;[184E] 
@@ -2746,7 +2746,7 @@ SUB_LINE_ANALYSIS8:
     CP    $BF                       ;[18E3] 
     JR    C,$18F1                   ;[18E5] 
     LD    A,$29                     ;[18E7] 
-    CALL  Z,$351B                   ;[18E9] 
+    CALL  Z,LYNX_PUTCHAR            ;[18E9] 
     CALL  LYNX_BAS_LINE_ANALYSIS    ;[18EC] 
     JR    $18DD                     ;[18EF] 
     LD    (IY+$00),$00              ;[18F1] 
@@ -3688,6 +3688,8 @@ SUB_LINK_ON:
 SUB_LINK_OFF:
     LD    C,$01                     ;[1F6A] LLIST subroutine: "LINK OFF".
     JR    $1F60                     ;[1F6C] 
+
+LYNX_ZERO_MEM:
     CALL  $25CA                     ;[1F6E] Called from MAIN routine. Zeros memory etc.
     LD    HL,START                  ;[1F71] 
     LD    (SYSVAR_PROCST),HL        ;[1F74] 
@@ -3861,7 +3863,7 @@ BASIC_COM_NEW:
     LD    (SYSVAR_EOB),HL           ;[2086] 
     LD    (HL),$80                  ;[2089] 
     LD    (SYSVAR_CURRLP),HL        ;[208B] 
-    CALL  $1F6E                     ;[208E] 
+    CALL  LYNX_ZERO_MEM             ;[208E] 
     JP    $24DC                     ;[2091] 
 
 BASIC_COM_INPUT:
@@ -4195,7 +4197,7 @@ BASIC_COM_CONT:
 
 BASIC_COM_RUN:
     PUSH  DE                        ;[2280] RUN.
-    CALL  $1F6E                     ;[2281] 
+    CALL  LYNX_ZERO_MEM             ;[2281] 
     POP   DE                        ;[2284] 
     LD    IX,(SYSVAR_SOB)           ;[2285] 
     LD    A,(DE)                    ;[2289] 
@@ -4630,7 +4632,7 @@ BASIC_COM_LINK:
     POP   BC                        ;[2555] 
     LD    HL,(SYSVAR_POLBUF)        ;[2556] 
     LDIR                            ;[2559] 
-    JP    $1F6E                     ;[255B] 
+    JP    LYNX_ZERO_MEM             ;[255B] 
 
 LYNX_ADD_LEN_TO_IX:
     PUSH  DE                        ;[255E] Add line length to IX.
@@ -6071,6 +6073,8 @@ VALIDATE_DIM:
 VALIDATE_SWAP:
     CALL  $2759                     ;[2EBB] Validate SWAP and multiply.
     JP    LYNX_MLT                  ;[2EBE] 
+
+LYNX_MULTIPLY_ADD:
     PUSH  IY                        ;[2EC1] Multiply and add routine.
     CALL  LYNX_WRA1_TO_IY           ;[2EC3] 
     POP   IY                        ;[2EC6] 
@@ -6224,7 +6228,7 @@ SUB_ARCTAN:
     CALL  LYNX_PUSH_WRA1            ;[2FD9] ARCTAN subroutine
     CALL  VALIDATE_SWAP             ;[2FDC] 
     LD    IX,DATA_ARCTAN            ;[2FDF] 
-    CALL  $2EC1                     ;[2FE3] 
+    CALL  LYNX_MULTIPLY_ADD         ;[2FE3] 
     CALL  LYNX_POP_WRA2             ;[2FE6] 
     JP    LYNX_MLT                  ;[2FE9] 
 
@@ -6374,7 +6378,7 @@ BASIC_FN_LOG:
     CALL  LYNX_PUSH_WRA1            ;[312F] 
     CALL  VALIDATE_SWAP             ;[3132] 
     LD    IX,DATA_LOG               ;[3135] 
-    CALL  $2EC1                     ;[3139] 
+    CALL  LYNX_MULTIPLY_ADD         ;[3139] 
     CALL  LYNX_POP_WRA2             ;[313C] 
     CALL  LYNX_MLT                  ;[313F] 
     LD    HL,$35FB                  ;[3142] 
@@ -6444,7 +6448,7 @@ BASIC_FN_ANTILOG:
     OR    A                         ;[31D5] 
     CALL  $359A                     ;[31D6] 
     LD    IX,DATA_ANTILOG           ;[31D9] 
-    CALL  $2EC1                     ;[31DD] 
+    CALL  LYNX_MULTIPLY_ADD         ;[31DD] 
     CALL  VALIDATE_SWAP             ;[31E0] 
     POP   AF                        ;[31E3] 
     LD    (SYSVAR_WRA1),A           ;[31E4] 
@@ -6502,7 +6506,7 @@ BASIC_FN_SIN:
     CALL  LYNX_PUSH_WRA1            ;[3278] 
     CALL  VALIDATE_SWAP             ;[327B] 
     LD    IX,DATA_SINCOS            ;[327E] 
-    CALL  $2EC1                     ;[3282] 
+    CALL  LYNX_MULTIPLY_ADD         ;[3282] 
     CALL  LYNX_POP_WRA2             ;[3285] 
     JP    LYNX_MLT                  ;[3288] 
 
@@ -6895,6 +6899,7 @@ LYNX_ZWRA1:
 
     defb 0x0D,0x1E,0x00                                 ;[3518]  .#......
 
+LYNX_PUTCHAR:
     PUSH  AF                        ;[351B] Display character in A (PutChar)
     CP    $0D                       ;[351C] 
     JR    NZ,$3530                  ;[351E] 
@@ -7705,7 +7710,7 @@ BASIC_COM_MON:
 
 MONITOR_S:
     LD    A,$04                     ;[3C03] Monitor S command.
-    JP    $351B                     ;[3C05] 
+    JP    LYNX_PUTCHAR              ;[3C05] 
 
 MONITOR_B:
     JR    Z,$3C17                   ;[3C08] Monitor B command.
@@ -7897,7 +7902,7 @@ SUB_ARGUMENT_3:
     CP    $20                       ;[3D57] 
     JR    NC,$3D5D                  ;[3D59] 
     LD    A,$2E                     ;[3D5B] 
-    JP    $351B                     ;[3D5D] 
+    JP    LYNX_PUTCHAR              ;[3D5D] 
 
 MONITOR_T:
     CALL  SUB_ARGUMENT_INTO_HL      ;[3D60] Monitor T command.
