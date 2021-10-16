@@ -765,7 +765,7 @@ VDU_4:
     CALL  $08E5                     ;[0762] Clears screen and homes cursor
 
 VDU_23:
-    CALL  $079B                     ;[0765] Homes cursor (takes cursor inside of window)
+    CALL  LYNX_CURSOR_LEFT          ;[0765] Homes cursor (takes cursor inside of window)
 
 VDU_16:
     LD    A,($6258)                 ;[0768] Moves cursor to top of screen
@@ -782,7 +782,7 @@ VDU_19:
     RET                             ;[077A] 
 
 VDU_13_31:
-    CALL  $079B                     ;[077B] Carriage return, linefeed, clears to end of line
+    CALL  LYNX_CURSOR_LEFT          ;[077B] Carriage return, linefeed, clears to end of line
 
 VDU_10:
     LD    DE,(SYSVAR_CURSORX)       ;[077E] Line feed (moves cursor down 10 pixel lines)
@@ -801,6 +801,8 @@ VDU_29:
     ADD   A,C                       ;[0795] 
     CALL  $075D                     ;[0796] 
     JR    $07E1                     ;[0799] 
+
+LYNX_CURSOR_LEFT:
     LD    A,(SYSVAR_WINDST)         ;[079B] Move cursor to left hand column of the WINDOW.
     LD    (SYSVAR_CURSORX),A        ;[079E] 
     RET                             ;[07A1] 
@@ -849,10 +851,11 @@ VDU_30:
     JR    $07E1                     ;[07DC] 
 
 VDU_22:
-    CALL  $07E6                     ;[07DE] Backspace cursor
+    CALL  SUB_BACKSPACE             ;[07DE] Backspace cursor
     LD    (SYSVAR_CURSORX),DE       ;[07E1] 
     RET                             ;[07E5] 
 
+SUB_BACKSPACE:
     LD    HL,(SYSVAR_WINDST)        ;[07E6] Called by backspace routine.
     LD    DE,(SYSVAR_CURSORX)       ;[07E9] 
     DEC   L                         ;[07ED] 
@@ -1703,14 +1706,14 @@ BASIC_FN_LETTER:
 BASIC_FN_MOD:
     CALL  LYNX_SWAP                 ;[0E18] MOD.
     CALL  BASIC_FN_ABS              ;[0E1B] 
-    CALL  $2F2C                     ;[0E1E] 
-    CALL  $2F2C                     ;[0E21] 
+    CALL  LYNX_PUSH_WRA1            ;[0E1E] 
+    CALL  LYNX_PUSH_WRA1            ;[0E21] 
     CALL  LYNX_SWAP                 ;[0E24] 
     CALL  LYNX_DIV                  ;[0E27] 
     CALL  BASIC_FN_FRAC             ;[0E2A] 
-    CALL  $2F3C                     ;[0E2D] 
+    CALL  LYNX_POP_WRA2             ;[0E2D] 
     CALL  LYNX_MLT                  ;[0E30] 
-    CALL  $2F3C                     ;[0E33] 
+    CALL  LYNX_POP_WRA2             ;[0E33] 
     LD    A,(SYSVAR_WRA1)           ;[0E36] 
     CALL  $3FF1                     ;[0E39] 
     JP    BASIC_FN_INT              ;[0E3C] 
@@ -1788,9 +1791,9 @@ BASIC_FN_BNAND:
     JR    $0E87                     ;[0E9D] 
 
 BASIC_FN_RAND:
-    CALL  $2F2C                     ;[0E9F] RAND.
+    CALL  LYNX_PUSH_WRA1            ;[0E9F] RAND.
     CALL  BASIC_FN_RND              ;[0EA2] 
-    CALL  $2F3C                     ;[0EA5] 
+    CALL  LYNX_POP_WRA2             ;[0EA5] 
     CALL  LYNX_MLT                  ;[0EA8] 
     JP    BASIC_FN_INT              ;[0EAB] 
 
@@ -1864,7 +1867,7 @@ VALIDATE_PRINT:
     LD    A,(IX-$01)                ;[0F0A] 
     SUB   $08                       ;[0F0D] 
     LD    B,A                       ;[0F0F] 
-    CALL  $352A                     ;[0F10] 
+    CALL  LYNX_OUTPUT_SPACE         ;[0F10] 
     LD    A,(DE)                    ;[0F13] 
     INC   DE                        ;[0F14] 
     CALL  $2239                     ;[0F15] 
@@ -2553,7 +2556,7 @@ SUB_MAIN:
     CALL  LYNX_LNUM2                ;[1709] 
     CALL  LYNX_AD                   ;[170C] 
     LD    DE,SYSVAR_AUTOST          ;[170F] 
-    JP    $275C                     ;[1712] 
+    JP    LYNX_WRA1_TO_DE           ;[1712] 
 
 DATA_INIT:
     defb 0x00,0xFF,0x01,0x00,0x00,0x00,0x00,0x00        ;[1715]  ........
@@ -2591,18 +2594,19 @@ DATA_LYNX_LOGO:
     defb 0x04,0x07,0x18,0xF3,0xF4,0xF5,0xF6,0xF7        ;[17ED]  ........
     defb 0xF8,0xF9,0x19,0x0A,0x0A,0x0D,0x00             ;[17F5]  ........
 
+LYNX_BAS_LINE_ANALYSIS:
     LD    A,(DE)                    ;[17FC] BASIC line analysis routine.
     INC   DE                        ;[17FD] 
     CP    $7C                       ;[17FE] 
-    JR    Z,$181F                   ;[1800] 
+    JR    Z,SUB_LINE_ANALYSIS3      ;[1800] 
     CP    $79                       ;[1802] 
-    JR    Z,$181F                   ;[1804] 
+    JR    Z,SUB_LINE_ANALYSIS3      ;[1804] 
     CP    $85                       ;[1806] 
-    JR    Z,$17FC                   ;[1808] 
+    JR    Z,LYNX_BAS_LINE_ANALYSIS  ;[1808] 
     CP    $87                       ;[180A] 
-    JR    Z,$17FC                   ;[180C] 
+    JR    Z,LYNX_BAS_LINE_ANALYSIS  ;[180C] 
     CP    $86                       ;[180E] 
-    JR    Z,$17FC                   ;[1810] 
+    JR    Z,LYNX_BAS_LINE_ANALYSIS  ;[1810] 
     CP    $7A                       ;[1812] 
     JR    Z,$1819                   ;[1814] 
     CP    $7E                       ;[1816] 
@@ -2614,21 +2618,24 @@ DATA_LYNX_LOGO:
     INC   DE                        ;[181D] 
     RET                             ;[181E] 
 
-    CALL  $17FC                     ;[181F] Line analysis subroutine.
+SUB_LINE_ANALYSIS3:
+    CALL  LYNX_BAS_LINE_ANALYSIS    ;[181F] Line analysis subroutine.
     CP    $7B                       ;[1822] 
-    JR    NZ,$181F                  ;[1824] 
+    JR    NZ,SUB_LINE_ANALYSIS3     ;[1824] 
     RET                             ;[1826] 
 
+SUB_LINE_ANALYSIS4:
     PUSH  DE                        ;[1827] Line analysis subroutine.
     CALL  $2808                     ;[1828] 
     POP   DE                        ;[182B] 
     RET                             ;[182C] 
 
+SUB_LINE_ANALYSIS5:
     LD    A,(DE)                    ;[182D] Line analysis subroutine.
     CP    $7C                       ;[182E] 
-    JR    Z,$1827                   ;[1830] 
+    JR    Z,SUB_LINE_ANALYSIS4      ;[1830] 
     CP    $80                       ;[1832] 
-    JR    NC,$1857                  ;[1834] 
+    JR    NC,SUB_LINE_ANALYSIS6     ;[1834] 
     CP    $7E                       ;[1836] 
     JR    Z,$184C                   ;[1838] 
     CP    $7A                       ;[183A] 
@@ -2647,19 +2654,21 @@ DATA_LYNX_LOGO:
     POP   DE                        ;[1855] 
     RET                             ;[1856] 
 
+SUB_LINE_ANALYSIS6:
     CP    $85                       ;[1857] Line analysis subroutine.
     JR    Z,$1863                   ;[1859] 
     CP    $87                       ;[185B] 
     JR    Z,$1863                   ;[185D] 
     CP    $86                       ;[185F] 
-    JR    NZ,$186D                  ;[1861] 
-    CALL  $186D                     ;[1863] 
+    JR    NZ,SUB_LINE_ANALYSIS7     ;[1861] 
+    CALL  SUB_LINE_ANALYSIS7        ;[1863] 
     PUSH  DE                        ;[1866] 
     INC   DE                        ;[1867] 
-    CALL  $1827                     ;[1868] 
+    CALL  SUB_LINE_ANALYSIS4        ;[1868] 
     POP   DE                        ;[186B] 
     RET                             ;[186C] 
 
+SUB_LINE_ANALYSIS7:
     CALL  SUB_WORD_LIST             ;[186D] Line analysis subroutine.
     LD    A,(HL)                    ;[1870] 
     RES   7,A                       ;[1871] 
@@ -2691,6 +2700,7 @@ SUB_WORD_LIST:
     DJNZ  $1893                     ;[1898] 
     RET                             ;[189A] 
 
+SUB_LINE_ANALYSIS8:
     CP    $C2                       ;[189B] Line analysis subroutine.
     RET   NC                        ;[189D] 
     CP    $BF                       ;[189E] 
@@ -2737,7 +2747,7 @@ SUB_WORD_LIST:
     JR    C,$18F1                   ;[18E5] 
     LD    A,$29                     ;[18E7] 
     CALL  Z,$351B                   ;[18E9] 
-    CALL  $17FC                     ;[18EC] 
+    CALL  LYNX_BAS_LINE_ANALYSIS    ;[18EC] 
     JR    $18DD                     ;[18EF] 
     LD    (IY+$00),$00              ;[18F1] 
     LD    L,E                       ;[18F5] 
@@ -2745,7 +2755,7 @@ SUB_WORD_LIST:
     INC   (IY+$00)                  ;[18F7] 
     DEC   (IY+$00)                  ;[18FA] 
     JP    M,$1932                   ;[18FD] 
-    CALL  $17FC                     ;[1900] 
+    CALL  LYNX_BAS_LINE_ANALYSIS    ;[1900] 
     LD    A,(DE)                    ;[1903] 
     CP    $7F                       ;[1904] 
     JR    Z,$1932                   ;[1906] 
@@ -2759,7 +2769,7 @@ SUB_WORD_LIST:
     EXX                             ;[1919] 
     INC   (IY+$00)                  ;[191A] 
     DEC   (IY+$00)                  ;[191D] 
-    CALL  Z,$189B                   ;[1920] 
+    CALL  Z,SUB_LINE_ANALYSIS8      ;[1920] 
     INC   (IY+$00)                  ;[1923] 
     PUSH  AF                        ;[1926] 
     DEC   (IY+$00)                  ;[1927] 
@@ -2771,8 +2781,8 @@ SUB_WORD_LIST:
     LD    E,L                       ;[1935] 
     LD    D,H                       ;[1936] 
     LD    A,(DE)                    ;[1937] 
-    CALL  $182D                     ;[1938] 
-    CALL  $17FC                     ;[193B] 
+    CALL  SUB_LINE_ANALYSIS5        ;[1938] 
+    CALL  LYNX_BAS_LINE_ANALYSIS    ;[193B] 
     JP    $18DD                     ;[193E] 
     POP   AF                        ;[1941] 
     RET                             ;[1942] 
@@ -2862,7 +2872,7 @@ SUB_BASIC_WORD:
     LD    (SYSVAR_NPM),A            ;[19D1] 
     CALL  $1B70                     ;[19D4] 
     RST   $10                       ;[19D7] 
-    CALL  $2B4B                     ;[19D8] 
+    CALL  SUB_LINE_ANALYSIS1        ;[19D8] 
     JR    Z,$1987                   ;[19DB] 
     LD    A,(DE)                    ;[19DD] 
     CP    $2D                       ;[19DE] 
@@ -2873,9 +2883,9 @@ SUB_BASIC_WORD:
     JP    Z,$1AA8                   ;[19EA] 
     CALL  $2D08                     ;[19ED] 
     JP    NC,$1A2B                  ;[19F0] 
-    CALL  $34F5                     ;[19F3] 
+    CALL  LYNX_TEST_ALPHA           ;[19F3] 
     JP    NC,$1AC4                  ;[19F6] 
-    CALL  $34ED                     ;[19F9] 
+    CALL  LYNX_TEST_DIGIT           ;[19F9] 
     JP    NC,$1AD8                  ;[19FC] 
     CP    $26                       ;[19FF] 
     JP    Z,$1AD4                   ;[1A01] 
@@ -2923,7 +2933,7 @@ SUB_BASIC_WORD:
     CP    $86                       ;[1A5A] 
     JR    NZ,$1A87                  ;[1A5C] 
     PUSH  BC                        ;[1A5E] 
-    CALL  $2B4B                     ;[1A5F] 
+    CALL  SUB_LINE_ANALYSIS1        ;[1A5F] 
     CALL  NZ,ERR_TYPE_MISMATCH      ;[1A62] 
     LD    (HL),$79                  ;[1A65] 
     INC   HL                        ;[1A67] 
@@ -2977,7 +2987,7 @@ SUB_BASIC_WORD:
     INC   HL                        ;[1ABC] 
     LD    (IX+$01),$05              ;[1ABD] 
     JP    $19D1                     ;[1AC1] 
-    CALL  $3504                     ;[1AC4] 
+    CALL  LYNX_TEST_UPPER_LOW       ;[1AC4] 
     LD    (HL),A                    ;[1AC7] 
     INC   HL                        ;[1AC8] 
     INC   DE                        ;[1AC9] 
@@ -3243,7 +3253,7 @@ LYNX_RDN:
     INC   DE                        ;[1C6C] 
     JR    Z,$1C77                   ;[1C6D] 
     DEC   DE                        ;[1C6F] 
-    CALL  $34ED                     ;[1C70] 
+    CALL  LYNX_TEST_DIGIT           ;[1C70] 
     JR    NC,$1C77                  ;[1C73] 
     DEC   DE                        ;[1C75] 
     RET                             ;[1C76] 
@@ -3488,7 +3498,7 @@ LYNX_PN:
     OR    (IX+$01)                  ;[1E06] 
     CALL  Z,ERR_UNDEFINED_VAR       ;[1E09] 
     JP    $1DB8                     ;[1E0C] 
-    CALL  $3504                     ;[1E0F] 
+    CALL  LYNX_TEST_UPPER_LOW       ;[1E0F] 
     INC   DE                        ;[1E12] 
     PUSH  AF                        ;[1E13] 
     INC   DE                        ;[1E14] 
@@ -3514,7 +3524,7 @@ BASIC_COM_STOP:
     LD    A,(IX+$00)                ;[1E33] 
     CP    $80                       ;[1E36] 
     CALL  Z,ERR_WRONG_MODE          ;[1E38] 
-    CALL  $255E                     ;[1E3B] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[1E3B] 
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
     LD    HL,$1E4E                  ;[1E42] 
     CALL  LYNX_PLINE                ;[1E45] 
@@ -3627,6 +3637,7 @@ LYNX_ESC:
     EX    DE,HL                     ;[1F2D] 
     RET                             ;[1F2E] 
 
+LYNX_PUSH_HL_RSTACK:
     PUSH  DE                        ;[1F2F] Push HL onto the return stack.
     PUSH  HL                        ;[1F30] 
     CALL  $1F1C                     ;[1F31] 
@@ -3639,12 +3650,15 @@ LYNX_ESC:
     POP   DE                        ;[1F3C] 
     RET                             ;[1F3D] 
 
+LYNX_PUSH_A_RSTACK:
     PUSH  DE                        ;[1F3E] Push A onto the return stack.
     PUSH  AF                        ;[1F3F] 
     CALL  $1F1C                     ;[1F40] 
     POP   AF                        ;[1F43] 
     LD    (HL),A                    ;[1F44] 
     JR    $1F38                     ;[1F45] 
+
+LYNX_POP_HL_RSTACK:
     PUSH  DE                        ;[1F47] Pop HL off the return stack.
     LD    HL,(SYSVAR_RSP)           ;[1F48] 
     DEC   HL                        ;[1F4B] 
@@ -3656,6 +3670,7 @@ LYNX_ESC:
     POP   DE                        ;[1F53] 
     RET                             ;[1F54] 
 
+LYNX_POP_A_RSTACK:
     LD    HL,(SYSVAR_RSP)           ;[1F55] Pop A off the return stack.
     DEC   HL                        ;[1F58] 
     LD    A,(HL)                    ;[1F59] 
@@ -3725,10 +3740,10 @@ BASIC_COM_END:
     JP    $24DC                     ;[1FC1] 
 
 BASIC_COM_WEND:
-    CALL  $1F55                     ;[1FC4] HEND.
+    CALL  LYNX_POP_A_RSTACK         ;[1FC4] WEND.
     CP    $36                       ;[1FC7] 
     CALL  NZ,ERR_WEND_NO_WHILE      ;[1FC9] 
-    CALL  $1F47                     ;[1FCC] 
+    CALL  LYNX_POP_HL_RSTACK        ;[1FCC] 
     POP   BC                        ;[1FCF] 
     JP    $2493                     ;[1FD0] 
 
@@ -3738,9 +3753,9 @@ BASIC_COM_WHILE:
     CP    $80                       ;[1FD7] 
     JR    Z,$1FE7                   ;[1FD9] 
     LD    HL,(SYSVAR_CURRLP)        ;[1FDB] 
-    CALL  $1F2F                     ;[1FDE] 
+    CALL  LYNX_PUSH_HL_RSTACK       ;[1FDE] 
     LD    A,$36                     ;[1FE1] 
-    CALL  $1F3E                     ;[1FE3] 
+    CALL  LYNX_PUSH_A_RSTACK        ;[1FE3] 
     RET                             ;[1FE6] 
 
     LD    IX,(SYSVAR_CURRLP)        ;[1FE7] 
@@ -3753,10 +3768,10 @@ BASIC_COM_WHILE:
 
 BASIC_COM_UNTIL:
     PUSH  DE                        ;[1FFA] UNTIL.
-    CALL  $1F55                     ;[1FFB] 
+    CALL  LYNX_POP_A_RSTACK         ;[1FFB] 
     CP    $38                       ;[1FFE] 
     CALL  NZ,ERR_UNTIL_NO_REPEAT    ;[2000] 
-    CALL  $1F47                     ;[2003] 
+    CALL  LYNX_POP_HL_RSTACK        ;[2003] 
     POP   DE                        ;[2006] 
     PUSH  HL                        ;[2007] 
     RST   $28                       ;[2008] 
@@ -3768,9 +3783,9 @@ BASIC_COM_UNTIL:
 
 BASIC_COM_REPEAT:
     LD    HL,(SYSVAR_CURRLP)        ;[2013] REPEAT.
-    CALL  $1F2F                     ;[2016] 
+    CALL  LYNX_PUSH_HL_RSTACK       ;[2016] 
     LD    A,$38                     ;[2019] 
-    JP    $1F3E                     ;[201B] 
+    JP    LYNX_PUSH_A_RSTACK        ;[201B] 
 
 BASIC_FN_GETN:
     CALL  LYNX_KEY                  ;[201E] GETN.
@@ -3834,10 +3849,10 @@ BASIC_COM_CALL:
     RET                             ;[2073] 
 
 BASIC_COM_RETURN:
-    CALL  $1F55                     ;[2074] Check for stack full.
+    CALL  LYNX_POP_A_RSTACK         ;[2074] Check for stack full.
     CP    $11                       ;[2077] 
     CALL  NZ,ERR_RETURN_NO_GOSUB    ;[2079] 
-    CALL  $1F47                     ;[207C] 
+    CALL  LYNX_POP_HL_RSTACK        ;[207C] 
     LD    (SYSVAR_CURRLP),HL        ;[207F] 
     RET                             ;[2082] 
 
@@ -3893,7 +3908,7 @@ BASIC_COM_INPUT:
     RST   $28                       ;[20D6] 
     POP   HL                        ;[20D7] 
     EX    DE,HL                     ;[20D8] 
-    CALL  $275C                     ;[20D9] 
+    CALL  LYNX_WRA1_TO_DE           ;[20D9] 
     POP   DE                        ;[20DC] 
     LD    A,(DE)                    ;[20DD] 
     CP    $0D                       ;[20DE] 
@@ -3933,9 +3948,9 @@ BASIC_COM_INPUT:
     SCF                             ;[2111] 
     RET                             ;[2112] 
 
-    CALL  $21EA                     ;[2113] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2113] 
     JR    Z,$211D                   ;[2116] 
-    CALL  $2218                     ;[2118] 
+    CALL  LYNX_GET_VAR_ADDR         ;[2118] 
     OR    A                         ;[211B] 
     RET                             ;[211C] 
 
@@ -3975,16 +3990,16 @@ LYNX_ETEXT:
     JR    $212E                     ;[2146] 
 
 BASIC_COM_LET:
-    CALL  $21EA                     ;[2148] LET.
+    CALL  LYNX_VALID_VAR_TEST       ;[2148] LET.
     JR    Z,$2161                   ;[214B] 
-    CALL  $2218                     ;[214D] 
+    CALL  LYNX_GET_VAR_ADDR         ;[214D] 
     INC   DE                        ;[2150] 
     PUSH  HL                        ;[2151] 
     RST   $28                       ;[2152] 
     POP   HL                        ;[2153] 
     EX    DE,HL                     ;[2154] 
     PUSH  HL                        ;[2155] 
-    CALL  $275C                     ;[2156] 
+    CALL  LYNX_WRA1_TO_DE           ;[2156] 
     POP   DE                        ;[2159] 
     LD    A,(DE)                    ;[215A] 
     CP    $0D                       ;[215B] 
@@ -4021,7 +4036,7 @@ BASIC_COM_RESTORE:
     LD    A,(IX+$06)                ;[2197] 
     CP    C                         ;[219A] 
     RET   Z                         ;[219B] 
-    CALL  $255E                     ;[219C] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[219C] 
     JR    $2190                     ;[219F] 
 
 SUB_WHILE:
@@ -4036,7 +4051,7 @@ SUB_WHILE:
     JR    Z,$21C0                   ;[21AF] 
     CP    C                         ;[21B1] 
     JR    Z,$21B9                   ;[21B2] 
-    CALL  $255E                     ;[21B4] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[21B4] 
     JR    $21A4                     ;[21B7] 
     EX    AF,AF'                    ;[21B9] 
     OR    A                         ;[21BA] 
@@ -4070,6 +4085,8 @@ BASIC_COM_READ:
     INC   DE                        ;[21E6] 
     EXX                             ;[21E7] 
     JR    $21CB                     ;[21E8] 
+
+LYNX_VALID_VAR_TEST:
     LD    A,(DE)                    ;[21EA] Test for a valid variable.
     CP    $41                       ;[21EB] 
     RET   C                         ;[21ED] 
@@ -4079,6 +4096,7 @@ BASIC_COM_READ:
     DEC   DE                        ;[21F2] 
     RET                             ;[21F3] 
 
+LYNX_VALIDATE_VAR:
     LD    A,(DE)                    ;[21F4] Variable validation routine.
     CP    $41                       ;[21F5] 
     CALL  C,ERR_SYNTAX              ;[21F7] 
@@ -4103,7 +4121,8 @@ BASIC_COM_READ:
     INC   HL                        ;[2216] 
     RET                             ;[2217] 
 
-    CALL  $3504                     ;[2218] Load A with variable number (ie A=1. 9=2 etc) and HL will return with the address of the variable.
+LYNX_GET_VAR_ADDR:
+    CALL  LYNX_TEST_UPPER_LOW       ;[2218] Load A with variable number (ie A=1. 9=2 etc) and HL will return with the address of the variable.
     INC   DE                        ;[221B] 
     PUSH  AF                        ;[221C] 
     LD    A,(DE)                    ;[221D] 
@@ -4154,10 +4173,10 @@ BASIC_COM_LPRINT:
     JR    $2257                     ;[225D] 
 
 BASIC_COM_SWAP:
-    CALL  $2218                     ;[225F] SWAP.
+    CALL  LYNX_GET_VAR_ADDR         ;[225F] SWAP.
     PUSH  HL                        ;[2262] 
     INC   DE                        ;[2263] 
-    CALL  $2218                     ;[2264] 
+    CALL  LYNX_GET_VAR_ADDR         ;[2264] 
     POP   DE                        ;[2267] 
     LD    B,$05                     ;[2268] 
     JP    $354A                     ;[226A] 
@@ -4189,9 +4208,9 @@ BASIC_COM_RUN:
 
 BASIC_COM_GOSUB:
     LD    HL,(SYSVAR_CURRLP)        ;[2296] GOSUB
-    CALL  $1F2F                     ;[2299] 
+    CALL  LYNX_PUSH_HL_RSTACK       ;[2299] 
     LD    A,$11                     ;[229C] 
-    CALL  $1F3E                     ;[229E] 
+    CALL  LYNX_PUSH_A_RSTACK        ;[229E] 
     LD    A,(DE)                    ;[22A1] 
 
 BASIC_COM_GOTO:
@@ -4213,7 +4232,7 @@ BASIC_COM_GOTO:
     PUSH  DE                        ;[22C1] 
     CALL  $22D3                     ;[22C2] 
     JR    Z,$22CD                   ;[22C5] 
-    CALL  $255E                     ;[22C7] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[22C7] 
     POP   DE                        ;[22CA] 
     JR    NZ,$22AD                  ;[22CB] 
     POP   BC                        ;[22CD] 
@@ -4266,7 +4285,7 @@ BASIC_COM_LIST:
     IN    A,(C)                     ;[2321] 
     RLCA                            ;[2323] 
     JR    NC,$2319                  ;[2324] 
-    CALL  $255E                     ;[2326] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[2326] 
     POP   DE                        ;[2329] 
     PUSH  IX                        ;[232A] 
     POP   HL                        ;[232C] 
@@ -4293,7 +4312,7 @@ BASIC_COM_DEL:
     JR    Z,$2351                   ;[234B] 
     RST   $28                       ;[234D] 
     CALL  $2B18                     ;[234E] 
-    CALL  $255E                     ;[2351] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[2351] 
     PUSH  IX                        ;[2354] 
     POP   BC                        ;[2356] 
     POP   HL                        ;[2357] 
@@ -4353,10 +4372,10 @@ BASIC_COM_DPOKE:
 
 BASIC_COM_FOR:
     PUSH  AF                        ;[2397] FOR
-    CALL  $2218                     ;[2398] 
+    CALL  LYNX_GET_VAR_ADDR         ;[2398] 
     PUSH  HL                        ;[239B] 
     LD    HL,(SYSVAR_CURRLP)        ;[239C] 
-    CALL  $1F2F                     ;[239F] 
+    CALL  LYNX_PUSH_HL_RSTACK       ;[239F] 
     INC   DE                        ;[23A2] 
     RST   $28                       ;[23A3] 
     POP   HL                        ;[23A4] 
@@ -4365,7 +4384,7 @@ BASIC_COM_FOR:
     RES   7,(HL)                    ;[23A7] 
     DEC   HL                        ;[23A9] 
     EX    DE,HL                     ;[23AA] 
-    CALL  $275C                     ;[23AB] 
+    CALL  LYNX_WRA1_TO_DE           ;[23AB] 
     POP   DE                        ;[23AE] 
     INC   DE                        ;[23AF] 
     RST   $28                       ;[23B0] 
@@ -4377,16 +4396,16 @@ BASIC_COM_FOR:
     RST   $28                       ;[23BA] 
     CALL  $23CC                     ;[23BB] 
     POP   AF                        ;[23BE] 
-    CALL  $1F3E                     ;[23BF] 
+    CALL  LYNX_PUSH_A_RSTACK        ;[23BF] 
     LD    A,$0F                     ;[23C2] 
-    JP    $1F3E                     ;[23C4] 
+    JP    LYNX_PUSH_A_RSTACK        ;[23C4] 
     CALL  LYNX_LONE                 ;[23C7] 
     JR    $23BB                     ;[23CA] 
     PUSH  DE                        ;[23CC] 
     LD    B,$05                     ;[23CD] 
     LD    DE,SYSVAR_WRA1            ;[23CF] 
     LD    A,(DE)                    ;[23D2] 
-    CALL  $1F3E                     ;[23D3] 
+    CALL  LYNX_PUSH_A_RSTACK        ;[23D3] 
     INC   DE                        ;[23D6] 
     DJNZ  $23D2                     ;[23D7] 
     POP   DE                        ;[23D9] 
@@ -4409,13 +4428,13 @@ BASIC_COM_NEXT:
     LD    A,(SYSVAR_WRA2)           ;[23F1] 
     PUSH  AF                        ;[23F4] 
     PUSH  HL                        ;[23F5] 
-    CALL  $2218                     ;[23F6] 
+    CALL  LYNX_GET_VAR_ADDR         ;[23F6] 
     PUSH  HL                        ;[23F9] 
     CALL  LYNX_LNUM1                ;[23FA] 
     CALL  LYNX_AD                   ;[23FD] 
     POP   HL                        ;[2400] 
     EX    DE,HL                     ;[2401] 
-    CALL  $275C                     ;[2402] 
+    CALL  LYNX_WRA1_TO_DE           ;[2402] 
     POP   HL                        ;[2405] 
     CALL  $2423                     ;[2406] 
     POP   AF                        ;[2409] 
@@ -4450,7 +4469,7 @@ BASIC_COM_IF:
     POP   BC                        ;[2435] 
     JP    $24A6                     ;[2436] 
     LD    IX,(SYSVAR_CURRLP)        ;[2439] 
-    CALL  $255E                     ;[243D] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[243D] 
     LD    A,(IX+$00)                ;[2440] 
     CP    $80                       ;[2443] 
     RET   Z                         ;[2445] 
@@ -4532,7 +4551,7 @@ BASIC_COM_LINK:
     LD    A,(DE)                    ;[24BC] 
     JP    (HL)                      ;[24BD] 
     LD    IX,(SYSVAR_CURRLP)        ;[24BE] 
-    CALL  $255E                     ;[24C2] IF.
+    CALL  LYNX_ADD_LEN_TO_IX        ;[24C2] IF.
     LD    (SYSVAR_CURRLP),IX        ;[24C5] 
     LD    A,(IX+$00)                ;[24C9] 
     CP    $80                       ;[24CC] 
@@ -4612,6 +4631,8 @@ BASIC_COM_LINK:
     LD    HL,(SYSVAR_POLBUF)        ;[2556] 
     LDIR                            ;[2559] 
     JP    $1F6E                     ;[255B] 
+
+LYNX_ADD_LEN_TO_IX:
     PUSH  DE                        ;[255E] Add line length to IX.
     LD    E,(IX+$05)                ;[255F] 
     LD    D,$00                     ;[2562] 
@@ -4768,7 +4789,7 @@ LYNX_RP:
     CP    $80                       ;[263E] 
     CALL  Z,ERR_WRONG_MODE          ;[2640] 
     POP   HL                        ;[2643] 
-    CALL  $21EA                     ;[2644] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2644] 
     JR    Z,$2657                   ;[2647] 
     CALL  $2721                     ;[2649] 
     LD    (HL),A                    ;[264C] 
@@ -4780,7 +4801,7 @@ LYNX_RP:
     INC   DE                        ;[2653] 
     RST   $10                       ;[2654] 
     JR    $2639                     ;[2655] 
-    CALL  $21F4                     ;[2657] 
+    CALL  LYNX_VALIDATE_VAR         ;[2657] 
     RST   $10                       ;[265A] 
     JR    $264C                     ;[265B] 
     CP    $0D                       ;[265D] Validation for RESTORE.
@@ -4803,7 +4824,7 @@ LYNX_RP:
     LD    A,$00                     ;[2678] 
     LD    (HL),A                    ;[267A] 
     INC   HL                        ;[267B] 
-    CALL  $21EA                     ;[267C] Validation routine for LET.
+    CALL  LYNX_VALID_VAR_TEST       ;[267C] Validation routine for LET.
     JR    Z,$2696                   ;[267F] 
     CALL  $2721                     ;[2681] 
     CP    $3D                       ;[2684] 
@@ -4815,7 +4836,7 @@ LYNX_RP:
     CP    $2C                       ;[268F] 
     JR    Z,$267A                   ;[2691] 
     JP    $26DB                     ;[2693] 
-    CALL  $21F4                     ;[2696] 
+    CALL  LYNX_VALIDATE_VAR         ;[2696] 
     RST   $10                       ;[2699] 
     RST   $20                       ;[269A] 
     DEC   A                         ;[269B] 
@@ -4886,13 +4907,13 @@ LYNX_RP:
     INC   HL                        ;[2713] 
     RET                             ;[2714] 
 
-    CALL  $34F5                     ;[2715] Test for a variable and find next non-blank.
+    CALL  LYNX_TEST_ALPHA           ;[2715] Test for a variable and find next non-blank.
     CALL  C,ERR_SYNTAX              ;[2718] 
     LD    (HL),A                    ;[271B] 
     INC   DE                        ;[271C] 
     INC   HL                        ;[271D] 
     JP    RST_10H                   ;[271E] 
-    CALL  $34F5                     ;[2721] is validation routine for READ.
+    CALL  LYNX_TEST_ALPHA           ;[2721] is validation routine for READ.
     JP    C,$26A6                   ;[2724] 
     LD    (HL),A                    ;[2727] 
     INC   HL                        ;[2728] 
@@ -4928,6 +4949,8 @@ LYNX_RP:
     RET   Z                         ;[2755] 
     CALL  ERR_SOMETHG_MISSG         ;[2756] 
     LD    DE,SYSVAR_WRA2            ;[2759] 
+
+LYNX_WRA1_TO_DE:
     LD    HL,SYSVAR_WRA1            ;[275C] Copy WRA1 to where DE points.
     LD    BC,$0005                  ;[275F] 
     LDIR                            ;[2762] 
@@ -4965,7 +4988,7 @@ SUB_FIND:
     JP    Z,$26A6                   ;[279B] 
     PUSH  DE                        ;[279E] 
     LD    DE,(SYSVAR_POLBUF)        ;[279F] 
-    CALL  $275C                     ;[27A3] 
+    CALL  LYNX_WRA1_TO_DE           ;[27A3] 
     EX    DE,HL                     ;[27A6] 
     INC   HL                        ;[27A7] 
     POP   DE                        ;[27A8] 
@@ -4991,13 +5014,13 @@ SUB_FIND:
     LD    B,(IX+$01)                ;[27CB] 
     PUSH  BC                        ;[27CE] 
     JP    RST_10H                   ;[27CF] 
-    CALL  $352A                     ;[27D2] Print a word from a list (6219).
+    CALL  LYNX_OUTPUT_SPACE         ;[27D2] Print a word from a list (6219).
     LD    HL,(SYSVAR_XTTBL)         ;[27D5] 
     LD    B,A                       ;[27D8] 
     INC   B                         ;[27D9] 
     CALL  $1893                     ;[27DA] 
     CALL  $1870                     ;[27DD] 
-    CALL  $352A                     ;[27E0] 
+    CALL  LYNX_OUTPUT_SPACE         ;[27E0] 
     INC   DE                        ;[27E3] 
     RET                             ;[27E4] 
 
@@ -5039,11 +5062,11 @@ SUB_FIND:
     JR    $2808                     ;[2828] 
     CP    $DF                       ;[282A] 
     PUSH  AF                        ;[282C] 
-    CALL  C,$352A                   ;[282D] 
-    CALL  $1857                     ;[2830] 
+    CALL  C,LYNX_OUTPUT_SPACE       ;[282D] 
+    CALL  SUB_LINE_ANALYSIS6        ;[2830] 
     POP   AF                        ;[2833] 
     PUSH  AF                        ;[2834] 
-    CALL  C,$352A                   ;[2835] 
+    CALL  C,LYNX_OUTPUT_SPACE       ;[2835] 
     POP   AF                        ;[2838] 
     INC   DE                        ;[2839] 
     CP    $D7                       ;[283A] 
@@ -5090,7 +5113,7 @@ SUB_FIND:
     LD    A,$0A                     ;[2880] 
     RLCA                            ;[2882] 
     LD    B,A                       ;[2883] 
-    CALL  $352A                     ;[2884] 
+    CALL  LYNX_OUTPUT_SPACE         ;[2884] 
     DJNZ  $2884                     ;[2887] 
     RET                             ;[2889] 
 
@@ -5111,7 +5134,7 @@ BASIC_COM_AUTO:
     CP    $C7                       ;[28A5] 
     CALL  NC,ERR_NUM_OUT_RANGE      ;[28A7] 
     LD    DE,SYSVAR_AUTOST          ;[28AA] 
-    CALL  $275C                     ;[28AD] 
+    CALL  LYNX_WRA1_TO_DE           ;[28AD] 
     POP   DE                        ;[28B0] 
     LD    A,(DE)                    ;[28B1] 
     CP    $0D                       ;[28B2] 
@@ -5124,7 +5147,7 @@ BASIC_COM_AUTO:
     CP    $F0                       ;[28BF] 
     JR    NC,$28A7                  ;[28C1] 
     LD    DE,$62F8                  ;[28C3] 
-    CALL  $275C                     ;[28C6] 
+    CALL  LYNX_WRA1_TO_DE           ;[28C6] 
     LD    A,$01                     ;[28C9] 
     LD    (SYSVAR_AUTOFL),A         ;[28CB] 
     RET                             ;[28CE] 
@@ -5158,9 +5181,9 @@ BASIC_FN_BIN:
 
 BASIC_COM_PROC:
     LD    HL,(SYSVAR_CURRLP)        ;[2904] Load (DE) to (HL) testing for CR and (.
-    CALL  $1F2F                     ;[2907] 
+    CALL  LYNX_PUSH_HL_RSTACK       ;[2907] 
     LD    A,$04                     ;[290A] 
-    CALL  $1F3E                     ;[290C] 
+    CALL  LYNX_PUSH_A_RSTACK        ;[290C] 
     LD    C,$02                     ;[290F] 
     LD    HL,(SYSVAR_PROCST)        ;[2911] 
     LD    A,L                       ;[2914] 
@@ -5182,13 +5205,13 @@ BASIC_COM_PROC:
     POP   HL                        ;[292C] 
     PUSH  DE                        ;[292D] 
     EX    DE,HL                     ;[292E] 
-    CALL  $2218                     ;[292F] 
+    CALL  LYNX_GET_VAR_ADDR         ;[292F] 
     PUSH  DE                        ;[2932] 
     INC   HL                        ;[2933] 
     RES   7,(HL)                    ;[2934] 
     DEC   HL                        ;[2936] 
     EX    DE,HL                     ;[2937] 
-    CALL  $275C                     ;[2938] 
+    CALL  LYNX_WRA1_TO_DE           ;[2938] 
     POP   HL                        ;[293B] 
     POP   DE                        ;[293C] 
     JR    $2924                     ;[293D] 
@@ -5223,7 +5246,7 @@ BASIC_COM_PROC:
     JP    $26DB                     ;[296C] 
     CALL  $294E                     ;[296F] Validation for DEFPPOC.
     RST   $10                       ;[2972] 
-    CALL  $34F5                     ;[2973] 
+    CALL  LYNX_TEST_ALPHA           ;[2973] 
     CALL  C,ERR_SYNTAX              ;[2976] 
     LD    (HL),A                    ;[2979] 
     INC   DE                        ;[297A] 
@@ -5238,7 +5261,7 @@ BASIC_COM_PROC:
     JP    $2969                     ;[2985] 
 
 BASIC_COM_ENDPROC:
-    CALL  $1F55                     ;[2988] ENDPROC.
+    CALL  LYNX_POP_A_RSTACK         ;[2988] ENDPROC.
     CP    $04                       ;[298B] 
     CALL  NZ,ERR_ENDPROC_NO_PROC    ;[298D] 
     JP    $207C                     ;[2990] 
@@ -5327,7 +5350,7 @@ BASIC_COM_PRINT:
     JR    Z,$2A0E                   ;[2A1B] 
     CP    $3B                       ;[2A1D] 
     JR    Z,$2A0E                   ;[2A1F] 
-    CALL  $2B4B                     ;[2A21] 
+    CALL  SUB_LINE_ANALYSIS1        ;[2A21] 
     JR    Z,$2A09                   ;[2A24] 
     PUSH  DE                        ;[2A26] 
     CALL  $2D08                     ;[2A27] 
@@ -5399,7 +5422,7 @@ BASIC_COM_RENUM:
     LD    A,(DE)                    ;[2A95] 
     CP    $27                       ;[2A96] 
     JR    NZ,$2AA4                  ;[2A98] 
-    CALL  $17FC                     ;[2A9A] 
+    CALL  LYNX_BAS_LINE_ANALYSIS    ;[2A9A] 
     LD    A,(DE)                    ;[2A9D] 
     CP    $D7                       ;[2A9E] 
     JR    NZ,$2A9A                  ;[2AA0] 
@@ -5440,9 +5463,9 @@ BASIC_COM_RENUM:
     CALL  LYNX_LNUM2                ;[2AE0] 
     CALL  LYNX_AD                   ;[2AE3] 
     POP   DE                        ;[2AE6] 
-    CALL  $275C                     ;[2AE7] 
+    CALL  LYNX_WRA1_TO_DE           ;[2AE7] 
     POP   IX                        ;[2AEA] 
-    CALL  $255E                     ;[2AEC] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[2AEC] 
     JR    $2A89                     ;[2AEF] 
     LD    IX,(SYSVAR_SOB)           ;[2AF1] 
     LD    HL,SYSVAR_AUTOST          ;[2AF5] 
@@ -5453,12 +5476,12 @@ BASIC_COM_RENUM:
     PUSH  IX                        ;[2B01] 
     POP   DE                        ;[2B03] 
     PUSH  DE                        ;[2B04] 
-    CALL  $275C                     ;[2B05] 
+    CALL  LYNX_WRA1_TO_DE           ;[2B05] 
     LD    HL,$62F8                  ;[2B08] 
     CALL  LYNX_LNUM2                ;[2B0B] 
     CALL  LYNX_AD                   ;[2B0E] 
     POP   IX                        ;[2B11] 
-    CALL  $255E                     ;[2B13] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[2B13] 
     JR    $2AFB                     ;[2B16] 
     CALL  LYNX_FNDLN                ;[2B18] 
     CALL  NZ,ERR_NOT_FOUND          ;[2B1B] 
@@ -5487,15 +5510,16 @@ LYNX_FNDLN:
 
     POP   BC                        ;[2B42] 
     INC   BC                        ;[2B43] 
-    CALL  $255E                     ;[2B44] 
+    CALL  LYNX_ADD_LEN_TO_IX        ;[2B44] 
     JR    $2B26                     ;[2B47] 
     OR    A                         ;[2B49] 
     RET                             ;[2B4A] 
 
+SUB_LINE_ANALYSIS1:
     RST   $10                       ;[2B4B] Line analysis subroutine.
     CP    $22                       ;[2B4C] 
     RET   Z                         ;[2B4E] 
-    CALL  $21EA                     ;[2B4F] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2B4F] 
     RET   Z                         ;[2B52] 
     PUSH  DE                        ;[2B53] 
     CALL  $2D08                     ;[2B54] 
@@ -5508,6 +5532,7 @@ LYNX_FNDLN:
     CP    A                         ;[2B5F] 
     RET                             ;[2B60] 
 
+SUB_LINE_ANALYSIS2:
     PUSH  IX                        ;[2B61] Line analysis subroutine.
     LD    A,(DE)                    ;[2B63] 
     RST   $20                       ;[2B64] 
@@ -5590,7 +5615,7 @@ BASIC_FN_UPC_STRING:
     LD    A,(DE)                    ;[2BE5] 
     CP    $22                       ;[2BE6] 
     JR    Z,$2C15                   ;[2BE8] 
-    CALL  $21EA                     ;[2BEA] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2BEA] 
     JR    Z,$2C20                   ;[2BED] 
     LD    A,(DE)                    ;[2BEF] 
     INC   DE                        ;[2BF0] 
@@ -5623,7 +5648,7 @@ BASIC_FN_UPC_STRING:
     JR    $2BC3                     ;[2C26] 
 
 BASIC_FN_CHR_STRING:
-    CALL  $2B61                     ;[2C28] CHR$
+    CALL  SUB_LINE_ANALYSIS2        ;[2C28] CHR$
     LD    (IX+$00),L                ;[2C2B] 
     INC   IX                        ;[2C2E] 
     JR    $2BC2                     ;[2C30] 
@@ -5632,7 +5657,7 @@ BASIC_FN_LEFT_STRING:
     CALL  SYSVAR_VRPTS              ;[2C32] LEFT$
     PUSH  HL                        ;[2C35] 
     INC   DE                        ;[2C36] 
-    CALL  $2B61                     ;[2C37] 
+    CALL  SUB_LINE_ANALYSIS2        ;[2C37] 
     LD    B,L                       ;[2C3A] 
     POP   HL                        ;[2C3B] 
     CALL  $3FE5                     ;[2C3C] 
@@ -5642,10 +5667,10 @@ BASIC_FN_MID_STRING:
     CALL  SYSVAR_VRPTS              ;[2C41] MID$
     INC   DE                        ;[2C44] 
     PUSH  HL                        ;[2C45] 
-    CALL  $2B61                     ;[2C46] 
+    CALL  SUB_LINE_ANALYSIS2        ;[2C46] 
     INC   DE                        ;[2C49] 
     PUSH  HL                        ;[2C4A] 
-    CALL  $2B61                     ;[2C4B] 
+    CALL  SUB_LINE_ANALYSIS2        ;[2C4B] 
     LD    C,L                       ;[2C4E] 
     POP   HL                        ;[2C4F] 
     LD    B,L                       ;[2C50] 
@@ -5664,7 +5689,7 @@ BASIC_FN_RIGHT_STRING:
     CALL  SYSVAR_VRPTS              ;[2C63] RIGHT$
     INC   DE                        ;[2C66] 
     PUSH  HL                        ;[2C67] 
-    CALL  $2B61                     ;[2C68] 
+    CALL  SUB_LINE_ANALYSIS2        ;[2C68] 
     LD    C,L                       ;[2C6B] 
     POP   HL                        ;[2C6C] 
     PUSH  HL                        ;[2C6D] 
@@ -5690,7 +5715,7 @@ BASIC_FN_RIGHT_STRING:
     DJNZ  $2C7F                     ;[2C8C] 
     RET                             ;[2C8E] 
 
-    CALL  $21F4                     ;[2C8F] 
+    CALL  LYNX_VALIDATE_VAR         ;[2C8F] 
     RST   $10                       ;[2C92] 
     CP    $29                       ;[2C93] 
     LD    (HL),A                    ;[2C95] 
@@ -5698,7 +5723,7 @@ BASIC_FN_RIGHT_STRING:
     INC   DE                        ;[2C97] 
     CALL  NZ,ERR_MISSING_BRACKET    ;[2C98] 
     JR    $2CAD                     ;[2C9B] 
-    CALL  $21EA                     ;[2C9D] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2C9D] 
     JR    Z,$2D03                   ;[2CA0] 
     CALL  $2D08                     ;[2CA2] 
     LD    (HL),A                    ;[2CA5] 
@@ -5729,9 +5754,9 @@ BASIC_FN_RIGHT_STRING:
     JR    Z,$2CD7                   ;[2CD0] 
     CP    $E1                       ;[2CD2] 
     CALL  NZ,ERR_SOMETHG_MISSG      ;[2CD4] 
-    CALL  $21EA                     ;[2CD7] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2CD7] 
     CALL  NZ,ERR_SYNTAX             ;[2CDA] 
-    CALL  $21F4                     ;[2CDD] 
+    CALL  LYNX_VALIDATE_VAR         ;[2CDD] 
     RST   $10                       ;[2CE0] 
     INC   DE                        ;[2CE1] 
     CP    $2C                       ;[2CE2] 
@@ -5741,9 +5766,9 @@ BASIC_FN_RIGHT_STRING:
     DEC   DE                        ;[2CE8] 
     CALL  $2731                     ;[2CE9] 
     JR    $2CAE                     ;[2CEC] 
-    CALL  $21EA                     ;[2CEE] 
+    CALL  LYNX_VALID_VAR_TEST       ;[2CEE] 
     JR    NZ,$2CDA                  ;[2CF1] 
-    CALL  $21F4                     ;[2CF3] 
+    CALL  LYNX_VALIDATE_VAR         ;[2CF3] 
     RST   $10                       ;[2CF6] 
     INC   DE                        ;[2CF7] 
     CP    $2C                       ;[2CF8] 
@@ -5752,7 +5777,7 @@ BASIC_FN_RIGHT_STRING:
     INC   HL                        ;[2CFD] 
     CALL  LYNX_RP                   ;[2CFE] 
     JR    $2CE2                     ;[2D01] 
-    CALL  $21F4                     ;[2D03] 
+    CALL  LYNX_VALIDATE_VAR         ;[2D03] 
     JR    $2CAD                     ;[2D06] 
     PUSH  HL                        ;[2D08] 
     CALL  SUB_BASIC_WORD            ;[2D09] 
@@ -5786,7 +5811,7 @@ BASIC_FN_ASC:
     INC   B                         ;[2D33] 
     PUSH  BC                        ;[2D34] 
     INC   DE                        ;[2D35] 
-    CALL  $2B61                     ;[2D36] 
+    CALL  SUB_LINE_ANALYSIS2        ;[2D36] 
     INC   DE                        ;[2D39] 
     POP   BC                        ;[2D3A] 
     PUSH  DE                        ;[2D3B] 
@@ -5895,7 +5920,7 @@ BASIC_FN_ASC:
     RET                             ;[2DCA] 
 
 BASIC_COM_DIM:
-    CALL  $21EA                     ;[2DCB] DIM.
+    CALL  LYNX_VALID_VAR_TEST       ;[2DCB] DIM.
     JR    NZ,$2E0A                  ;[2DCE] 
     LD    A,(DE)                    ;[2DD0] 
     INC   DE                        ;[2DD1] 
@@ -5989,9 +6014,9 @@ BASIC_COM_DIM:
     RET                             ;[2E65] 
 
 VALIDATE_DIM:
-    CALL  $21EA                     ;[2E66] Validation for DIM.
+    CALL  LYNX_VALID_VAR_TEST       ;[2E66] Validation for DIM.
     JR    NZ,$2E7C                  ;[2E69] 
-    CALL  $21F4                     ;[2E6B] 
+    CALL  LYNX_VALIDATE_VAR         ;[2E6B] 
     CALL  $2206                     ;[2E6E] 
     RST   $10                       ;[2E71] 
     LD    (HL),A                    ;[2E72] 
@@ -6047,7 +6072,7 @@ VALIDATE_SWAP:
     CALL  $2759                     ;[2EBB] Validate SWAP and multiply.
     JP    LYNX_MLT                  ;[2EBE] 
     PUSH  IY                        ;[2EC1] Multiply and add routine.
-    CALL  $2EFF                     ;[2EC3] 
+    CALL  LYNX_WRA1_TO_IY           ;[2EC3] 
     POP   IY                        ;[2EC6] 
     LD    B,(IX+$00)                ;[2EC8] 
     INC   IX                        ;[2ECB] 
@@ -6057,15 +6082,16 @@ VALIDATE_SWAP:
     POP   BC                        ;[2ED4] 
     PUSH  BC                        ;[2ED5] 
     PUSH  IY                        ;[2ED6] 
-    CALL  $2F0E                     ;[2ED8] 
+    CALL  LYNX_IY_TO_WRA2           ;[2ED8] 
     POP   IY                        ;[2EDB] 
     CALL  LYNX_MLT                  ;[2EDD] 
-    CALL  $2F1D                     ;[2EE0] 
+    CALL  LYNX_IX_TO_WRA2           ;[2EE0] 
     CALL  LYNX_AD                   ;[2EE3] 
     POP   BC                        ;[2EE6] 
     DJNZ  $2ED5                     ;[2EE7] 
     RET                             ;[2EE9] 
 
+LYNX_IY_TO_WRA1:
     CALL  $2EF0                     ;[2EEA] (IY) to WRA1.
     CALL  LYNX_SWAP                 ;[2EED] 
     LD    HL,SYSVAR_SYNL            ;[2EF0] 
@@ -6077,6 +6103,7 @@ VALIDATE_SWAP:
     DJNZ  $2EF5                     ;[2EFC] 
     RET                             ;[2EFE] 
 
+LYNX_WRA1_TO_IY:
     LD    HL,SYSVAR_WRA1            ;[2EFF] WRA1 to (IY).
     LD    B,$05                     ;[2F02] 
     LD    A,(HL)                    ;[2F04] 
@@ -6086,6 +6113,7 @@ VALIDATE_SWAP:
     DJNZ  $2F04                     ;[2F0B] 
     RET                             ;[2F0D] 
 
+LYNX_IY_TO_WRA2:
     LD    B,$05                     ;[2F0E] (IY) to WRA2
     LD    HL,SYSVAR_WRA2            ;[2F10] 
     LD    A,(IY+$00)                ;[2F13] 
@@ -6095,6 +6123,7 @@ VALIDATE_SWAP:
     DJNZ  $2F13                     ;[2F1A] 
     RET                             ;[2F1C] 
 
+LYNX_IX_TO_WRA2:
     LD    HL,SYSVAR_WRA2            ;[2F1D] (IX) to WRA2
     LD    B,$05                     ;[2F20] 
     LD    A,(IX+$00)                ;[2F22] 
@@ -6104,6 +6133,7 @@ VALIDATE_SWAP:
     DJNZ  $2F22                     ;[2F29] 
     RET                             ;[2F2B] 
 
+LYNX_PUSH_WRA1:
     POP   IX                        ;[2F2C] Push WRA1 and jump to (IX).
     LD    A,(SYSVAR_WRA1)           ;[2F2E] 
     PUSH  AF                        ;[2F31] 
@@ -6111,8 +6141,10 @@ VALIDATE_SWAP:
     PUSH  HL                        ;[2F35] 
     LD    HL,(SYSVAR_WRA1+$03)      ;[2F36] 
     PUSH  HL                        ;[2F39] 
-    JP    (IX)                      ;[2F3A] Pop WRA2 and jump to (IX).
-    POP   IX                        ;[2F3C] 
+    JP    (IX)                      ;[2F3A] 
+
+LYNX_POP_WRA2:
+    POP   IX                        ;[2F3C] Pop WRA2 and jump to (IX).
     POP   HL                        ;[2F3E] 
     LD    (SYSVAR_WRA2+$03),HL      ;[2F3F] 
     POP   HL                        ;[2F42] 
@@ -6134,7 +6166,7 @@ BASIC_FN_ARCSIN:
     PUSH  AF                        ;[2F60] 
     JP    $3FEB                     ;[2F61] 
     CALL  LYNX_SBT                  ;[2F64] 
-    CALL  $2F3C                     ;[2F67] 
+    CALL  LYNX_POP_WRA2             ;[2F67] 
     CALL  LYNX_DIV                  ;[2F6A] 
     CALL  BASIC_FN_SQR              ;[2F6D] 
     CALL  SUB_ARCTAN                ;[2F70] 
@@ -6153,11 +6185,11 @@ BASIC_FN_ARCCOS:
     PUSH  AF                        ;[2F89] 
     SET   7,(HL)                    ;[2F8A] 
     CALL  $2759                     ;[2F8C] 
-    CALL  $2F2C                     ;[2F8F] 
+    CALL  LYNX_PUSH_WRA1            ;[2F8F] 
     CALL  LYNX_LONE                 ;[2F92] 
     CALL  LYNX_AD                   ;[2F95] 
-    CALL  $2F3C                     ;[2F98] 
-    CALL  $2F2C                     ;[2F9B] 
+    CALL  LYNX_POP_WRA2             ;[2F98] 
+    CALL  LYNX_PUSH_WRA1            ;[2F9B] 
     CALL  LYNX_LONE                 ;[2F9E] 
     JR    $2F64                     ;[2FA1] 
     NOP                             ;[2FA3] 
@@ -6189,11 +6221,11 @@ BASIC_FN_ARCTAN:
     JR    $2FB5                     ;[2FD7] 
 
 SUB_ARCTAN:
-    CALL  $2F2C                     ;[2FD9] ARCTAN subroutine
+    CALL  LYNX_PUSH_WRA1            ;[2FD9] ARCTAN subroutine
     CALL  VALIDATE_SWAP             ;[2FDC] 
     LD    IX,DATA_ARCTAN            ;[2FDF] 
     CALL  $2EC1                     ;[2FE3] 
-    CALL  $2F3C                     ;[2FE6] 
+    CALL  LYNX_POP_WRA2             ;[2FE6] 
     JP    LYNX_MLT                  ;[2FE9] 
 
 DATA_ARCTAN:
@@ -6212,26 +6244,26 @@ BASIC_FN_FACT:
     CALL  NC,ERR_OVERFLOW           ;[301D] 
     BIT   7,A                       ;[3020] 
     CALL  Z,ERR_FUNCT_ARG           ;[3022] 
-    CALL  $2F2C                     ;[3025] 
+    CALL  LYNX_PUSH_WRA1            ;[3025] 
     LD    HL,DATA_FLOATS            ;[3028] 
     CALL  LYNX_LNUM2                ;[302B] 
     CALL  LYNX_SBT                  ;[302E] 
     LD    A,(SYSVAR_WRA1)           ;[3031] 
     CP    $80                       ;[3034] 
     JR    Z,$304C                   ;[3036] 
-    CALL  $2F3C                     ;[3038] 
-    CALL  $2F2C                     ;[303B] 
+    CALL  LYNX_POP_WRA2             ;[3038] 
+    CALL  LYNX_PUSH_WRA1            ;[303B] 
     CALL  LYNX_MLT                  ;[303E] 
-    CALL  $2F3C                     ;[3041] 
-    CALL  $2F2C                     ;[3044] 
+    CALL  LYNX_POP_WRA2             ;[3041] 
+    CALL  LYNX_PUSH_WRA1            ;[3044] 
     CALL  LYNX_SWAP                 ;[3047] 
     JR    $3028                     ;[304A] 
-    CALL  $2F3C                     ;[304C] 
+    CALL  LYNX_POP_WRA2             ;[304C] 
     JP    LYNX_SWAP                 ;[304F] 
 
 BASIC_FN_SQR:
     PUSH  IY                        ;[3052] SQR.
-    CALL  $2EFF                     ;[3054] 
+    CALL  LYNX_WRA1_TO_IY           ;[3054] 
     POP   IY                        ;[3057] 
     LD    A,(SYSVAR_WRA1)           ;[3059] 
     CP    $80                       ;[305C] 
@@ -6245,13 +6277,13 @@ BASIC_FN_SQR:
     LD    (SYSVAR_WRA1),A           ;[306B] 
     LD    B,$05                     ;[306E] 
     PUSH  BC                        ;[3070] 
-    CALL  $2F2C                     ;[3071] 
+    CALL  LYNX_PUSH_WRA1            ;[3071] 
     PUSH  IY                        ;[3074] 
-    CALL  $2F0E                     ;[3076] 
+    CALL  LYNX_IY_TO_WRA2           ;[3076] 
     POP   IY                        ;[3079] 
     CALL  LYNX_SWAP                 ;[307B] 
     CALL  LYNX_DIV                  ;[307E] 
-    CALL  $2F3C                     ;[3081] 
+    CALL  LYNX_POP_WRA2             ;[3081] 
     CALL  LYNX_AD                   ;[3084] 
     LD    HL,$35FB                  ;[3087] 
     CALL  LYNX_LNUM2                ;[308A] 
@@ -6287,7 +6319,7 @@ BASIC_FN_POWER:
     LD    B,A                       ;[30BE] 
     PUSH  BC                        ;[30BF] 
     PUSH  IY                        ;[30C0] 
-    CALL  $2F0E                     ;[30C2] 
+    CALL  LYNX_IY_TO_WRA2           ;[30C2] 
     POP   IY                        ;[30C5] 
     CALL  LYNX_MLT                  ;[30C7] 
     POP   BC                        ;[30CA] 
@@ -6297,10 +6329,10 @@ BASIC_FN_POWER:
 SUB_POWER2:
     EX    AF,AF'                    ;[30CE] Part of power routine
     CALL  $3643                     ;[30CF] 
-    CALL  $2F2C                     ;[30D2] 
+    CALL  LYNX_PUSH_WRA1            ;[30D2] 
     CALL  $2EF0                     ;[30D5] 
     CALL  BASIC_FN_LOG              ;[30D8] 
-    CALL  $2F3C                     ;[30DB] 
+    CALL  LYNX_POP_WRA2             ;[30DB] 
     CALL  LYNX_MLT                  ;[30DE] 
     JP    BASIC_FN_ANTILOG          ;[30E1] 
 
@@ -6327,23 +6359,23 @@ BASIC_FN_LOG:
     SLA   B                         ;[3107] 
     ADD   A,B                       ;[3109] 
     PUSH  AF                        ;[310A] 
-    CALL  $2F2C                     ;[310B] 
+    CALL  LYNX_PUSH_WRA1            ;[310B] 
     LD    HL,$35F6                  ;[310E] 
     CALL  LYNX_LNUM2                ;[3111] 
     CALL  LYNX_AD                   ;[3114] 
-    CALL  $2F3C                     ;[3117] 
-    CALL  $2F2C                     ;[311A] 
+    CALL  LYNX_POP_WRA2             ;[3117] 
+    CALL  LYNX_PUSH_WRA1            ;[311A] 
     LD    HL,$35F6                  ;[311D] 
     CALL  LYNX_LNUM1                ;[3120] 
     CALL  LYNX_SWAP                 ;[3123] 
     CALL  LYNX_SBT                  ;[3126] 
-    CALL  $2F3C                     ;[3129] 
+    CALL  LYNX_POP_WRA2             ;[3129] 
     CALL  LYNX_DIV                  ;[312C] 
-    CALL  $2F2C                     ;[312F] 
+    CALL  LYNX_PUSH_WRA1            ;[312F] 
     CALL  VALIDATE_SWAP             ;[3132] 
     LD    IX,DATA_LOG               ;[3135] 
     CALL  $2EC1                     ;[3139] 
-    CALL  $2F3C                     ;[313C] 
+    CALL  LYNX_POP_WRA2             ;[313C] 
     CALL  LYNX_MLT                  ;[313F] 
     LD    HL,$35FB                  ;[3142] 
     CALL  LYNX_LNUM2                ;[3145] 
@@ -6376,14 +6408,14 @@ BASIC_FN_EXP:
     JP    BASIC_FN_ANTILOG          ;[318D] 
 
 BASIC_FN_TAN:
-    CALL  $2F2C                     ;[3190] TAN.
+    CALL  LYNX_PUSH_WRA1            ;[3190] TAN.
     CALL  BASIC_FN_COS              ;[3193] 
-    CALL  $2F3C                     ;[3196] 
-    CALL  $2F2C                     ;[3199] 
+    CALL  LYNX_POP_WRA2             ;[3196] 
+    CALL  LYNX_PUSH_WRA1            ;[3199] 
     LD    HL,SYSVAR_WRA2            ;[319C] 
     CALL  LYNX_LNUM1                ;[319F] 
     CALL  BASIC_FN_SIN              ;[31A2] 
-    CALL  $2F3C                     ;[31A5] 
+    CALL  LYNX_POP_WRA2             ;[31A5] 
     JP    LYNX_DIV                  ;[31A8] 
 
 BASIC_FN_ANTILOG:
@@ -6467,11 +6499,11 @@ BASIC_FN_SIN:
     CALL  LYNX_LNUM1                ;[326F] 
     CALL  LYNX_SWAP                 ;[3272] 
     CALL  LYNX_SBT                  ;[3275] 
-    CALL  $2F2C                     ;[3278] 
+    CALL  LYNX_PUSH_WRA1            ;[3278] 
     CALL  VALIDATE_SWAP             ;[327B] 
     LD    IX,DATA_SINCOS            ;[327E] 
     CALL  $2EC1                     ;[3282] 
-    CALL  $2F3C                     ;[3285] 
+    CALL  LYNX_POP_WRA2             ;[3285] 
     JP    LYNX_MLT                  ;[3288] 
 
 DATA_SINCOS:
@@ -6666,7 +6698,7 @@ BASIC_FN_RAD:
     PUSH  DE                        ;[33DA] 
     CP    $C6                       ;[33DB] 
     PUSH  AF                        ;[33DD] 
-    CALL  NC,$2EEA                  ;[33DE] 
+    CALL  NC,LYNX_IY_TO_WRA1        ;[33DE] 
     POP   AF                        ;[33E1] 
     SLA   A                         ;[33E2] 
     LD    C,A                       ;[33E4] 
@@ -6678,7 +6710,7 @@ BASIC_FN_RAD:
     PUSH  BC                        ;[33F2] 
     JP    (HL)                      ;[33F3] 
     POP   DE                        ;[33F4] 
-    CALL  $2EFF                     ;[33F5] 
+    CALL  LYNX_WRA1_TO_IY           ;[33F5] 
     JP    $33AD                     ;[33F8] 
     CALL  $3428                     ;[33FB] 
     JR    $33AD                     ;[33FE] 
@@ -6823,6 +6855,8 @@ LYNX_INTFP:
     DJNZ  $34D6                     ;[34E7] 
     OR    A                         ;[34E9] 
     JP    $359A                     ;[34EA] 
+
+LYNX_TEST_DIGIT:
     LD    A,(DE)                    ;[34ED] Test for '0' to '9'
     CP    $30                       ;[34EE] 
     RET   C                         ;[34F0] 
@@ -6830,6 +6864,7 @@ LYNX_INTFP:
     CCF                             ;[34F3] 
     RET                             ;[34F4] 
 
+LYNX_TEST_ALPHA:
     LD    A,(DE)                    ;[34F5] Test for 'A' to Z' and 'a' to 'z',
     CP    $41                       ;[34F6] 
     RET   C                         ;[34F8] 
@@ -6842,6 +6877,7 @@ LYNX_INTFP:
     CCF                             ;[3502] 
     RET                             ;[3503] 
 
+LYNX_TEST_UPPER_LOW:
     LD    A,(DE)                    ;[3504] Test for uppercase/lowercase.
     SUB   $40                       ;[3505] 
     CP    $1B                       ;[3507] 
@@ -6869,6 +6905,7 @@ LYNX_ZWRA1:
     POP   AF                        ;[3528] 
     RET                             ;[3529] 
 
+LYNX_OUTPUT_SPACE:
     PUSH  AF                        ;[352A] Output a space
     LD    A,$20                     ;[352B] 
     JR    $3530                     ;[352D] 
@@ -7697,14 +7734,14 @@ MONITOR_P:
     LD    H,B                       ;[3C31] 
     LD    ($61B8),HL                ;[3C32] 
     PUSH  BC                        ;[3C35] 
-    CALL  $3D0C                     ;[3C36] 
+    CALL  LYNX_DISPLAY_HL           ;[3C36] 
     LD    A,$3C                     ;[3C39] 
     RST   $08                       ;[3C3B] 
     LD    A,(HL)                    ;[3C3C] 
     CALL  $2239                     ;[3C3D] 
     LD    A,$3E                     ;[3C40] 
     RST   $08                       ;[3C42] 
-    CALL  $352A                     ;[3C43] 
+    CALL  LYNX_OUTPUT_SPACE         ;[3C43] 
     CALL  SYSVAR_LINP               ;[3C46] 
     POP   BC                        ;[3C49] 
     LD    DE,$6000                  ;[3C4A] 
@@ -7741,7 +7778,7 @@ MONITOR_H:
     LD    B,$10                     ;[3C7E] 
     PUSH  BC                        ;[3C80] 
     CALL  $3CA5                     ;[3C81] 
-    CALL  $352A                     ;[3C84] 
+    CALL  LYNX_OUTPUT_SPACE         ;[3C84] 
     LD    B,$08                     ;[3C87] 
     LD    A,(HL)                    ;[3C89] 
     INC   HL                        ;[3C8A] 
@@ -7760,8 +7797,8 @@ MONITOR_H:
     RST   $08                       ;[3CA3] 
     RET                             ;[3CA4] 
 
-    CALL  $3D0C                     ;[3CA5] 
-    CALL  $352A                     ;[3CA8] 
+    CALL  LYNX_DISPLAY_HL           ;[3CA5] 
+    CALL  LYNX_OUTPUT_SPACE         ;[3CA8] 
     LD    B,$08                     ;[3CAB] 
     PUSH  HL                        ;[3CAD] 
     LD    A,(HL)                    ;[3CAE] 
@@ -7785,7 +7822,7 @@ MONITOR_Z:
     RST   $08                       ;[3CCA] 
     INC   IX                        ;[3CCB] 
     DJNZ  $3CC7                     ;[3CCD] 
-    CALL  $352A                     ;[3CCF] 
+    CALL  LYNX_OUTPUT_SPACE         ;[3CCF] 
     LD    A,(DE)                    ;[3CD2] 
     LD    L,A                       ;[3CD3] 
     INC   DE                        ;[3CD4] 
@@ -7810,8 +7847,9 @@ DATA_MONITOR:
     defb 0x49,0x58,0x20,0x49,0x59,0x20,0x53,0x50        ;[3D00]  IX.IY.SP
     defb 0x20,0x50,0x43,0x20                            ;[3D08]  Y.SP.PC.
 
+LYNX_DISPLAY_HL:
     CALL  LYNX_PHEXHL               ;[3D0C] Display HL.
-    JP    $352A                     ;[3D0F] 
+    JP    LYNX_OUTPUT_SPACE         ;[3D0F] 
     CALL  $2239                     ;[3D12] 
     JR    $3D0F                     ;[3D15] 
 
@@ -7905,12 +7943,12 @@ MONITOR_A:
     POP   HL                        ;[3D94] 
     PUSH  HL                        ;[3D95] 
     ADD   HL,DE                     ;[3D96] 
-    CALL  $3D0C                     ;[3D97] 
+    CALL  LYNX_DISPLAY_HL           ;[3D97] 
     POP   HL                        ;[3D9A] 
     PUSH  HL                        ;[3D9B] 
     OR    A                         ;[3D9C] 
     SBC   HL,DE                     ;[3D9D] 
-    CALL  $3D0C                     ;[3D9F] 
+    CALL  LYNX_DISPLAY_HL           ;[3D9F] 
     POP   HL                        ;[3DA2] 
     EX    DE,HL                     ;[3DA3] 
     DEC   HL                        ;[3DA4] 
@@ -7999,7 +8037,7 @@ MONITOR_W:
     JR    NZ,$3E0A                  ;[3E1E] 
     RET                             ;[3E20] 
 
-    CALL  $3D0C                     ;[3E21] L command subroutine.
+    CALL  LYNX_DISPLAY_HL           ;[3E21] L command subroutine.
     LD    ($61B8),HL                ;[3E24] 
     JP    $3CB7                     ;[3E27] 
 
@@ -8027,7 +8065,7 @@ MONITOR_V:
     POP   HL                        ;[3E48] 
     LD    A,(DE)                    ;[3E49] 
     CP    (HL)                      ;[3E4A] 
-    CALL  NZ,$3D0C                  ;[3E4B] 
+    CALL  NZ,LYNX_DISPLAY_HL        ;[3E4B] 
     INC   DE                        ;[3E4E] 
     INC   HL                        ;[3E4F] 
     PUSH  BC                        ;[3E50] 
@@ -8092,7 +8130,7 @@ MONITOR_X:
     LD    A,(DE)                    ;[3EAD] 
     LD    H,A                       ;[3EAE] 
     INC   DE                        ;[3EAF] 
-    CALL  $3D0C                     ;[3EB0] 
+    CALL  LYNX_DISPLAY_HL           ;[3EB0] 
     DJNZ  $3EAA                     ;[3EB3] 
     RET                             ;[3EB5] 
 
