@@ -1411,7 +1411,7 @@ BASIC_COM_SAVE:
     CALL  $0BB4                     ;[0BCB] SAVE routine.
     INC   DE                        ;[0BCE] 
     LD    A,(DE)                    ;[0BCF] 
-    LD    HL,START                  ;[0BD0] 
+    LD    HL,$0000                  ;[0BD0] 
     PUSH  HL                        ;[0BD3] 
     CP    $0D                       ;[0BD4] 
     JR    Z,$0BED                   ;[0BD6] 
@@ -2183,7 +2183,7 @@ LYNX_DISPLAY_BUFFER:
     LD    HL,$6000                  ;[10CC] 
     LD    D,H                       ;[10CF] 
     LD    E,L                       ;[10D0] 
-    LD    BC,START                  ;[10D1] 
+    LD    BC,$0000                  ;[10D1] 
     EXX                             ;[10D4] 
     LD    HL,(SYSVAR_FLASH)         ;[10D5] 
     LD    BC,(SYSVAR_INPCUR)        ;[10D8] 
@@ -3131,7 +3131,7 @@ LYNX_RDN:
     JR    Z,$1BC6                   ;[1B9B] 
     CP    $26                       ;[1B9D] 
     JR    NZ,$1BCC                  ;[1B9F] 
-    LD    HL,START                  ;[1BA1] 
+    LD    HL,$0000                  ;[1BA1] 
     INC   DE                        ;[1BA4] 
     LD    A,(DE)                    ;[1BA5] 
     SUB   $30                       ;[1BA6] 
@@ -3548,7 +3548,7 @@ BASIC_FN_RND:
 
 BASIC_FN_MEM:
     LD    BC,(SYSVAR_TOV)           ;[1E69] MEM.
-    LD    HL,START                  ;[1E6D] 
+    LD    HL,$0000                  ;[1E6D] 
     ADD   HL,SP                     ;[1E70] 
     SBC   HL,BC                     ;[1E71] 
     JP    LYNX_INTFP                ;[1E73] 
@@ -3695,7 +3695,7 @@ SUB_LINK_OFF:
 
 LYNX_ZERO_MEM:
     CALL  $25CA                     ;[1F6E] Called from MAIN routine. Zeros memory etc.
-    LD    HL,START                  ;[1F71] 
+    LD    HL,$0000                  ;[1F71] 
     LD    (SYSVAR_PROCST),HL        ;[1F74] 
     LD    HL,(SYSVAR_EOB)           ;[1F77] 
     INC   HL                        ;[1F7A] 
@@ -4094,11 +4094,11 @@ BASIC_COM_READ:
 
 LYNX_VALID_VAR_TEST:
     LD    A,(DE)                    ;[21EA] Test for a valid variable.
-    CP    $41                       ;[21EB] 
+    CP    $41                       ;[21EB] CHR$($41) = 'A' letter
     RET   C                         ;[21ED] 
     INC   DE                        ;[21EE] 
     LD    A,(DE)                    ;[21EF] 
-    CP    $24                       ;[21F0] 
+    CP    $24                       ;[21F0] CHR$($24) = Dollar Sign
     DEC   DE                        ;[21F2] 
     RET                             ;[21F3] 
 
@@ -4566,7 +4566,7 @@ BASIC_COM_LINK:
     CALL  LYNX_ESC                  ;[24D4] 
     JP    Z,$1E42                   ;[24D7] 
     JR    $249C                     ;[24DA] 
-    LD    HL,START                  ;[24DC] 
+    LD    HL,$0000                  ;[24DC] 
     LD    (SYSVAR_CONTLP),HL        ;[24DF] 
     JP    $38E8                     ;[24E2] 
     PUSH  IX                        ;[24E5] 
@@ -4616,7 +4616,7 @@ BASIC_COM_LINK:
     JP    Z,$2489                   ;[252D] 
     CALL  LYNX_LNUM1                ;[2530] 
     PUSH  HL                        ;[2533] 
-    LD    HL,START                  ;[2534] 
+    LD    HL,$0000                  ;[2534] 
     LD    (SYSVAR_CONTLP),HL        ;[2537] 
     CALL  LYNX_FNDLN                ;[253A] 
     POP   HL                        ;[253D] 
@@ -4658,7 +4658,7 @@ LYNX_CHLDE:
     OR    L                         ;[256F] 
     RET   Z                         ;[2570] 
     PUSH  HL                        ;[2571] 
-    LD    HL,START                  ;[2572] 
+    LD    HL,$0000                  ;[2572] 
     LD    (SYSVAR_PROCST),HL        ;[2575] 
     POP   HL                        ;[2578] 
     BIT   7,H                       ;[2579] 
@@ -5533,7 +5533,7 @@ BASIC_COM_RENUM:
 
 LYNX_FNDLN:
     LD    IX,(SYSVAR_SOB)           ;[2B1F] Finds line with number in WRA1. IX points to line and z flag set if found, else IX points to next highest line. 
-    LD    BC,START                  ;[2B23] 
+    LD    BC,$0000                  ;[2B23] 
     LD    A,(IX+$00)                ;[2B26] 
     CP    $80                       ;[2B29] 
     JR    Z,$2B49                   ;[2B2B] 
@@ -6030,7 +6030,7 @@ BASIC_COM_DIM:
     AND   H                         ;[2E31] 
     CALL  Z,ERR_OVERFLOW            ;[2E32] 
     EX    DE,HL                     ;[2E35] 
-    LD    HL,START                  ;[2E36] 
+    LD    HL,$0000                  ;[2E36] 
     ADD   HL,SP                     ;[2E39] 
     DEC   H                         ;[2E3A] 
     SBC   HL,DE                     ;[2E3B] 
@@ -6852,7 +6852,7 @@ LYNX_FPINT:
     LD    A,(SYSVAR_WRA1)           ;[3497] Floating point in WRA1 to integer in HL
     CP    $C0                       ;[349A] 
     JP    Z,$3889                   ;[349C] 
-    LD    HL,START                  ;[349F] 
+    LD    HL,$0000                  ;[349F] 
     BIT   7,A                       ;[34A2] 
     CALL  Z,ERR_NUM_OUT_RANGE       ;[34A4] 
     CP    $C0                       ;[34A7] 
@@ -6880,7 +6880,7 @@ LYNX_INTFP:
     LD    A,$C7                     ;[34C4] Integer in HL to floating point in WRA1. 
     LD    (SYSVAR_WRA1),A           ;[34C6] 
     PUSH  HL                        ;[34C9] 
-    LD    HL,START                  ;[34CA] 
+    LD    HL,$0000                  ;[34CA] 
     LD    (SYSVAR_WRA1+$03),HL      ;[34CD] 
     LD    (SYSVAR_WRA1+$01),HL      ;[34D0] 
     POP   HL                        ;[34D3] 
@@ -7263,7 +7263,7 @@ LYNX_MLT:
     RET                             ;[374B] 
 
 SUB_MULTIPLY4:
-    LD    HL,START                  ;[374C] Subroutine called by multiply.
+    LD    HL,$0000                  ;[374C] Subroutine called by multiply.
     LD    B,H                       ;[374F] 
     LD    C,A                       ;[3750] 
     SRL   E                         ;[3751] 
@@ -7912,7 +7912,7 @@ SUB_ARGUMENT_INTO_HL:
     CP    $20                       ;[3D1E] 
     RET   Z                         ;[3D20] 
     JP    $3B94                     ;[3D21] 
-    LD    HL,START                  ;[3D24] Subroutine called by routine above.
+    LD    HL,$0000                  ;[3D24] Subroutine called by routine above.
     RST   $10                       ;[3D27] 
     LD    A,(DE)                    ;[3D28] 
     CALL  $3DFA                     ;[3D29] 
