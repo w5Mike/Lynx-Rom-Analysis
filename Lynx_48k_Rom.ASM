@@ -1844,12 +1844,16 @@ BASIC_COM_VDU:
     INC   DE                        ;[0EE9] 
     JR    BASIC_COM_VDU             ;[0EEA] 
     LD    B,$05                     ;[0EEC] 
-    JR    $0EF6                     ;[0EEE] 
+    JR    VALIDATE_WORD_ABCD        ;[0EEE] 
 
 VALIDATE_WINDOW:
     LD    B,$03                     ;[0EF0] Validation for WINDOW.
-    JR    $0EF6                     ;[0EF2] 
+    JR    VALIDATE_WORD_ABCD        ;[0EF2] 
+
+VALIDATE_PLOT:
     LD    B,$02                     ;[0EF4] Validation for PLOT;BEEP;PAINT.
+
+VALIDATE_WORD_ABCD:
     PUSH  BC                        ;[0EF6] Validation. Words of the form:- WORD a,b,c,d.
     CALL  LYNX_RP                   ;[0EF7] 
     RST   $20                       ;[0EFA] 
@@ -1857,8 +1861,8 @@ VALIDATE_WINDOW:
     LD    (HL),A                    ;[0EFC] 
     INC   HL                        ;[0EFD] 
     POP   BC                        ;[0EFE] 
-    DJNZ  $0EF6                     ;[0EFF] 
-    JP    $2707                     ;[0F01] 
+    DJNZ  VALIDATE_WORD_ABCD        ;[0EFF] 
+    JP    VALIDATE_INK              ;[0F01] 
 
 VALIDATE_PRINT:
     DEC   HL                        ;[0F04] Validation for '?'.
@@ -4737,6 +4741,7 @@ LYNX_RP:
     INC   DE                        ;[25EF] 
     RET                             ;[25F0] 
 
+VALIDATE_UTILITY:
     RST   $20                       ;[25F1] Validation utility routine.
     LD    ($2377),HL                ;[25F2] 
     INC   DE                        ;[25F5] 
@@ -4749,6 +4754,8 @@ LYNX_RP:
     CP    $22                       ;[25FF] 
     JR    NZ,$25F6                  ;[2601] 
     JP    RST_10H                   ;[2603] 
+
+VALIDATE_ROUND:
     CALL  $2D08                     ;[2606] Validation for ROUND, TRAIL, LINK, TRACE.
     CP    $DA                       ;[2609] 
     JR    Z,$260F                   ;[260B] 
@@ -4761,13 +4768,15 @@ LYNX_RP:
     DEC   C                         ;[2614] 
     RET                             ;[2615] 
 
-    CALL  $25F1                     ;[2616] Validation for LOAD.NLOAD.APPEND, VERIFY.
+VALIDATE_LOAD:
+    CALL  VALIDATE_UTILITY          ;[2616] Validation for LOAD, MLOAD, APPEND, VERIFY.
     RST   $20                       ;[2619] 
     DEC   C                         ;[261A] 
     LD    (HL),A                    ;[261B] 
     RET                             ;[261C] 
 
-    CALL  $25F1                     ;[261D] Validation for SAVE.
+VALIDATE_SAVE:
+    CALL  VALIDATE_UTILITY          ;[261D] Validation for SAVE.
     CP    $0D                       ;[2620] 
     JR    Z,$261B                   ;[2622] 
     RST   $20                       ;[2624] 
@@ -4775,10 +4784,12 @@ LYNX_RP:
     LD    (HL),A                    ;[2626] 
     INC   HL                        ;[2627] 
     INC   DE                        ;[2628] 
-    JP    $2707                     ;[2629] 
+    JP    VALIDATE_INK              ;[2629] 
+
+VALIDATE_INPUT:
     CP    $22                       ;[262C] Validation for INPUT.
     JR    NZ,$2639                  ;[262E] 
-    CALL  $25F1                     ;[2630] 
+    CALL  VALIDATE_UTILITY          ;[2630] 
     RST   $20                       ;[2633] 
     DEC   SP                        ;[2634] 
     LD    (HL),A                    ;[2635] 
@@ -4793,7 +4804,7 @@ LYNX_RP:
     POP   HL                        ;[2643] 
     CALL  LYNX_VALID_VAR_TEST       ;[2644] 
     JR    Z,$2657                   ;[2647] 
-    CALL  $2721                     ;[2649] 
+    CALL  VALIDATE_READ             ;[2649] 
     LD    (HL),A                    ;[264C] 
     CP    $0D                       ;[264D] 
     RET   Z                         ;[264F] 
@@ -4806,13 +4817,18 @@ LYNX_RP:
     CALL  LYNX_VALIDATE_VAR         ;[2657] 
     RST   $10                       ;[265A] 
     JR    $264C                     ;[265B] 
+
+VALIDATE_RESTORE:
     CP    $0D                       ;[265D] Validation for RESTORE.
-    JP    NZ,$2707                  ;[265F] 
+    JP    NZ,VALIDATE_INK           ;[265F] 
     LD    (HL),A                    ;[2662] 
     RET                             ;[2663] 
 
-    CP    $0D                       ;[2664] Validation for LIST.LLIST. RENUM.
+VALIDATE_LIST:
+    CP    $0D                       ;[2664] Validation for LIST, LLIST, RENUM.
     JR    Z,$2662                   ;[2666] 
+
+VALIDATE_CALL:
     CALL  LYNX_RP                   ;[2668] Validation for CALL.
     CP    $0D                       ;[266B] 
     JR    Z,$2662                   ;[266D] 
@@ -4820,15 +4836,17 @@ LYNX_RP:
     INC   L                         ;[2670] 
     LD    (HL),A                    ;[2671] 
     INC   HL                        ;[2672] 
-    JP    $2707                     ;[2673] 
+    JP    VALIDATE_INK              ;[2673] 
     POP   AF                        ;[2676] 
     POP   HL                        ;[2677] 
     LD    A,$00                     ;[2678] 
     LD    (HL),A                    ;[267A] 
     INC   HL                        ;[267B] 
+
+VALIDATE_LET:
     CALL  LYNX_VALID_VAR_TEST       ;[267C] Validation routine for LET.
     JR    Z,$2696                   ;[267F] 
-    CALL  $2721                     ;[2681] 
+    CALL  VALIDATE_READ             ;[2681] 
     CP    $3D                       ;[2684] 
     JP    NZ,$26A6                  ;[2686] 
     LD    (HL),A                    ;[2689] 
@@ -4837,7 +4855,7 @@ LYNX_RP:
     CALL  LYNX_RP                   ;[268C] 
     CP    $2C                       ;[268F] 
     JR    Z,$267A                   ;[2691] 
-    JP    $26DB                     ;[2693] 
+    JP    VALIDATE_MON              ;[2693] 
     CALL  LYNX_VALIDATE_VAR         ;[2696] 
     RST   $10                       ;[2699] 
     RST   $20                       ;[269A] 
@@ -4852,33 +4870,42 @@ LYNX_RP:
     LD    DE,$6000                  ;[26A6] 
     LD    HL,(SYSVAR_POLBUF)        ;[26A9] 
     PUSH  HL                        ;[26AC] 
-    CALL  $2707                     ;[26AD] 
+    CALL  VALIDATE_INK              ;[26AD] 
     POP   DE                        ;[26B0] 
     CALL  SYSVAR_EE                 ;[26B1] 
     CALL  LYNX_PN                   ;[26B4] 
     LD    A,$0D                     ;[26B7] 
     RST   $08                       ;[26B9] 
     JP    $38E8                     ;[26BA] 
+
+VALIDATE_DPOKE:
     CALL  $270D                     ;[26BD] Validation routine for DPOKE, POKE, DOT, OUT, MOVE, DRAW.SOUND.
-    JP    $2707                     ;[26C0] 
+    JP    VALIDATE_INK              ;[26C0] 
+
+VALIDATE_GOSUB:
     PUSH  DE                        ;[26C3] Validation routine for GOSUB.GOTO.
     CALL  $2D08                     ;[26C4] 
     JR    C,$26CD                   ;[26C7] 
     CP    $D8                       ;[26C9] 
     JR    Z,$26D1                   ;[26CB] 
     POP   DE                        ;[26CD] 
-    JP    $2707                     ;[26CE] 
+    JP    VALIDATE_INK              ;[26CE] 
     POP   BC                        ;[26D1] 
     LD    (HL),A                    ;[26D2] 
     INC   HL                        ;[26D3] 
     RST   $10                       ;[26D4] 
-    JP    $273C                     ;[26D5] 
+    JP    VALIDATE_REM              ;[26D5] 
+
+VALIDATE_NEXT:
     CALL  $2715                     ;[26D8] Validation routine for NEXT.
+
+VALIDATE_MON:
     LD    (HL),A                    ;[26DB] Validation for MON, ENDPROC, RANDOM, END, STOP, RETURN, CLS, CONT, NEW, WEND, REPEAT, DISK, TEXT.
     RST   $20                       ;[26DC] 
     DEC   C                         ;[26DD] 
     RET                             ;[26DE] 
 
+VALIDATE_FOR:
     CALL  $2715                     ;[26DF] Validation for FOR.
     RST   $20                       ;[26E2] 
     DEC   A                         ;[26E3] 
@@ -4893,15 +4920,19 @@ LYNX_RP:
     JP    Z,$2662                   ;[26F3] 
     RST   $20                       ;[26F6] 
     CALL  C,$2377                   ;[26F7] 
-    JP    $2707                     ;[26FA] 
+    JP    VALIDATE_INK              ;[26FA] 
+
+VALIDATE_IF:
     CALL  LYNX_RP                   ;[26FD] Validation for IF.
     RST   $20                       ;[2700] 
     RST   $10                       ;[2701] 
     LD    (HL),A                    ;[2702] 
     INC   HL                        ;[2703] 
     JP    $27A9                     ;[2704] 
+
+VALIDATE_INK:
     CALL  LYNX_RP                   ;[2707] Validation for INK, PAPER, PAUSE, WHILE, UNTIL, RESERVE, CFR,  CCHAR, SPEED, PROTECT, ERROR, TAPE.
-    JP    $26DB                     ;[270A] 
+    JP    VALIDATE_MON              ;[270A] 
     CALL  LYNX_RP                   ;[270D] Convert to internal language and check for a comma.
     RST   $20                       ;[2710] 
     INC   L                         ;[2711] 
@@ -4915,6 +4946,8 @@ LYNX_RP:
     INC   DE                        ;[271C] 
     INC   HL                        ;[271D] 
     JP    RST_10H                   ;[271E] 
+
+VALIDATE_READ:
     CALL  LYNX_TEST_ALPHA           ;[2721] is validation routine for READ.
     JP    C,$26A6                   ;[2724] 
     LD    (HL),A                    ;[2727] 
@@ -4932,20 +4965,24 @@ LYNX_RP:
     LD    (HL),A                    ;[2737] 
     INC   HL                        ;[2738] 
     JP    RST_10H                   ;[2739] 
+
+VALIDATE_REM:
     LD    A,(DE)                    ;[273C] Validation for REM, DATA, EXT, LABEL.
     LD    (HL),A                    ;[273D] 
     CP    $0D                       ;[273E] 
     RET   Z                         ;[2740] 
     INC   HL                        ;[2741] 
     INC   DE                        ;[2742] 
-    JR    $273C                     ;[2743] 
-    CALL  $2721                     ;[2745] Validation for SWAP.
+    JR    VALIDATE_REM              ;[2743] 
+
+VALIDATE_SWAP:
+    CALL  VALIDATE_READ             ;[2745] Validation for SWAP.
     LD    (HL),A                    ;[2748] 
     CP    $2C                       ;[2749] 
     JR    NZ,$2756                  ;[274B] 
     INC   HL                        ;[274D] 
     INC   DE                        ;[274E] 
-    CALL  $2721                     ;[274F] 
+    CALL  VALIDATE_READ             ;[274F] 
     LD    (HL),A                    ;[2752] 
     CP    $0D                       ;[2753] 
     RET   Z                         ;[2755] 
@@ -5236,6 +5273,7 @@ BASIC_COM_PROC:
     POP   BC                        ;[295B] 
     RET                             ;[295C] 
 
+VALIDATE_PROC:
     CALL  $294E                     ;[295D] Validation for PROC.
     CALL  LYNX_RP                   ;[2960] 
     LD    (HL),A                    ;[2963] 
@@ -5245,7 +5283,9 @@ BASIC_COM_PROC:
     RST   $20                       ;[2969] 
     ADD   HL,HL                     ;[296A] 
     RST   $10                       ;[296B] 
-    JP    $26DB                     ;[296C] 
+    JP    VALIDATE_MON              ;[296C] 
+
+VALIDATE_DEFPROC:
     CALL  $294E                     ;[296F] Validation for DEFPPOC.
     RST   $10                       ;[2972] 
     CALL  LYNX_TEST_ALPHA           ;[2973] 
@@ -5343,6 +5383,8 @@ BASIC_COM_PRINT:
     INC   HL                        ;[2A0E] 
     INC   DE                        ;[2A0F] 
     RST   $10                       ;[2A10] 
+
+VALIDATE_PRINT1:
     LD    (HL),A                    ;[2A11] Validation for PRINT.
     CP    $0D                       ;[2A12] 
     RET   Z                         ;[2A14] 
@@ -5377,7 +5419,7 @@ BASIC_COM_PRINT:
     CP    $80                       ;[2A46] 
     CALL  NC,ERR_SYNTAX             ;[2A48] 
     DEC   DE                        ;[2A4B] 
-    JR    $2A11                     ;[2A4C] 
+    JR    VALIDATE_PRINT1           ;[2A4C] 
 
 BASIC_COM_RESERVE:
     RST   $18                       ;[2A4E] RESERVE.
@@ -5732,7 +5774,7 @@ BASIC_FN_RIGHT_STRING:
     INC   HL                        ;[2CA6] 
     JR    NC,$2CB6                  ;[2CA7] 
     DEC   HL                        ;[2CA9] 
-    CALL  $25F1                     ;[2CAA] 
+    CALL  VALIDATE_UTILITY          ;[2CAA] 
     RST   $10                       ;[2CAD] 
     CP    $2B                       ;[2CAE] 
     RET   NZ                        ;[2CB0] 
@@ -6017,9 +6059,9 @@ BASIC_COM_DIM:
 
 VALIDATE_DIM:
     CALL  LYNX_VALID_VAR_TEST       ;[2E66] Validation for DIM.
-    JR    NZ,$2E7C                  ;[2E69] 
+    JR    NZ,$2E7C                  ;[2E69] VALIDATE_DIM+$16
     CALL  LYNX_VALIDATE_VAR         ;[2E6B] 
-    CALL  $2206                     ;[2E6E] 
+    CALL  $2206                     ;[2E6E] LYNX_VALIDATE_VAR+$12
     RST   $10                       ;[2E71] 
     LD    (HL),A                    ;[2E72] 
     CP    $0D                       ;[2E73] 
@@ -6029,7 +6071,7 @@ VALIDATE_DIM:
     INC   L                         ;[2E78] 
     INC   DE                        ;[2E79] 
     JR    VALIDATE_DIM              ;[2E7A] 
-    CALL  $2721                     ;[2E7C] 
+    CALL  VALIDATE_READ             ;[2E7C] 
     DEC   HL                        ;[2E7F] 
     LD    A,$29                     ;[2E80] 
     CP    (HL)                      ;[2E82] 
@@ -6070,7 +6112,7 @@ VALIDATE_DIM:
     POP   DE                        ;[2EB9] 
     RET                             ;[2EBA] 
 
-VALIDATE_SWAP:
+VALIDATE_SWAP_MULTI:
     CALL  $2759                     ;[2EBB] Validate SWAP and multiply.
     JP    LYNX_MLT                  ;[2EBE] 
 
@@ -6098,7 +6140,7 @@ LYNX_MULTIPLY_ADD:
 LYNX_IY_TO_WRA1:
     CALL  $2EF0                     ;[2EEA] (IY) to WRA1.
     CALL  LYNX_SWAP                 ;[2EED] 
-    LD    HL,SYSVAR_SYNL            ;[2EF0] 
+    LD    HL,SYSVAR_SYNL            ;[2EF0] LYNX_IY_TO_WRA1+$06
     LD    B,$05                     ;[2EF3] 
     DEC   IY                        ;[2EF5] 
     DEC   HL                        ;[2EF7] 
@@ -6226,7 +6268,7 @@ BASIC_FN_ARCTAN:
 
 SUB_ARCTAN:
     CALL  LYNX_PUSH_WRA1            ;[2FD9] ARCTAN subroutine
-    CALL  VALIDATE_SWAP             ;[2FDC] 
+    CALL  VALIDATE_SWAP_MULTI       ;[2FDC] 
     LD    IX,DATA_ARCTAN            ;[2FDF] 
     CALL  LYNX_MULTIPLY_ADD         ;[2FE3] 
     CALL  LYNX_POP_WRA2             ;[2FE6] 
@@ -6376,7 +6418,7 @@ BASIC_FN_LOG:
     CALL  LYNX_POP_WRA2             ;[3129] 
     CALL  LYNX_DIV                  ;[312C] 
     CALL  LYNX_PUSH_WRA1            ;[312F] 
-    CALL  VALIDATE_SWAP             ;[3132] 
+    CALL  VALIDATE_SWAP_MULTI       ;[3132] 
     LD    IX,DATA_LOG               ;[3135] 
     CALL  LYNX_MULTIPLY_ADD         ;[3139] 
     CALL  LYNX_POP_WRA2             ;[313C] 
@@ -6449,7 +6491,7 @@ BASIC_FN_ANTILOG:
     CALL  $359A                     ;[31D6] 
     LD    IX,DATA_ANTILOG           ;[31D9] 
     CALL  LYNX_MULTIPLY_ADD         ;[31DD] 
-    CALL  VALIDATE_SWAP             ;[31E0] 
+    CALL  VALIDATE_SWAP_MULTI       ;[31E0] 
     POP   AF                        ;[31E3] 
     LD    (SYSVAR_WRA1),A           ;[31E4] 
     EX    AF,AF'                    ;[31E7] 
@@ -6504,7 +6546,7 @@ BASIC_FN_SIN:
     CALL  LYNX_SWAP                 ;[3272] 
     CALL  LYNX_SBT                  ;[3275] 
     CALL  LYNX_PUSH_WRA1            ;[3278] 
-    CALL  VALIDATE_SWAP             ;[327B] 
+    CALL  VALIDATE_SWAP_MULTI       ;[327B] 
     LD    IX,DATA_SINCOS            ;[327E] 
     CALL  LYNX_MULTIPLY_ADD         ;[3282] 
     CALL  LYNX_POP_WRA2             ;[3285] 
@@ -7185,9 +7227,9 @@ LYNX_MLT:
     PUSH  DE                        ;[3711] 
     LD    E,A                       ;[3712] 
     PUSH  HL                        ;[3713] 
-    CALL  $376A                     ;[3714] 
+    CALL  SUB_MULTIPLY2             ;[3714] 
     POP   HL                        ;[3717] 
-    CALL  C,$379F                   ;[3718] 
+    CALL  C,SUB_MULTIPLY3           ;[3718] 
     DEC   HL                        ;[371B] 
     POP   DE                        ;[371C] 
     DEC   DE                        ;[371D] 
@@ -7220,6 +7262,7 @@ LYNX_MLT:
     LD    E,A                       ;[374A] 
     RET                             ;[374B] 
 
+SUB_MULTIPLY4:
     LD    HL,START                  ;[374C] Subroutine called by multiply.
     LD    B,H                       ;[374F] 
     LD    C,A                       ;[3750] 
@@ -7244,6 +7287,8 @@ LYNX_MLT:
     DAA                             ;[3766] 
     LD    B,A                       ;[3767] 
     JR    $3751                     ;[3768] 
+
+SUB_MULTIPLY2:
     CALL  $373D                     ;[376A] Subroutine called by multiply.
     RET   Z                         ;[376D] 
     PUSH  IX                        ;[376E] 
@@ -7255,7 +7300,7 @@ LYNX_MLT:
     PUSH  HL                        ;[377E] 
     LD    A,(HL)                    ;[377F] 
     PUSH  DE                        ;[3780] 
-    CALL  $374C                     ;[3781] 
+    CALL  SUB_MULTIPLY4             ;[3781] 
     LD    A,(IX+$00)                ;[3784] 
     ADD   A,L                       ;[3787] 
     DAA                             ;[3788] 
@@ -7274,6 +7319,7 @@ LYNX_MLT:
     SCF                             ;[379D] 
     RET                             ;[379E] 
 
+SUB_MULTIPLY3:
     PUSH  HL                        ;[379F] Subroutine called by multiply.
     LD    B,$05                     ;[37A0] 
     LD    DE,$62D3                  ;[37A2] 
