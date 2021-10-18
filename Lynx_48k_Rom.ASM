@@ -1145,6 +1145,7 @@ LYNX_SOUND:
     JR    NZ,LYNX_SOUND             ;[09A1] 
     RET                             ;[09A3] 
 
+TEST_ESCAPE:
     LD    HL,SYSVAR_OLDESC          ;[09A4] Test for escape.
     LD    BC,$0080                  ;[09A7] 
     IN    A,(C)                     ;[09AA] 
@@ -1167,7 +1168,7 @@ LYNX_KEYDVR:
     PUSH  DE                        ;[09BF] 
     XOR   A                         ;[09C0] 
     LD    (SYSVAR_STATUS),A         ;[09C1] 
-    CALL  $09A4                     ;[09C4] 
+    CALL  TEST_ESCAPE               ;[09C4] 
     JR    NZ,$0A41                  ;[09C7] 
     LD    C,$80                     ;[09C9] 
     LD    B,$0A                     ;[09CB] 
@@ -3632,6 +3633,7 @@ LYNX_ESC:
     defb 0x52,0x65,0x61,0x64,0x79,0x21,0x0D,0x1E        ;[1F13]  Ready!..
     defb 0x00                                           ;[1F1B]  eady!...
 
+TEST_FULL_RSTACK:
     LD    HL,(SYSVAR_RSTACK)        ;[1F1C] Test for a full return stack
     LD    DE,$0100                  ;[1F1F] 
     ADD   HL,DE                     ;[1F22] 
@@ -3644,7 +3646,7 @@ LYNX_ESC:
 LYNX_PUSH_HL_RSTACK:
     PUSH  DE                        ;[1F2F] Push HL onto the return stack.
     PUSH  HL                        ;[1F30] 
-    CALL  $1F1C                     ;[1F31] 
+    CALL  TEST_FULL_RSTACK          ;[1F31] 
     POP   DE                        ;[1F34] 
     LD    (HL),E                    ;[1F35] 
     INC   HL                        ;[1F36] 
@@ -3657,7 +3659,7 @@ LYNX_PUSH_HL_RSTACK:
 LYNX_PUSH_A_RSTACK:
     PUSH  DE                        ;[1F3E] Push A onto the return stack.
     PUSH  AF                        ;[1F3F] 
-    CALL  $1F1C                     ;[1F40] 
+    CALL  TEST_FULL_RSTACK          ;[1F40] 
     POP   AF                        ;[1F43] 
     LD    (HL),A                    ;[1F44] 
     JR    $1F38                     ;[1F45] 
@@ -3930,13 +3932,13 @@ BASIC_COM_INPUT:
     EXX                             ;[20EC] 
     JR    $20DC                     ;[20ED] 
     LD    B,$10                     ;[20EF] 
-    CALL  $2108                     ;[20F1] 
+    CALL  TEST_END_CHAR             ;[20F1] 
     JR    Z,$2103                   ;[20F4] 
     LD    (HL),A                    ;[20F6] 
     INC   HL                        ;[20F7] 
     INC   DE                        ;[20F8] 
     DJNZ  $20F1                     ;[20F9] 
-    CALL  $2108                     ;[20FB] 
+    CALL  TEST_END_CHAR             ;[20FB] 
     JR    Z,$2103                   ;[20FE] 
     INC   DE                        ;[2100] 
     JR    $20FB                     ;[2101] 
@@ -3945,6 +3947,7 @@ BASIC_COM_INPUT:
     INC   DE                        ;[2106] 
     RET                             ;[2107] 
 
+TEST_END_CHAR:
     LD    A,(DE)                    ;[2108] Test what DE points to for a comma, a " or a CR.
     CP    $22                       ;[2109] 
     RET   Z                         ;[210B] 
@@ -4879,7 +4882,7 @@ VALIDATE_LET:
     JP    $38E8                     ;[26BA] 
 
 VALIDATE_DPOKE:
-    CALL  $270D                     ;[26BD] Validation routine for DPOKE, POKE, DOT, OUT, MOVE, DRAW.SOUND.
+    CALL  TEST_IS_COMMA             ;[26BD] Validation routine for DPOKE, POKE, DOT, OUT, MOVE, DRAW.SOUND.
     JP    VALIDATE_INK              ;[26C0] 
 
 VALIDATE_GOSUB:
@@ -4897,7 +4900,7 @@ VALIDATE_GOSUB:
     JP    VALIDATE_REM              ;[26D5] 
 
 VALIDATE_NEXT:
-    CALL  $2715                     ;[26D8] Validation routine for NEXT.
+    CALL  TEST_IS_VAR               ;[26D8] Validation routine for NEXT.
 
 VALIDATE_MON:
     LD    (HL),A                    ;[26DB] Validation for MON, ENDPROC, RANDOM, END, STOP, RETURN, CLS, CONT, NEW, WEND, REPEAT, DISK, TEXT.
@@ -4906,7 +4909,7 @@ VALIDATE_MON:
     RET                             ;[26DE] 
 
 VALIDATE_FOR:
-    CALL  $2715                     ;[26DF] Validation for FOR.
+    CALL  TEST_IS_VAR               ;[26DF] Validation for FOR.
     RST   $20                       ;[26E2] 
     DEC   A                         ;[26E3] 
     INC   DE                        ;[26E4] 
@@ -4933,6 +4936,8 @@ VALIDATE_IF:
 VALIDATE_INK:
     CALL  LYNX_RP                   ;[2707] Validation for INK, PAPER, PAUSE, WHILE, UNTIL, RESERVE, CFR,  CCHAR, SPEED, PROTECT, ERROR, TAPE.
     JP    VALIDATE_MON              ;[270A] 
+
+TEST_IS_COMMA:
     CALL  LYNX_RP                   ;[270D] Convert to internal language and check for a comma.
     RST   $20                       ;[2710] 
     INC   L                         ;[2711] 
@@ -4940,6 +4945,7 @@ VALIDATE_INK:
     INC   HL                        ;[2713] 
     RET                             ;[2714] 
 
+TEST_IS_VAR:
     CALL  LYNX_TEST_ALPHA           ;[2715] Test for a variable and find next non-blank.
     CALL  C,ERR_SYNTAX              ;[2718] 
     LD    (HL),A                    ;[271B] 
@@ -5053,6 +5059,8 @@ SUB_FIND:
     LD    B,(IX+$01)                ;[27CB] 
     PUSH  BC                        ;[27CE] 
     JP    RST_10H                   ;[27CF] 
+
+SUB_PRINT_KEYWORD:
     CALL  LYNX_OUTPUT_SPACE         ;[27D2] Print a word from a list (6219).
     LD    HL,(SYSVAR_XTTBL)         ;[27D5] 
     LD    B,A                       ;[27D8] 
@@ -5063,17 +5071,18 @@ SUB_FIND:
     INC   DE                        ;[27E3] 
     RET                             ;[27E4] 
 
+SUB_DISP_BAS_LINE:
     PUSH  IX                        ;[27E5] Display coded line. Pointed to from 62B2.
     POP   HL                        ;[27E7] 
     PUSH  HL                        ;[27E8] 
     CALL  LYNX_LNUM1                ;[27E9] 
     CALL  LYNX_PN                   ;[27EC] 
-    CALL  $285F                     ;[27EF] 
-    CALL  $2877                     ;[27F2] 
+    CALL  TEST_IS_LOOP_END          ;[27EF] 
+    CALL  SUB_INDENT                ;[27F2] 
     CALL  $251B                     ;[27F5] 
     LD    A,(DE)                    ;[27F8] 
     PUSH  AF                        ;[27F9] 
-    CALL  $27D2                     ;[27FA] 
+    CALL  SUB_PRINT_KEYWORD         ;[27FA] 
     POP   AF                        ;[27FD] 
     CP    $3C                       ;[27FE] 
     JR    Z,$27F8                   ;[2800] 
@@ -5112,14 +5121,15 @@ SUB_FIND:
     JR    Z,$27F8                   ;[283C] 
     JR    $2809                     ;[283E] 
     POP   IX                        ;[2840] 
-    CALL  $284C                     ;[2842] 
+    CALL  TEST_IS_LOOP              ;[2842] 
     LD    A,$1E                     ;[2845] 
     RST   $08                       ;[2847] 
     LD    A,$1F                     ;[2848] 
     RST   $08                       ;[284A] 
     RET                             ;[284B] 
 
-    LD    A,(IX+$06)                ;[284C] Test for FOR, WHILE and REPEAT,
+TEST_IS_LOOP:
+    LD    A,(IX+$06)                ;[284C] Test for FOR, WHILE and REPEAT.
     CP    $36                       ;[284F] 
     JR    Z,$285A                   ;[2851] 
     CP    $0F                       ;[2853] 
@@ -5130,6 +5140,7 @@ SUB_FIND:
     INC   (HL)                      ;[285D] 
     RET                             ;[285E] 
 
+TEST_IS_LOOP_END:
     LD    A,(IX+$06)                ;[285F] Test for NEXT, WEND and UNTIL.
     CP    $37                       ;[2862] 
     JR    Z,$286D                   ;[2864] 
@@ -5144,6 +5155,7 @@ SUB_FIND:
     LD    (SYSVAR_SBC),A            ;[2873] 
     RET                             ;[2876] 
 
+SUB_INDENT:
     LD    A,(SYSVAR_SBC)            ;[2877] Print spaces for indentation
     OR    A                         ;[287A] 
     RET   Z                         ;[287B] 
@@ -6664,14 +6676,16 @@ BASIC_FN_PEEK:
     JR    $3330                     ;[3343] 
 
 BASIC_FN_DEG:
-    LD    HL,$3357                  ;[3345] DEG.
+    LD    HL,SUB_ANGLE              ;[3345] DEG.
     CALL  LYNX_LNUM2                ;[3348] 
     JP    LYNX_MLT                  ;[334B] 
 
 BASIC_FN_RAD:
-    LD    HL,$3357                  ;[334E] RAD.
+    LD    HL,SUB_ANGLE              ;[334E] RAD.
     CALL  LYNX_LNUM2                ;[3351] 
     JP    LYNX_DIV                  ;[3354] 
+
+SUB_ANGLE:
     POP   BC                        ;[3357] Utility called by RAD and DEG
     LD    D,A                       ;[3358] 
     ADD   HL,HL                     ;[3359] 
@@ -6987,6 +7001,7 @@ LYNX_SWAP:
     DJNZ  $354A                     ;[3551] 
     RET                             ;[3553] 
 
+SUB_SUBTRACT:
     LD    HL,SYSVAR_WRA2            ;[3554] Called by the subtraction routine (366A).
     JR    $355C                     ;[3557] 
     LD    HL,SYSVAR_WRA1            ;[3559] 
@@ -6994,7 +7009,7 @@ LYNX_SWAP:
     JP    $3317                     ;[355E] 
 
 LYNX_CMP:
-    CALL  $3579                     ;[3561] Compares WRA2, WRA1. Flags set as (WRA2) - (WRA1). 
+    CALL  SUB_CMP                   ;[3561] Compares WRA2, WRA1. Flags set as (WRA2) - (WRA1). 
     RET   Z                         ;[3564] 
     PUSH  AF                        ;[3565] 
     LD    HL,SYSVAR_WRA1            ;[3566] 
@@ -7010,6 +7025,7 @@ LYNX_CMP:
     POP   AF                        ;[3577] 
     RET                             ;[3578] 
 
+SUB_CMP:
     LD    HL,SYSVAR_WRA1            ;[3579] Subroutine called by compare routine.
     LD    DE,SYSVAR_WRA2            ;[357C] 
     LD    B,$05                     ;[357F] 
@@ -7021,6 +7037,7 @@ LYNX_CMP:
     DJNZ  $3581                     ;[3586] 
     RET                             ;[3588] 
 
+SUB_ADD:
     LD    HL,SYSVAR_WRA1            ;[3589] Subroutine called by the addition routine.
     LD    DE,SYSVAR_WRA2            ;[358C] 
     LD    A,(DE)                    ;[358F] 
@@ -7133,10 +7150,10 @@ DATA_PI:
     RET                             ;[3669] 
 
 LYNX_SBT:
-    CALL  $3554                     ;[366A] Basic Minus Function: Subtracts (WRA2) from (WRA1), stores result in WRA1.
+    CALL  SUB_SUBTRACT              ;[366A] Basic Minus Function: Subtracts (WRA2) from (WRA1), stores result in WRA1.
 
 LYNX_AD:
-    CALL  $3589                     ;[366D] Basic Add Function:  Adds (WRA1) and (WRA2), stores result in WRA1.
+    CALL  SUB_ADD                   ;[366D] Basic Add Function:  Adds (WRA1) and (WRA2), stores result in WRA1.
     CALL  NC,LYNX_SWAP              ;[3670] 
     LD    A,(SYSVAR_WRA2)           ;[3673] 
     AND   $7F                       ;[3676] 
@@ -7160,7 +7177,7 @@ LYNX_AD:
     CALL  $36A4                     ;[3697] 
     OR    A                         ;[369A] 
     JP    $359A                     ;[369B] 
-    CALL  $36B6                     ;[369E] 
+    CALL  SUB_PLUS                  ;[369E] 
     JP    $359A                     ;[36A1] 
     OR    A                         ;[36A4] 
     LD    DE,$62E9                  ;[36A5] 
@@ -7175,6 +7192,7 @@ LYNX_AD:
     DJNZ  $36AD                     ;[36B3] 
     RET                             ;[36B5] 
 
+SUB_PLUS:
     OR    A                         ;[36B6] Called from Plus sign routine.
     LD    DE,$62E9                  ;[36B7] 
     LD    HL,$62E4                  ;[36BA] 
@@ -7214,7 +7232,7 @@ LYNX_MLT:
     AND   $80                       ;[36F3] 
     ADD   A,C                       ;[36F5] 
     LD    (SYSVAR_WRA3),A           ;[36F6] 
-    CALL  $3896                     ;[36F9] 
+    CALL  SUB_MULTI_DIV             ;[36F9] 
     JP    Z,SUB_MULTIPLY            ;[36FC] 
     LD    HL,$62D5                  ;[36FF] 
     LD    B,$0C                     ;[3702] 
@@ -7360,7 +7378,7 @@ LYNX_DIV:
     AND   $80                       ;[37DB] 
     ADD   A,C                       ;[37DD] 
     LD    (SYSVAR_WRA1),A           ;[37DE] 
-    CALL  $3896                     ;[37E1] 
+    CALL  SUB_MULTI_DIV             ;[37E1] 
     JP    Z,$384F                   ;[37E4] 
     LD    HL,$62D5                  ;[37E7] 
     LD    B,$0C                     ;[37EA] 
@@ -7458,6 +7476,7 @@ LYNX_DIV:
     LD    H,$00                     ;[3893] 
     RET                             ;[3895] 
 
+SUB_MULTI_DIV:
     LD    A,(SYSVAR_WRA2+$01)       ;[3896] Subroutine called by multiply and divide.
     AND   $0F                       ;[3899] 
     RET   NZ                        ;[389B] 
@@ -7690,7 +7709,7 @@ BASIC_COM_MON:
     CALL  SYSVAR_LINP               ;[3BA1] 
     LD    DE,$6000                  ;[3BA4] 
     LD    A,(DE)                    ;[3BA7] 
-    CALL  $3DFA                     ;[3BA8] 
+    CALL  TEST_MON_LETTER           ;[3BA8] 
     SUB   $41                       ;[3BAB] 
     JR    C,$3B94                   ;[3BAD] 
     CP    $1A                       ;[3BAF] 
@@ -7859,7 +7878,8 @@ MONITOR_H:
     POP   HL                        ;[3CB5] 
     RET                             ;[3CB6] 
 
-    LD    A,$0D                     ;[3CB7] 
+SUB_PRINT_CR:
+    LD    A,$0D                     ;[3CB7] Print carriage-return char
     RST   $08                       ;[3CB9] 
     RET                             ;[3CBA] 
 
@@ -7915,7 +7935,7 @@ SUB_ARGUMENT_INTO_HL:
     LD    HL,$0000                  ;[3D24] Subroutine called by routine above.
     RST   $10                       ;[3D27] 
     LD    A,(DE)                    ;[3D28] 
-    CALL  $3DFA                     ;[3D29] 
+    CALL  TEST_MON_LETTER           ;[3D29] 
     SUB   $30                       ;[3D2C] 
     RET   C                         ;[3D2E] 
     CP    $0A                       ;[3D2F] 
@@ -8010,9 +8030,9 @@ MONITOR_A:
     JR    Z,$3DB8                   ;[3DAA] 
     INC   A                         ;[3DAC] 
     JR    Z,$3DC2                   ;[3DAD] 
-    LD    HL,$3DC9                  ;[3DAF] 
+    LD    HL,DATA_MONITOR_A         ;[3DAF] 
     CALL  LYNX_PLINE                ;[3DB2] 
-    JP    $3CB7                     ;[3DB5] 
+    JP    SUB_PRINT_CR              ;[3DB5] 
     LD    A,L                       ;[3DB8] 
     CP    $80                       ;[3DB9] 
     JR    NC,$3DAF                  ;[3DBB] 
@@ -8023,6 +8043,7 @@ MONITOR_A:
     JR    C,$3DAF                   ;[3DC5] 
     JR    $3DBD                     ;[3DC7] 
 
+DATA_MONITOR_A:
     defb 0x3F,0x3F,0x00                                 ;[3DC9]  .8...??.
 
     CALL  SUB_ARGUMENT_3            ;[3DCC] ???? Doesn't seem to be used!!!!
@@ -8046,7 +8067,7 @@ MONITOR_Q:
     LD    B,H                       ;[3DE2] 
     IN    A,(C)                     ;[3DE3] 
     CALL  $3D12                     ;[3DE5] 
-    JP    $3CB7                     ;[3DE8] 
+    JP    SUB_PRINT_CR              ;[3DE8] 
 
 MONITOR_O:
     CALL  SUB_ARGUMENT_INTO_HL      ;[3DEB] Monitor O command.
@@ -8059,6 +8080,8 @@ MONITOR_O:
 MONITOR_B1:
     CALL  SUB_ARGUMENT_INTO_HL      ;[3DF6] Monitor B command.
     JP    (HL)                      ;[3DF9] 
+
+TEST_MON_LETTER:
     CP    $40                       ;[3DFA] Test for a Monitor command letter.
     RET   C                         ;[3DFC] 
     RES   5,A                       ;[3DFD] 
@@ -8079,7 +8102,7 @@ MONITOR_W:
     DEC   HL                        ;[3E10] 
     CP    D                         ;[3E11] 
     JR    NZ,$3E17                  ;[3E12] 
-    CALL  $3E21                     ;[3E14] 
+    CALL  SUB_MONITOR_L             ;[3E14] 
     CALL  LYNX_ESC                  ;[3E17] 
     RET   Z                         ;[3E1A] 
     INC   HL                        ;[3E1B] 
@@ -8088,9 +8111,10 @@ MONITOR_W:
     JR    NZ,$3E0A                  ;[3E1E] 
     RET                             ;[3E20] 
 
+SUB_MONITOR_L:
     CALL  LYNX_DISPLAY_HL           ;[3E21] L command subroutine.
     LD    ($61B8),HL                ;[3E24] 
-    JP    $3CB7                     ;[3E27] 
+    JP    SUB_PRINT_CR              ;[3E27] 
 
 MONITOR_L:
     CALL  SUB_ARGUMENT_INTO_HL      ;[3E2A] Monitor L command.
@@ -8101,7 +8125,7 @@ MONITOR_L:
     LD    A,(HL)                    ;[3E33] 
     CP    E                         ;[3E34] 
     JR    NZ,$3E3A                  ;[3E35] 
-    CALL  $3E21                     ;[3E37] 
+    CALL  SUB_MONITOR_L             ;[3E37] 
     CALL  LYNX_ESC                  ;[3E3A] 
     RET   Z                         ;[3E3D] 
     INC   HL                        ;[3E3E] 
@@ -8127,7 +8151,7 @@ MONITOR_V:
     LD    A,B                       ;[3E58] 
     OR    C                         ;[3E59] 
     JR    NZ,$3E49                  ;[3E5A] 
-    JP    $3CB7                     ;[3E5C] 
+    JP    SUB_PRINT_CR              ;[3E5C] 
 
 SUB_MONITOR_U:
     POP   DE                        ;[3E5F] Part of U command.
@@ -8164,17 +8188,19 @@ MONITOR_X:
     LD    (IX+$01),H                ;[3E8B] 
     LD    DE,$619A                  ;[3E8E] 
     LD    B,$04                     ;[3E91] 
-    CALL  $3EAA                     ;[3E93] 
+    CALL  SUB_FLAGS                 ;[3E93] 
     LD    A,$1E                     ;[3E96] 
     RST   $08                       ;[3E98] 
     LD    A,$1F                     ;[3E99] 
     RST   $08                       ;[3E9B] 
     LD    B,$08                     ;[3E9C] 
-    CALL  $3EAA                     ;[3E9E] 
+    CALL  SUB_FLAGS                 ;[3E9E] 
     CALL  $3EB6                     ;[3EA1] 
     LD    A,$1E                     ;[3EA4] 
     RST   $08                       ;[3EA6] 
-    JP    $3CB7                     ;[3EA7] 
+    JP    SUB_PRINT_CR              ;[3EA7] 
+
+SUB_FLAGS:
     LD    A,(DE)                    ;[3EAA] Display the flags.
     LD    L,A                       ;[3EAB] 
     INC   DE                        ;[3EAC] 
@@ -8182,7 +8208,7 @@ MONITOR_X:
     LD    H,A                       ;[3EAE] 
     INC   DE                        ;[3EAF] 
     CALL  LYNX_DISPLAY_HL           ;[3EB0] 
-    DJNZ  $3EAA                     ;[3EB3] 
+    DJNZ  SUB_FLAGS                 ;[3EB3] 
     RET                             ;[3EB5] 
 
     LD    A,($619A)                 ;[3EB6] 
