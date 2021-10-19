@@ -3818,18 +3818,21 @@ LYNX_KEY:
     POP   HL                        ;[203A] 
     RET                             ;[203B] 
 
+SUB_PUTCHAR:
     LD    C,A                       ;[203C] Display character.
-    LD    A,(SYSVAR_OTYPE)          ;[203D] 
+    LD    A,(SYSVAR_OTYPE)          ;[203D] Check LINK status
     PUSH  BC                        ;[2040] 
     PUSH  AF                        ;[2041] 
     AND   $81                       ;[2042] 
-    JR    Z,$204F                   ;[2044] 
+    JR    Z,SUB_LPUTCHAR            ;[2044] 
     LD    A,C                       ;[2046] 
     LD    HL,(SYSVAR_PRINTD)        ;[2047] 
-    LD    BC,$204F                  ;[204A] 
+    LD    BC,SUB_LPUTCHAR           ;[204A] 
     PUSH  BC                        ;[204D] 
     JP    (HL)                      ;[204E] 
-    POP   AF                        ;[204F] 
+
+SUB_LPUTCHAR:
+    POP   AF                        ;[204F] Link ON Putchar
     POP   BC                        ;[2050] 
     AND   $82                       ;[2051] 
     RET   Z                         ;[2053] 
@@ -4465,7 +4468,7 @@ BASIC_COM_NEXT:
     RET                             ;[2422] 
 
     LD    BC,$0005                  ;[2423] 
-    LD    DE,$62E4                  ;[2426] 
+    LD    DE,SYSVAR_WRA2+$04        ;[2426] 
     LDDR                            ;[2429] 
     RET                             ;[242B] 
 
@@ -6106,7 +6109,7 @@ VALIDATE_DIM:
     AND   $7F                       ;[2E9C] 
     ADD   A,$81                     ;[2E9E] 
     RET   Z                         ;[2EA0] 
-    LD    HL,$62E9                  ;[2EA1] 
+    LD    HL,SYSVAR_WRA1+$04        ;[2EA1] 
     LD    A,(HL)                    ;[2EA4] 
     CP    $50                       ;[2EA5] 
     LD    (HL),$00                  ;[2EA7] 
@@ -6903,7 +6906,7 @@ LYNX_INTFP:
     PUSH  BC                        ;[34D7] 
     PUSH  HL                        ;[34D8] 
     LD    B,$04                     ;[34D9] 
-    LD    HL,$62E9                  ;[34DB] 
+    LD    HL,SYSVAR_WRA1+$04        ;[34DB] 
     LD    A,(HL)                    ;[34DE] 
     ADC   A,(HL)                    ;[34DF] 
     DAA                             ;[34E0] 
@@ -6973,7 +6976,7 @@ LYNX_OUTPUT_SPACE:
     PUSH  AF                        ;[352F] Output character in A to the screen.
     PUSH  HL                        ;[3530] 
     PUSH  BC                        ;[3531] 
-    CALL  $203C                     ;[3532] 
+    CALL  SUB_PUTCHAR               ;[3532] 
     POP   BC                        ;[3535] 
     POP   HL                        ;[3536] 
     POP   AF                        ;[3537] 
@@ -7137,7 +7140,7 @@ DATA_PI:
     XOR   A                         ;[3656] 
     PUSH  HL                        ;[3657] 
     PUSH  BC                        ;[3658] 
-    LD    HL,$62E9                  ;[3659] 
+    LD    HL,SYSVAR_WRA1+$04        ;[3659] 
     CALL  $3662                     ;[365C] 
     POP   BC                        ;[365F] 
     POP   HL                        ;[3660] 
@@ -7180,8 +7183,8 @@ LYNX_AD:
     CALL  SUB_PLUS                  ;[369E] 
     JP    $359A                     ;[36A1] 
     OR    A                         ;[36A4] 
-    LD    DE,$62E9                  ;[36A5] 
-    LD    HL,$62E4                  ;[36A8] 
+    LD    DE,SYSVAR_WRA1+$04        ;[36A5] 
+    LD    HL,SYSVAR_WRA2+$04        ;[36A8] 
     LD    B,$04                     ;[36AB] 
     LD    A,(DE)                    ;[36AD] 
     SBC   A,(HL)                    ;[36AE] 
@@ -7194,8 +7197,8 @@ LYNX_AD:
 
 SUB_PLUS:
     OR    A                         ;[36B6] Called from Plus sign routine.
-    LD    DE,$62E9                  ;[36B7] 
-    LD    HL,$62E4                  ;[36BA] 
+    LD    DE,SYSVAR_WRA1+$04        ;[36B7] 
+    LD    HL,SYSVAR_WRA2+$04        ;[36BA] 
     LD    B,$04                     ;[36BD] 
     LD    A,(DE)                    ;[36BF] 
     ADC   A,(HL)                    ;[36C0] 
@@ -7237,7 +7240,7 @@ LYNX_MLT:
     LD    HL,$62D5                  ;[36FF] 
     LD    B,$0C                     ;[3702] 
     CALL  $3512                     ;[3704] 
-    LD    DE,$62E4                  ;[3707] 
+    LD    DE,SYSVAR_WRA2+$04        ;[3707] 
     LD    HL,$62DC                  ;[370A] 
     LD    B,$04                     ;[370D] 
     PUSH  BC                        ;[370F] 
@@ -7312,7 +7315,7 @@ SUB_MULTIPLY2:
     PUSH  IX                        ;[376E] 
     LD    IX,$62D3                  ;[3770] 
     LD    (IX+$00),$00              ;[3774] 
-    LD    HL,$62E9                  ;[3778] 
+    LD    HL,SYSVAR_WRA1+$04        ;[3778] 
     LD    B,$04                     ;[377B] 
     PUSH  BC                        ;[377D] 
     PUSH  HL                        ;[377E] 
@@ -7396,7 +7399,7 @@ LYNX_DIV:
     LD    C,$00                     ;[3808] 
     CALL  $3844                     ;[380A] 
     JR    C,$381D                   ;[380D] 
-    LD    HL,$62E4                  ;[380F] 
+    LD    HL,SYSVAR_WRA2+$04        ;[380F] 
     LD    DE,$62DC                  ;[3812] 
     LD    B,$08                     ;[3815] 
     CALL  $36AD                     ;[3817] 
@@ -7486,7 +7489,7 @@ SUB_MULTI_DIV:
     LD    A,(SYSVAR_WRA2+$03)       ;[38A1] 
     OR    A                         ;[38A4] 
     RET   NZ                        ;[38A5] 
-    LD    A,($62E4)                 ;[38A6] 
+    LD    A,(SYSVAR_WRA2+$04)       ;[38A6] 
     OR    A                         ;[38A9] 
     RET                             ;[38AA] 
 
@@ -7499,7 +7502,7 @@ SUB_MULTIPLY:
     RRCA                            ;[38B7] 
     RRCA                            ;[38B8] 
     RRCA                            ;[38B9] 
-    LD    HL,$62E9                  ;[38BA] 
+    LD    HL,SYSVAR_WRA1+$04        ;[38BA] 
     LD    B,$04                     ;[38BD] 
     LD    D,$00                     ;[38BF] 
     PUSH  BC                        ;[38C1] 
