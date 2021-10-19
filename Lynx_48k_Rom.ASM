@@ -254,6 +254,7 @@ INIT_CRT:
     LD    B,$10                     ;[0041] 
     LD    HL,DATA_CRT               ;[0043] 
     XOR   A                         ;[0046] 
+INIT_CRT1:
     OUT   ($86),A                   ;[0047] 
     EX    AF,AF'                    ;[0049] 
     LD    A,(HL)                    ;[004A] 
@@ -261,7 +262,7 @@ INIT_CRT:
     EX    AF,AF'                    ;[004D] 
     INC   A                         ;[004E] 
     INC   HL                        ;[004F] 
-    DJNZ  $0047                     ;[0050] 
+    DJNZ  INIT_CRT1                 ;[0050] 
     JP    LYNX_MAIN                 ;[0052] 
     NOP                             ;[0055] 
 
@@ -276,12 +277,13 @@ LYNX_INBLUE:
     LD    A,$E8                     ;[0069] Reads byte in red/blue bank at HL into L, and H=0. 
     EX    AF,AF'                    ;[006B] 
     LD    A,$63                     ;[006C] 
-    JR    $0075                     ;[006E] 
+    JR    LYNX_INBANK               ;[006E] 
 
 LYNX_INGREEN:
     LD    A,$E4                     ;[0070] Reads byte in green/alternative green bank at HL into L, and H=0. 
     EX    AF,AF'                    ;[0072] 
     LD    A,$65                     ;[0073] 
+LYNX_INBANK:
     LD    BC,$FF7F                  ;[0075] 
     OUT   (C),A                     ;[0078] 
     LD    A,$40                     ;[007A] 
@@ -308,28 +310,32 @@ LYNX_INGREEN:
     SBC   A,B                       ;[0097] 
     RET   PE                        ;[0098] 
     RET   Z                         ;[0099] 
+
+LYNX_OUTCHAR:
     PUSH  HL                        ;[009A] Character Output Routine
     LD    HL,(SYSVAR_BPERL)         ;[009B] 
     BIT   6,L                       ;[009E] 
     POP   HL                        ;[00A0] 
-    JP    Z,$00C2                   ;[00A1] 
+    JP    Z,LYNX_OUTCHAR2           ;[00A1] 
     PUSH  AF                        ;[00A4] 
-    CALL  $00C2                     ;[00A5] 
+    CALL  LYNX_OUTCHAR2             ;[00A5] 
     LD    A,$20                     ;[00A8] 
-    CALL  $00B8                     ;[00AA] 
+    CALL  LYNX_OUTCHAR1             ;[00AA] 
     POP   AF                        ;[00AD] 
     PUSH  AF                        ;[00AE] 
-    CALL  $00C2                     ;[00AF] 
+    CALL  LYNX_OUTCHAR2             ;[00AF] 
     XOR   A                         ;[00B2] 
-    CALL  $00B8                     ;[00B3] 
+    CALL  LYNX_OUTCHAR1             ;[00B3] 
     POP   AF                        ;[00B6] 
     RET                             ;[00B7] 
 
+LYNX_OUTCHAR1:
     LD    (SYSVAR_BLUBNK),A         ;[00B8] 
     LD    (SYSVAR_REDBNK),A         ;[00BB] 
     LD    (SYSVAR_GRNBNK),A         ;[00BE] 
     RET                             ;[00C1] 
 
+LYNX_OUTCHAR2:
     PUSH  AF                        ;[00C2] 
     PUSH  HL                        ;[00C3] 
     PUSH  DE                        ;[00C4] 
@@ -344,8 +350,9 @@ LYNX_INGREEN:
 LYNX_FONT:
     LD    HL,(SYSVAR_CHRTBL)        ;[00CE] Gives address of bit map of character 
     BIT   7,A                       ;[00D1] 
-    JR    Z,$00D8                   ;[00D3] 
+    JR    Z,LYNX_FONT1              ;[00D3] 
     LD    HL,(SYSVAR_GPHTBL)        ;[00D5] 
+LYNX_FONT1:
     AND   $7F                       ;[00D8] 
     PUSH  HL                        ;[00DA] 
     LD    L,A                       ;[00DB] 
@@ -659,30 +666,37 @@ DATA_CHARS:
     defb 0x00,0x00,0x00,0x00,0x18,0x18,0x00,0x00        ;[068C]  ........
     defb 0x00,0x00,0x00,0x00                            ;[0694]  ........
 
+LYNX_PRINTD1:
     LD    (SYSVAR_INKST),A          ;[0698] Output routine.
+LYNX_PRINTD2:
     LD    (HL),$00                  ;[069B] 
-    JR    $06C9                     ;[069D] 
+    JR    LYNX_PRINTD_END           ;[069D] 
+LYNX_PRINTD3:
     LD    (SYSVAR_PAPST),A          ;[069F] 
-    JR    $069B                     ;[06A2] 
-    PUSH  AF                        ;[06A4] 
+    JR    LYNX_PRINTD2              ;[06A2] 
+
+LYNX_PRINTD:
+    PUSH  AF                        ;[06A4] Display Driver
     PUSH  HL                        ;[06A5] 
     PUSH  DE                        ;[06A6] 
     PUSH  BC                        ;[06A7] 
     LD    HL,SYSVAR_LASTDSP         ;[06A8] 
     DEC   (HL)                      ;[06AB] 
-    JR    Z,$0698                   ;[06AC] 
+    JR    Z,LYNX_PRINTD1            ;[06AC] 
     DEC   (HL)                      ;[06AE] 
-    JR    Z,$069F                   ;[06AF] 
+    JR    Z,LYNX_PRINTD3            ;[06AF] 
     LD    (HL),A                    ;[06B1] 
     CP    $20                       ;[06B2] 
-    JR    C,$06CE                   ;[06B4] 
+    JR    C,LYNX_OUTB_OR_VDU        ;[06B4] 
     CALL  SYSVAR_VIDEO              ;[06B6] 
     CALL  $0746                     ;[06B9] 
     LD    (SYSVAR_CURSORX),DE       ;[06BC] 
+LYNX_PRINTD4:
     LD    A,(SYSVAR_CURSTAT)        ;[06C0] 
     OR    A                         ;[06C3] 
     LD    A,$5F                     ;[06C4] 
     CALL  NZ,SYSVAR_VIDEO           ;[06C6] 
+LYNX_PRINTD_END:
     POP   BC                        ;[06C9] 
     POP   DE                        ;[06CA] 
     POP   HL                        ;[06CB] 
@@ -691,13 +705,14 @@ DATA_CHARS:
 VDU1_VDU2:
     RET                             ;[06CD] VDU 1 Changes INK to specified colour; VDU 2 Changes PAPER to specified colour
 
+LYNX_OUTB_OR_VDU:
     PUSH  AF                        ;[06CE] Special/normal character routine
     LD    A,(SYSVAR_CURSTAT)        ;[06CF] 
     OR    A                         ;[06D2] 
     LD    A,$20                     ;[06D3] 
-    CALL  NZ,SYSVAR_VIDEO           ;[06D5] 
+    CALL  NZ,SYSVAR_VIDEO           ;[06D5] Outputs character in A to current cursor position.
     POP   AF                        ;[06D8] 
-    LD    HL,$06C0                  ;[06D9] 
+    LD    HL,LYNX_PRINTD4           ;[06D9] 
     PUSH  HL                        ;[06DC] 
     LD    HL,DATA_VDU_ROUTINES      ;[06DD] 
     RLCA                            ;[06E0] 
@@ -787,20 +802,21 @@ VDU_13_31:
 VDU_10:
     LD    DE,(SYSVAR_CURSORX)       ;[077E] Line feed (moves cursor down 10 pixel lines)
     CALL  $0754                     ;[0782] 
-    JR    $07E1                     ;[0785] 
+    JR    VDU_22A                   ;[0785] 
 
 VDU_6:
     LD    C,$01                     ;[0787] Moves cursor down one pixel
-    JR    $078D                     ;[0789] 
+    JR    VDU_29A                   ;[0789] 
 
 VDU_29:
     LD    C,$03                     ;[078B] Moves cursor down 3 pixels
+VDU_29A:
     LD    DE,(SYSVAR_CURSORX)       ;[078D] 
     LD    HL,($6258)                ;[0791] 
     LD    A,D                       ;[0794] 
     ADD   A,C                       ;[0795] 
     CALL  $075D                     ;[0796] 
-    JR    $07E1                     ;[0799] 
+    JR    VDU_22A                   ;[0799] 
 
 LYNX_CURSOR_LEFT:
     LD    A,(SYSVAR_WINDST)         ;[079B] Move cursor to left hand column of the WINDOW.
@@ -835,6 +851,7 @@ VDU_30:
     DEC   A                         ;[07C4] 
     LD    HL,(SYSVAR_CURSORX)       ;[07C5] 
     PUSH  HL                        ;[07C8] 
+VDU_30A:
     LD    (SYSVAR_CURSORX),HL       ;[07C9] 
     PUSH  HL                        ;[07CC] 
     PUSH  AF                        ;[07CD] 
@@ -846,12 +863,13 @@ VDU_30:
     INC   L                         ;[07D6] 
     INC   L                         ;[07D7] 
     CP    L                         ;[07D8] 
-    JR    NC,$07C9                  ;[07D9] 
+    JR    NC,VDU_30A                ;[07D9] 
     POP   DE                        ;[07DB] 
-    JR    $07E1                     ;[07DC] 
+    JR    VDU_22A                   ;[07DC] 
 
 VDU_22:
     CALL  SUB_BACKSPACE             ;[07DE] Backspace cursor
+VDU_22A:
     LD    (SYSVAR_CURSORX),DE       ;[07E1] 
     RET                             ;[07E5] 
 
@@ -860,11 +878,12 @@ SUB_BACKSPACE:
     LD    DE,(SYSVAR_CURSORX)       ;[07E9] 
     DEC   L                         ;[07ED] 
     LD    B,$03                     ;[07EE] 
+SUB_BACKSPACE1:
     DEC   E                         ;[07F0] 
     LD    A,E                       ;[07F1] 
     CP    L                         ;[07F2] 
     JR    Z,$07F8                   ;[07F3] 
-    DJNZ  $07F0                     ;[07F5] 
+    DJNZ  SUB_BACKSPACE1            ;[07F5] 
     RET                             ;[07F7] 
 
     LD    E,H                       ;[07F8] 
@@ -885,16 +904,17 @@ SUB_BACKSPACE:
 
 VDU_5:
     LD    C,$01                     ;[080C] Moves cursor up one pixel
-    JR    $0812                     ;[080E] 
+    JR    VDU_28A                   ;[080E] 
 
 VDU_28:
     LD    C,$03                     ;[0810] Moves cursor up 3 pixels 
+VDU_28A:
     LD    DE,(SYSVAR_CURSORX)       ;[0812] 
     LD    HL,($6258)                ;[0816] 
     LD    A,D                       ;[0819] 
     SUB   C                         ;[081A] 
     CALL  $0802                     ;[081B] 
-    JR    $07E1                     ;[081E] 
+    JR    VDU_22A                   ;[081E] 
 
 VDU_8:
     CALL  VDU_22                    ;[0820] Backspace and erase character
@@ -903,16 +923,18 @@ VDU_8:
 
 VDU_14:
     LD    A,$01                     ;[0828] Turns cursor on
+VDU_14A:
     LD    (SYSVAR_CURSTAT),A        ;[082A] 
     RET                             ;[082D] 
 
 VDU_15:
     XOR   A                         ;[082E] Turns cursor off
-    JR    $082A                     ;[082F] 
+    JR    VDU_14A                   ;[082F] 
 
 BASIC_COM_WINDOW:
     LD    B,$04                     ;[0831] WINDOW routine.
     LD    HL,SYSVAR_WINDST          ;[0833] 
+BASIC_COM_WINDOW1:
     PUSH  HL                        ;[0836] 
     PUSH  BC                        ;[0837] 
     CALL  SUB_ARGUMENT              ;[0838] 
@@ -922,7 +944,7 @@ BASIC_COM_WINDOW:
     POP   HL                        ;[083E] 
     LD    (HL),A                    ;[083F] 
     INC   HL                        ;[0840] 
-    DJNZ  $0836                     ;[0841] 
+    DJNZ  BASIC_COM_WINDOW1         ;[0841] 
     RET                             ;[0843] 
 
     EXX                             ;[0844] A routine to decide which bits need to be set. Used in the output of characters to the screen.
@@ -948,6 +970,7 @@ BASIC_COM_WINDOW:
     LD    D,A                       ;[085C] 
     RET                             ;[085D] 
 
+LYNX_OUTB:
     EXX                             ;[085E] via OUTB - outputs byte with data in A, mask in C and relative displacement from top left in HL. Uses colour selected by INK and PAPER.
     EX    AF,AF'                    ;[085F] 
     PUSH  AF                        ;[0860] 
@@ -962,12 +985,13 @@ BASIC_COM_WINDOW:
     CALL  $0844                     ;[086B] Output a byte to vdu ram.
     LD    A,(SYSVAR_PROTST)         ;[086E] 
     RRCA                            ;[0871] 
-    JR    C,$0880                   ;[0872] 
+    JR    C,LYNX_OUTB1              ;[0872] 
     LD    A,$E8                     ;[0874] 
     EX    AF,AF'                    ;[0876] 
     LD    A,$63                     ;[0877] 
     LD    BC,(SYSVAR_BLUBNK)        ;[0879] 
     CALL  $08B6                     ;[087D] 
+LYNX_OUTB1:
     POP   DE                        ;[0880] 
     PUSH  DE                        ;[0881] 
     CALL  $0844                     ;[0882] 
@@ -1294,7 +1318,7 @@ DATA_KEYBOARD:
     defb 0x3C,0x3F,0x6B,0x5F,0x70,0x6C,0x3E,0x3F        ;[0B06]  <?k_pl>?
     defb 0x2B,0x3D,0x60,0x5E,0x3F                       ;[0B0E]  l>?+=`^?
 
-    LD    HL,($082A)                ;[0B13] Find word in a list.
+    LD    HL,(VDU_14A)              ;[0B13] Find word in a list.
     LD    A,A                       ;[0B16] 
     LD    D,$0D                     ;[0B17] 
     LD    HL,($3A0C)                ;[0B19] 
@@ -1654,7 +1678,7 @@ DATA_TAPE:
 
 VDU_12:
     CALL  $0746                     ;[0DC5] Moves cursor one character block to the right
-    JP    $07E1                     ;[0DC8] 
+    JP    VDU_22A                   ;[0DC8] 
     LD    HL,$9FF8                  ;[0DCB] All set to FF ie not used.
     LD    DE,$BFF8                  ;[0DCE] 
     LD    A,(DE)                    ;[0DD1] 
@@ -3685,6 +3709,7 @@ LYNX_POP_A_RSTACK:
 
 SUB_LINK_ON:
     LD    C,$02                     ;[1F5E] LLIST subroutine: 'LINK ON'.
+SUB_LINK_SET:
     LD    A,(SYSVAR_OTYPE)          ;[1F60] 
     AND   $80                       ;[1F63] 
     OR    C                         ;[1F65] 
@@ -3693,7 +3718,7 @@ SUB_LINK_ON:
 
 SUB_LINK_OFF:
     LD    C,$01                     ;[1F6A] LLIST subroutine: "LINK OFF".
-    JR    $1F60                     ;[1F6C] 
+    JR    SUB_LINK_SET              ;[1F6C] 
 
 LYNX_ZERO_MEM:
     CALL  $25CA                     ;[1F6E] Called from MAIN routine. Zeros memory etc.
@@ -6973,6 +6998,8 @@ LYNX_OUTPUT_SPACE:
     PUSH  AF                        ;[352A] Output a space
     LD    A,$20                     ;[352B] 
     JR    $3530                     ;[352D] 
+
+LYNX_OUTPUT_CHAR:
     PUSH  AF                        ;[352F] Output character in A to the screen.
     PUSH  HL                        ;[3530] 
     PUSH  BC                        ;[3531] 
@@ -6987,7 +7014,7 @@ LYNX_PLINE:
     INC   HL                        ;[353A] 
     OR    A                         ;[353B] 
     RET   Z                         ;[353C] 
-    CALL  $352F                     ;[353D] 
+    CALL  LYNX_OUTPUT_CHAR          ;[353D] 
     JR    LYNX_PLINE                ;[3540] 
 
 LYNX_SWAP:
