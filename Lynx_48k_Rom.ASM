@@ -349,8 +349,8 @@ LYNX_OUTCHAR2:
 LYNX_FONT:
     LD    HL,(SYSVAR_CHRTBL)        ;[00CE] Gives address of bit map of character 
     BIT   7,A                       ;[00D1] 
-    JR    Z,LYNX_FONT1              ;[00D3] 
-    LD    HL,(SYSVAR_GPHTBL)        ;[00D5] 
+    JR    Z,LYNX_FONT1              ;[00D3] < 128 ? Alpha chars
+    LD    HL,(SYSVAR_GPHTBL)        ;[00D5] > 127 ? Graphic chars
 LYNX_FONT1:
     AND   $7F                       ;[00D8] 
     PUSH  HL                        ;[00DA] 
@@ -1329,14 +1329,13 @@ DATA_KEYBOARD:
     defb 0x66,0x26,0x79,0x68,0x20,0x6E,0x62,0x27        ;[0AF6]  f&yh.nb'
     defb 0x28,0x75,0x6D,0x3F,0x6A,0x29,0x69,0x6F        ;[0AFE]  (um?j)io
     defb 0x3C,0x3F,0x6B,0x5F,0x70,0x6C,0x3E,0x3F        ;[0B06]  <?k_pl>?
-    defb 0x2B,0x3D,0x60,0x5E,0x3F                       ;[0B0E]  l>?+=`^?
+    defb 0x2B,0x3D,0x60,0x5E,0x3F,0x2A,0x2A,0x08        ;[0B0E]  +=`^?**.
+    defb 0x7F,0x16,0x0D,0x2A,0x0C                       ;[0B16]  **....*.
 
-    LD    HL,(VDU_14A)              ;[0B13] Find word in a list.
-    LD    A,A                       ;[0B16] 
-    LD    D,$0D                     ;[0B17] 
-    LD    HL,($3A0C)                ;[0B19] 
-    LD    ($B762),A                 ;[0B1C] 
-    JR    NZ,$0B49                  ;[0B1F] 
+LYNX_KEYB1:
+    LD    A,(SYSVAR_KSMS+$01)       ;[0B1B] Find word in a list. (SYSVAR/LYNX_KEYB)
+    OR    A,A                       ;[0B1E] 
+    JP    NZ,LYNX_KEYB2             ;[0B1F] 
     CALL  LYNX_KEYDVR               ;[0B21] 
     CALL  LYNX_ESC                  ;[0B24] 
     RET   NZ                        ;[0B27] 
@@ -1354,12 +1353,13 @@ DATA_KEYBOARD:
     LD    HL,(SYSVAR_XTTBL)         ;[0B3A] 
     INC   A                         ;[0B3D] 
     LD    B,A                       ;[0B3E] 
-    CALL  $1893                     ;[0B3F] 
+    CALL  SUB_WORD_LIST1            ;[0B3F] 
     LD    (SYSVAR_KSMS),HL          ;[0B42] 
     LD    A,(HL)                    ;[0B45] 
     RES   7,A                       ;[0B46] 
     RET                             ;[0B48] 
 
+LYNX_KEYB2:
     LD    HL,(SYSVAR_KSMS)          ;[0B49] 
     INC   HL                        ;[0B4C] 
     LD    (SYSVAR_KSMS),HL          ;[0B4D] 
@@ -1367,14 +1367,15 @@ DATA_KEYBOARD:
     BIT   7,A                       ;[0B51] 
     RET   Z                         ;[0B53] 
     XOR   A                         ;[0B54] 
-    LD    ($6232),A                 ;[0B55] 
+    LD    (SYSVAR_KSMS+$01),A       ;[0B55] 
     LD    A,$20                     ;[0B58] 
     RET                             ;[0B5A] 
 
-    PUSH  HL                        ;[0B5B] Scan for a key.
+LYNX_KEYB:
+    PUSH  HL                        ;[0B5B] Scan for a key. (SYSVAR_KEYB)
     PUSH  BC                        ;[0B5C] 
     PUSH  DE                        ;[0B5D] 
-    CALL  $0B1B                     ;[0B5E] 
+    CALL  LYNX_KEYB1                ;[0B5E] 
     POP   DE                        ;[0B61] 
     POP   BC                        ;[0B62] 
     POP   HL                        ;[0B63] 
@@ -2736,10 +2737,12 @@ SUB_WORD_LIST:
     LD    B,A                       ;[188E] 
     LD    HL,(SYSVAR_TTBL)          ;[188F] 
     DEC   HL                        ;[1892] 
+
+SUB_WORD_LIST1:
     INC   HL                        ;[1893] Loop down a list of words to find an address.
     BIT   7,(HL)                    ;[1894] 
-    JR    Z,$1893                   ;[1896] 
-    DJNZ  $1893                     ;[1898] 
+    JR    Z,SUB_WORD_LIST1          ;[1896] 
+    DJNZ  SUB_WORD_LIST1            ;[1898] 
     RET                             ;[189A] 
 
 SUB_LINE_ANALYSIS8:
@@ -5108,7 +5111,7 @@ SUB_PRINT_KEYWORD:
     LD    HL,(SYSVAR_XTTBL)         ;[27D5] 
     LD    B,A                       ;[27D8] 
     INC   B                         ;[27D9] 
-    CALL  $1893                     ;[27DA] 
+    CALL  SUB_WORD_LIST1            ;[27DA] 
     CALL  $1870                     ;[27DD] 
     CALL  LYNX_OUTPUT_SPACE         ;[27E0] 
     INC   DE                        ;[27E3] 
