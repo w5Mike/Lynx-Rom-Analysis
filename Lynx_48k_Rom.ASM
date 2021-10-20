@@ -229,7 +229,7 @@ RST_20H:
     CALL  ERR_SYNTAX                ;[0025] 
 
 RST_28H:
-    JP    $2059                     ;[0028] Evaluates reverse polish expression pointed to by DE in floating point in WRA1 (working register area 1). 
+    JP    SUB_CHK_EXP_EVAL          ;[0028] Evaluates reverse polish expression pointed to by DE in floating point in WRA1 (working register area 1). 
     NOP                             ;[002B] 
     NOP                             ;[002C] 
     NOP                             ;[002D] 
@@ -297,15 +297,16 @@ LYNX_INBANK:
     LD    H,A                       ;[0087] 
     RET                             ;[0088] 
 
-    PUSH  BC                        ;[0089] I don't think that this is used.
+LYNX_KBD_TEST:
+    PUSH  BC                        ;[0089] Used by keyboard driver
     LD    BC,$0500                  ;[008A] 
-    CALL  $0A70                     ;[008D] 
+    CALL  LYNX_KEYRPT_WAIT          ;[008D] 
     POP   BC                        ;[0090] 
     IN    A,(C)                     ;[0091] 
     CPL                             ;[0093] 
     RET                             ;[0094] 
 
-    AND   (HL)                      ;[0095] 
+    AND   (HL)                      ;[0095] Probably unused
     LD    B,B                       ;[0096] 
     SBC   A,B                       ;[0097] 
     RET   PE                        ;[0098] 
@@ -1180,7 +1181,7 @@ TEST_ESCAPE:
     LD    (HL),E                    ;[09B1] 
     AND   E                         ;[09B2] 
     RET   Z                         ;[09B3] 
-    CALL  $0089                     ;[09B4] 
+    CALL  LYNX_KBD_TEST             ;[09B4] 
     AND   $40                       ;[09B7] 
     RET   Z                         ;[09B9] 
     LD    A,$1B                     ;[09BA] 
@@ -1193,107 +1194,121 @@ LYNX_KEYDVR:
     XOR   A                         ;[09C0] 
     LD    (SYSVAR_STATUS),A         ;[09C1] 
     CALL  TEST_ESCAPE               ;[09C4] 
-    JR    NZ,$0A41                  ;[09C7] 
+    JR    NZ,LYNX_KEYDVR_END        ;[09C7] 
     LD    C,$80                     ;[09C9] 
     LD    B,$0A                     ;[09CB] 
     LD    HL,SYSVAR_OLDKEY          ;[09CD] 
+LYNX_KEYDVR1:
     DEC   B                         ;[09D0] 
-    JP    M,$0A4E                   ;[09D1] 
+    JP    M,LYNX_KEYRPT             ;[09D1] 
     IN    A,(C)                     ;[09D4] 
     CPL                             ;[09D6] 
     AND   $3F                       ;[09D7] 
     OR    A                         ;[09D9] 
-    JR    Z,$09DF                   ;[09DA] 
+    JR    Z,LYNX_KEYDVR2            ;[09DA] 
     LD    (SYSVAR_STATUS),A         ;[09DC] 
+LYNX_KEYDVR2:
     LD    E,A                       ;[09DF] 
     XOR   (HL)                      ;[09E0] 
     LD    (HL),E                    ;[09E1] 
     AND   E                         ;[09E2] 
     INC   HL                        ;[09E3] 
-    JR    Z,$09D0                   ;[09E4] 
+    JR    Z,LYNX_KEYDVR1            ;[09E4] 
     LD    C,E                       ;[09E6] 
     PUSH  BC                        ;[09E7] 
     LD    C,$FF                     ;[09E8] 
+LYNX_KEYDVR3:
     INC   C                         ;[09EA] 
     RRCA                            ;[09EB] 
-    JR    NC,$09EA                  ;[09EC] 
+    JR    NC,LYNX_KEYDVR3           ;[09EC] 
     LD    A,B                       ;[09EE] 
     RLCA                            ;[09EF] 
     ADD   A,B                       ;[09F0] 
     RLCA                            ;[09F1] 
     ADD   A,C                       ;[09F2] 
     LD    E,A                       ;[09F3] 
-    LD    HL,DATA_KEYBOARD          ;[09F4] 
+    LD    HL,DATA_KEYBOARD          ;[09F4] Choose upper case (default)
     LD    BC,$0080                  ;[09F7] 
     IN    A,(C)                     ;[09FA] 
     RLCA                            ;[09FC] 
-    JR    C,$0A02                   ;[09FD] 
-    LD    HL,$0ADF                  ;[09FF] 
+    JR    C,LYNX_KEYDVR4            ;[09FD] 
+    LD    HL,$0ADF                  ;[09FF] Choose lower case
+LYNX_KEYDVR4:
     LD    B,$02                     ;[0A02] 
     IN    A,(C)                     ;[0A04] 
     BIT   6,A                       ;[0A06] 
-    JR    NZ,$0A0D                  ;[0A08] 
-    LD    HL,$0AB2                  ;[0A0A] 
+    JR    NZ,LYNX_KEYDVR5           ;[0A08] 
+    LD    HL,$0AB2                  ;[0A0A] Choose special?
+LYNX_KEYDVR5:
     LD    D,$00                     ;[0A0D] 
     ADD   HL,DE                     ;[0A0F] 
     POP   DE                        ;[0A10] 
     LD    B,D                       ;[0A11] 
-    CALL  $0089                     ;[0A12] 
+    CALL  LYNX_KBD_TEST             ;[0A12] 
     AND   $3F                       ;[0A15] 
     XOR   E                         ;[0A17] 
-    JR    NZ,$0A40                  ;[0A18] 
+    JR    NZ,LYNX_KEYDVR_END0       ;[0A18] 
     LD    A,(HL)                    ;[0A1A] 
     LD    HL,SYSVAR_SHLKT           ;[0A1B] 
     BIT   0,(HL)                    ;[0A1E] 
-    CALL  NZ,$0A45                  ;[0A20] 
+    CALL  NZ,LYNX_SHLKT0            ;[0A20] 
     BIT   1,(HL)                    ;[0A23] 
-    CALL  NZ,$0A4B                  ;[0A25] 
+    CALL  NZ,LYNX_SHLKT1            ;[0A25] 
     LD    (SYSVAR_LASTK),A          ;[0A28] 
     LD    C,$02                     ;[0A2B] 
     CP    $03                       ;[0A2D] 
-    JR    Z,$0A3B                   ;[0A2F] 
+    JR    Z,LYNX_KEYDVR6            ;[0A2F] 
     CP    $83                       ;[0A31] 
-    JR    Z,$0A3B                   ;[0A33] 
+    JR    Z,LYNX_KEYDVR6            ;[0A33] 
     LD    C,$01                     ;[0A35] 
     CP    $00                       ;[0A37] 
-    JR    NZ,$0A41                  ;[0A39] 
+    JR    NZ,LYNX_KEYDVR_END        ;[0A39] 
+LYNX_KEYDVR6:
     LD    A,(SYSVAR_SHLKT)          ;[0A3B] 
     XOR   C                         ;[0A3E] 
     LD    (HL),A                    ;[0A3F] 
+LYNX_KEYDVR_END0:
     XOR   A                         ;[0A40] 
+LYNX_KEYDVR_END:
     POP   DE                        ;[0A41] 
     POP   BC                        ;[0A42] 
     POP   HL                        ;[0A43] 
     RET                             ;[0A44] 
 
-    CP    $40                       ;[0A45] 
+LYNX_SHLKT0:
+    CP    $40                       ;[0A45] If SHLKT bit zero is set
     RET   C                         ;[0A47] 
     XOR   $20                       ;[0A48] 
     RET                             ;[0A4A] 
 
-    XOR   $80                       ;[0A4B] 
+LYNX_SHLKT1:
+    XOR   $80                       ;[0A4B] If SHLKT bit one is set
     RET                             ;[0A4D] 
 
-    LD    A,(SYSVAR_STATUS)         ;[0A4E] 
+LYNX_KEYRPT:
+    LD    A,(SYSVAR_STATUS)         ;[0A4E] Handle repeat keys (probably)
     OR    A                         ;[0A51] 
     LD    HL,(SYSVAR_RPTDLY)        ;[0A52] 
-    JR    Z,$0A5F                   ;[0A55] 
+    JR    Z,LYNX_KEYRPT1            ;[0A55] 
     LD    HL,(SYSVAR_RPT)           ;[0A57] 
     DEC   HL                        ;[0A5A] 
     LD    A,H                       ;[0A5B] 
     OR    L                         ;[0A5C] 
-    JR    Z,$0A65                   ;[0A5D] 
+    JR    Z,LYNX_KEYRPT2            ;[0A5D] 
+LYNX_KEYRPT1:
     LD    (SYSVAR_RPT),HL           ;[0A5F] 
     XOR   A                         ;[0A62] 
-    JR    $0A41                     ;[0A63] 
+    JR    LYNX_KEYDVR_END           ;[0A63] 
+LYNX_KEYRPT2:
     LD    BC,$1000                  ;[0A65] 
-    CALL  $0A70                     ;[0A68] 
+    CALL  LYNX_KEYRPT_WAIT          ;[0A68] 
     LD    A,(SYSVAR_LASTK)          ;[0A6B] 
-    JR    $0A41                     ;[0A6E] 
+    JR    LYNX_KEYDVR_END           ;[0A6E] 
+LYNX_KEYRPT_WAIT:
     DEC   BC                        ;[0A70] 
     LD    A,B                       ;[0A71] 
     OR    C                         ;[0A72] 
-    JR    NZ,$0A70                  ;[0A73] 
+    JR    NZ,LYNX_KEYRPT_WAIT       ;[0A73] 
     RET                             ;[0A75] 
 
 DATA_KEYBOARD:
@@ -1442,7 +1457,7 @@ BASIC_COM_SAVE:
     JR    Z,$0BED                   ;[0BD6] 
     POP   HL                        ;[0BD8] 
     INC   DE                        ;[0BD9] 
-    CALL  $2059                     ;[0BDA] 
+    CALL  SUB_CHK_EXP_EVAL          ;[0BDA] 
     CALL  LYNX_FNDLN                ;[0BDD] 
     JR    NZ,SUB_SAVE               ;[0BE0] 
     PUSH  IX                        ;[0BE2] 
@@ -3864,6 +3879,8 @@ SUB_LPUTCHAR:
     LD    A,C                       ;[2054] 
     LD    HL,(SYSVAR_LPRNTD)        ;[2055] 
     JP    (HL)                      ;[2058] 
+
+SUB_CHK_EXP_EVAL:
     LD    A,(DE)                    ;[2059] Check and then evaluate an expression.
     RST   $20                       ;[205A] 
     LD    A,L                       ;[205B] 
