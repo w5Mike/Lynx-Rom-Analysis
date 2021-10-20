@@ -200,9 +200,9 @@ START:
 
 RST_8H:
     JP    LYNX_PUTCHAR              ;[0008] Output character in the A register
-    JR    NZ,$0059                  ;[000B] 
-    JR    NC,$0040                  ;[000D] 
-    INC   (HL)                      ;[000F] 
+
+DATA_L014:
+    defb 0x20,0x4C,0x30,0x31,0x34                       ;[000B]  ..5.L014
 
 RST_10H:
     LD    A,(DE)                    ;[0010] Checks if the character at the address pointed to by DE is " "; if so, increments DE until it is not a space.
@@ -214,11 +214,9 @@ RST_10H:
 
 RST_18H:
     JP    SUB_ARGUMENT              ;[0018] Evaluates the reverse polish expression pointed to by DE as a binary integer in HL. 
-    LD    D,E                       ;[001B] 
-    LD    (HL),L                    ;[001C] 
-    LD    (HL),E                    ;[001D] 
-    LD    A,C                       ;[001E] 
-    NOP                             ;[001F] 
+
+DATA_SUSY:
+    defb 0x53,0x75,0x73,0x79,0x00                       ;[001B]  .c#Susy.
 
 RST_20H:
     EX    (SP),HL                   ;[0020] Checks if the byte after RST is the same as A; if it is not, displays a syntax error. 
@@ -803,7 +801,7 @@ VDU_13_31:
 VDU_10:
     LD    DE,(SYSVAR_CURSORX)       ;[077E] Line feed (moves cursor down 10 pixel lines)
     CALL  $0754                     ;[0782] 
-    JR    VDU_22A                   ;[0785] 
+    JR    SAVE_CURSORX              ;[0785] 
 
 VDU_6:
     LD    C,$01                     ;[0787] Moves cursor down one pixel
@@ -817,7 +815,7 @@ VDU_29A:
     LD    A,D                       ;[0794] 
     ADD   A,C                       ;[0795] 
     CALL  $075D                     ;[0796] 
-    JR    VDU_22A                   ;[0799] 
+    JR    SAVE_CURSORX              ;[0799] 
 
 LYNX_CURSOR_LEFT:
     LD    A,(SYSVAR_WINDST)         ;[079B] Move cursor to left hand column of the WINDOW.
@@ -866,11 +864,11 @@ VDU_30A:
     CP    L                         ;[07D8] 
     JR    NC,VDU_30A                ;[07D9] 
     POP   DE                        ;[07DB] 
-    JR    VDU_22A                   ;[07DC] 
+    JR    SAVE_CURSORX              ;[07DC] 
 
 VDU_22:
     CALL  SUB_BACKSPACE             ;[07DE] Backspace cursor
-VDU_22A:
+SAVE_CURSORX:
     LD    (SYSVAR_CURSORX),DE       ;[07E1] 
     RET                             ;[07E5] 
 
@@ -915,7 +913,7 @@ VDU_28A:
     LD    A,D                       ;[0819] 
     SUB   C                         ;[081A] 
     CALL  $0802                     ;[081B] 
-    JR    VDU_22A                   ;[081E] 
+    JR    SAVE_CURSORX              ;[081E] 
 
 VDU_8:
     CALL  VDU_22                    ;[0820] Backspace and erase character
@@ -1693,7 +1691,7 @@ DATA_TAPE:
 
 VDU_12:
     CALL  $0746                     ;[0DC5] Moves cursor one character block to the right
-    JP    VDU_22A                   ;[0DC8] 
+    JP    SAVE_CURSORX              ;[0DC8] 
     LD    HL,$9FF8                  ;[0DCB] All set to FF ie not used.
     LD    DE,$BFF8                  ;[0DCE] 
     LD    A,(DE)                    ;[0DD1] 
