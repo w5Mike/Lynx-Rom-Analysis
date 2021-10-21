@@ -339,7 +339,7 @@ LYNX_VIDEO2:
     PUSH  HL                        ;[00C3] 
     PUSH  DE                        ;[00C4] 
     PUSH  BC                        ;[00C5] 
-    CALL  $00E7                     ;[00C6] 
+    CALL  LYNX_VIDEO_POS            ;[00C6] 
     POP   BC                        ;[00C9] 
     POP   DE                        ;[00CA] 
     POP   HL                        ;[00CB] 
@@ -366,15 +366,17 @@ LYNX_FONT1:
     ADD   HL,DE                     ;[00E5] 
     RET                             ;[00E6] 
 
-    CALL  LYNX_FONT                 ;[00E7] Output bytes to screen.
+LYNX_VIDEO_POS:
+    CALL  LYNX_FONT                 ;[00E7] Locate location for character on screen
     EX    DE,HL                     ;[00EA] 
     LD    HL,(SYSVAR_CURSORY)       ;[00EB] 
     LD    H,$00                     ;[00EE] 
     LD    A,(SYSVAR_BPERL)          ;[00F0] 
     SRL   A                         ;[00F3] 
+LYNX_VIDEO_POS5:
     ADD   HL,HL                     ;[00F5] 
     SRL   A                         ;[00F6] 
-    JR    NZ,$00F5                  ;[00F8] 
+    JR    NZ,LYNX_VIDEO_POS5        ;[00F8] 
     LD    A,(SYSVAR_CURSORX)        ;[00FA] 
     RRCA                            ;[00FD] 
     RRCA                            ;[00FE] 
@@ -384,29 +386,36 @@ LYNX_FONT1:
     ADD   HL,BC                     ;[0104] 
     LD    A,(SYSVAR_CURSORX)        ;[0105] 
     AND   $03                       ;[0108] 
-    JR    Z,$0117                   ;[010A] 
+    JR    Z,LYNX_VIDEO_POS1         ;[010A] 
     DEC   A                         ;[010C] 
-    JR    Z,$0114                   ;[010D] 
+    JR    Z,LYNX_VIDEO_POS2         ;[010D] 
     DEC   A                         ;[010F] 
-    JR    Z,$0125                   ;[0110] 
-    JR    $011A                     ;[0112] 
-    JP    $014B                     ;[0114] 
-    JP    $0130                     ;[0117] 
+    JR    Z,LYNX_VIDEO_POS3         ;[0110] 
+    JR    LYNX_VIDEO_POS4           ;[0112] 
+LYNX_VIDEO_POS2:
+    JP    LYNX_VIDEO_XPOS2          ;[0114] 
+LYNX_VIDEO_POS1:
+    JP    LYNX_VIDEO_XPOS1          ;[0117] 
+LYNX_VIDEO_POS4:
     PUSH  HL                        ;[011A] 
     PUSH  DE                        ;[011B] 
-    CALL  $0181                     ;[011C] 
+    CALL  LYNX_VIDEO_XPOS4          ;[011C] 
     POP   DE                        ;[011F] 
     POP   HL                        ;[0120] 
     INC   HL                        ;[0121] 
-    JP    $0164                     ;[0122] 
+    JP    LYNX_VIDEO_XPOS4B         ;[0122] 
+LYNX_VIDEO_POS3:
     PUSH  HL                        ;[0125] 
     PUSH  DE                        ;[0126] 
-    CALL  $01B9                     ;[0127] 
+    CALL  LYNX_VIDEO_XPOS3          ;[0127] 
     POP   DE                        ;[012A] 
     POP   HL                        ;[012B] 
     INC   HL                        ;[012C] 
-    JP    $019E                     ;[012D] 
-    LD    B,$0A                     ;[0130] 
+    JP    LYNX_VIDEO_XPOS3B         ;[012D] 
+
+LYNX_VIDEO_XPOS1:
+    LD    B,$0A                     ;[0130] First of four screen position routines (see Nilug 1)
+LYNX_VIDEO_XPOS1A:
     PUSH  BC                        ;[0132] 
     LD    A,(SYSVAR_MASK)           ;[0133] 
     OR    $03                       ;[0136] 
@@ -420,10 +429,12 @@ LYNX_FONT1:
     ADD   HL,BC                     ;[0145] 
     INC   DE                        ;[0146] 
     POP   BC                        ;[0147] 
-    DJNZ  $0132                     ;[0148] 
+    DJNZ  LYNX_VIDEO_XPOS1A         ;[0148] 
     RET                             ;[014A] 
 
-    LD    B,$0A                     ;[014B] 
+LYNX_VIDEO_XPOS2:
+    LD    B,$0A                     ;[014B] Second of four screen position routines (see Nilug 1)
+LYNX_VIDEO_XPOS2A:
     PUSH  BC                        ;[014D] 
     LD    A,(SYSVAR_MASK)           ;[014E] 
     OR    $C0                       ;[0151] 
@@ -435,9 +446,10 @@ LYNX_FONT1:
     ADD   HL,BC                     ;[015E] 
     INC   DE                        ;[015F] 
     POP   BC                        ;[0160] 
-    DJNZ  $014D                     ;[0161] 
+    DJNZ  LYNX_VIDEO_XPOS2A         ;[0161] 
     RET                             ;[0163] 
 
+LYNX_VIDEO_XPOS4B:
     LD    B,$0A                     ;[0164] 
     PUSH  BC                        ;[0166] 
     LD    A,(SYSVAR_MASK)           ;[0167] 
@@ -457,7 +469,9 @@ LYNX_FONT1:
     DJNZ  $0166                     ;[017E] 
     RET                             ;[0180] 
 
-    LD    B,$0A                     ;[0181] 
+LYNX_VIDEO_XPOS4:
+    LD    B,$0A                     ;[0181] Fourth of four screen position routines (see Nilug 1)
+LYNX_VIDEO_XPOS4A:
     PUSH  BC                        ;[0183] 
     LD    A,(SYSVAR_MASK)           ;[0184] 
     OR    $FC                       ;[0187] 
@@ -473,9 +487,10 @@ LYNX_FONT1:
     ADD   HL,BC                     ;[0198] 
     INC   DE                        ;[0199] 
     POP   BC                        ;[019A] 
-    DJNZ  $0183                     ;[019B] 
+    DJNZ  LYNX_VIDEO_XPOS4A         ;[019B] 
     RET                             ;[019D] 
 
+LYNX_VIDEO_XPOS3B:
     LD    B,$0A                     ;[019E] 
     PUSH  BC                        ;[01A0] 
     LD    A,(SYSVAR_MASK)           ;[01A1] 
@@ -493,7 +508,9 @@ LYNX_FONT1:
     DJNZ  $01A0                     ;[01B6] 
     RET                             ;[01B8] 
 
-    LD    B,$0A                     ;[01B9] 
+LYNX_VIDEO_XPOS3:
+    LD    B,$0A                     ;[01B9] Third of four screen position routines (see Nilug 1)
+LYNX_VIDEO_XPOS3A:
     PUSH  BC                        ;[01BB] 
     LD    A,(SYSVAR_MASK)           ;[01BC] 
     OR    $F0                       ;[01BF] 
@@ -507,7 +524,7 @@ LYNX_FONT1:
     ADD   HL,BC                     ;[01CE] 
     INC   DE                        ;[01CF] 
     POP   BC                        ;[01D0] 
-    DJNZ  $01BB                     ;[01D1] 
+    DJNZ  LYNX_VIDEO_XPOS3A         ;[01D1] 
     RET                             ;[01D3] 
 
 DATA_CHARS:
