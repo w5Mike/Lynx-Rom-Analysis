@@ -451,6 +451,7 @@ LYNX_VIDEO_XPOS2A:
 
 LYNX_VIDEO_XPOS4B:
     LD    B,$0A                     ;[0164] 
+LYNX_VIDEO_XPOS4C:
     PUSH  BC                        ;[0166] 
     LD    A,(SYSVAR_MASK)           ;[0167] 
     OR    $0F                       ;[016A] 
@@ -466,7 +467,7 @@ LYNX_VIDEO_XPOS4B:
     ADD   HL,BC                     ;[017B] 
     INC   DE                        ;[017C] 
     POP   BC                        ;[017D] 
-    DJNZ  $0166                     ;[017E] 
+    DJNZ  LYNX_VIDEO_XPOS4C         ;[017E] 
     RET                             ;[0180] 
 
 LYNX_VIDEO_XPOS4:
@@ -492,6 +493,7 @@ LYNX_VIDEO_XPOS4A:
 
 LYNX_VIDEO_XPOS3B:
     LD    B,$0A                     ;[019E] 
+LYNX_VIDEO_XPOS3C:
     PUSH  BC                        ;[01A0] 
     LD    A,(SYSVAR_MASK)           ;[01A1] 
     OR    $3F                       ;[01A4] 
@@ -505,7 +507,7 @@ LYNX_VIDEO_XPOS3B:
     ADD   HL,BC                     ;[01B3] 
     INC   DE                        ;[01B4] 
     POP   BC                        ;[01B5] 
-    DJNZ  $01A0                     ;[01B6] 
+    DJNZ  LYNX_VIDEO_XPOS3C         ;[01B6] 
     RET                             ;[01B8] 
 
 LYNX_VIDEO_XPOS3:
@@ -782,7 +784,7 @@ VDU_18:
     CP    H                         ;[0751] 
     RET   C                         ;[0752] 
     LD    E,L                       ;[0753] 
-    LD    HL,($6258)                ;[0754] 
+    LD    HL,(SYSVAR_WINDST+$02)    ;[0754] 
     LD    A,D                       ;[0757] 
     CALL  SYSVAR_SLFRAM             ;[0758] 
     ADD   A,$0A                     ;[075B] 
@@ -799,7 +801,7 @@ VDU_23:
     CALL  LYNX_CURSOR_LEFT          ;[0765] Homes cursor (takes cursor inside of window)
 
 VDU_16:
-    LD    A,($6258)                 ;[0768] Moves cursor to top of screen
+    LD    A,(SYSVAR_WINDST+$02)     ;[0768] Moves cursor to top of screen
     LD    (SYSVAR_CURSORY),A        ;[076B] 
     RET                             ;[076E] 
 
@@ -828,7 +830,7 @@ VDU_29:
     LD    C,$03                     ;[078B] Moves cursor down 3 pixels
 VDU_29A:
     LD    DE,(SYSVAR_CURSORX)       ;[078D] 
-    LD    HL,($6258)                ;[0791] 
+    LD    HL,(SYSVAR_WINDST+$02)    ;[0791] 
     LD    A,D                       ;[0794] 
     ADD   A,C                       ;[0795] 
     CALL  $075D                     ;[0796] 
@@ -906,7 +908,7 @@ SUB_BACKSPACE1:
     DEC   E                         ;[07F9] 
     DEC   E                         ;[07FA] 
     DEC   E                         ;[07FB] 
-    LD    HL,($6258)                ;[07FC] 
+    LD    HL,(SYSVAR_WINDST+$02)    ;[07FC] 
     LD    A,D                       ;[07FF] 
     SUB   $0A                       ;[0800] 
     LD    D,A                       ;[0802] 
@@ -926,7 +928,7 @@ VDU_28:
     LD    C,$03                     ;[0810] Moves cursor up 3 pixels 
 VDU_28A:
     LD    DE,(SYSVAR_CURSORX)       ;[0812] 
-    LD    HL,($6258)                ;[0816] 
+    LD    HL,(SYSVAR_WINDST+$02)    ;[0816] 
     LD    A,D                       ;[0819] 
     SUB   C                         ;[081A] 
     CALL  $0802                     ;[081B] 
