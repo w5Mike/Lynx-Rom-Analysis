@@ -178,7 +178,7 @@ SYSVAR_PROCST   EQU $62EF    ; Pointer to first DEFPROC.
 SYSVAR_EDST     EQU $62F1    ; EDIT buffer driver. 
 SYSVAR_AUTOST   EQU $62F3    ; Auto line number, increment. 
 SYSVAR_PRTBUF   EQU $62FD    ; Used during printing number. 
-SYSVAR_POLBUFS  EQU $6301    ; Internal language buffer. 
+SYSVAR_POLBUFS  EQU $6307    ; Internal language buffer. 
 SYSVAR_STRBUF   EQU $6407    ; String calculation buffer. 
 SYSVAR_CSTACK   EQU $6507    ; Calculator stack. 
 SYSVAR_RSTACKS  EQU $6607    ; Return stack. 
@@ -310,31 +310,31 @@ LYNX_KBD_TEST:
     RET   PE                        ;[0098] 
     RET   Z                         ;[0099] 
 
-LYNX_OUTCHAR:
+LYNX_VIDEO:
     PUSH  HL                        ;[009A] Character Output Routine
     LD    HL,(SYSVAR_BPERL)         ;[009B] 
     BIT   6,L                       ;[009E] 
     POP   HL                        ;[00A0] 
-    JP    Z,LYNX_OUTCHAR2           ;[00A1] 
+    JP    Z,LYNX_VIDEO2             ;[00A1] 
     PUSH  AF                        ;[00A4] 
-    CALL  LYNX_OUTCHAR2             ;[00A5] 
+    CALL  LYNX_VIDEO2               ;[00A5] 
     LD    A,$20                     ;[00A8] 
-    CALL  LYNX_OUTCHAR1             ;[00AA] 
+    CALL  LYNX_VIDEO1               ;[00AA] 
     POP   AF                        ;[00AD] 
     PUSH  AF                        ;[00AE] 
-    CALL  LYNX_OUTCHAR2             ;[00AF] 
+    CALL  LYNX_VIDEO2               ;[00AF] 
     XOR   A                         ;[00B2] 
-    CALL  LYNX_OUTCHAR1             ;[00B3] 
+    CALL  LYNX_VIDEO1               ;[00B3] 
     POP   AF                        ;[00B6] 
     RET                             ;[00B7] 
 
-LYNX_OUTCHAR1:
+LYNX_VIDEO1:
     LD    (SYSVAR_BLUBNK),A         ;[00B8] 
     LD    (SYSVAR_REDBNK),A         ;[00BB] 
     LD    (SYSVAR_GRNBNK),A         ;[00BE] 
     RET                             ;[00C1] 
 
-LYNX_OUTCHAR2:
+LYNX_VIDEO2:
     PUSH  AF                        ;[00C2] 
     PUSH  HL                        ;[00C3] 
     PUSH  DE                        ;[00C4] 
@@ -1586,6 +1586,8 @@ BASIC_COM_LOAD:
     JP    $24C5                     ;[0CCB] 
     CALL  LYNX_MOTOFF               ;[0CCE] Escape route for read bit routine.
     JP    $38E8                     ;[0CD1] 
+
+LYNX_RBIT:
     LD    BC,$0080                  ;[0CD4] Read bit routine.
     LD    D,$00                     ;[0CD7] 
     IN    E,(C)                     ;[0CD9] 
@@ -1636,6 +1638,7 @@ DATA_CASTBL:
     defb 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00        ;[0D59]  ........
     defb 0x00,0x00,0x00,0x00,0x00,0x00                  ;[0D61]  ........
 
+LYNX_WBYTE:
     PUSH  AF                        ;[0D67] Write byte to tape.
     PUSH  HL                        ;[0D68] 
     PUSH  DE                        ;[0D69] 
@@ -2231,7 +2234,9 @@ LYNX_DISPLAY_BUFFER:
 
     LD    (HL),$0D                  ;[10DE] 
     JR    $10FF                     ;[10E0] 
-    CALL  $10CC                     ;[10E2] 
+
+LYNX_LINP:
+    CALL  $10CC                     ;[10E2] Line input routine.
     LD    A,$0F                     ;[10E5] 
     RST   $08                       ;[10E7] 
     CALL  $1066                     ;[10E8] 
@@ -2782,7 +2787,9 @@ SUB_LINE_ANALYSIS8:
     JR    $18CD                     ;[18D2] 
     PUSH  AF                        ;[18D4] 
     JP    (IX)                      ;[18D5] 
-    XOR   A                         ;[18D7] 
+
+LYNX_PP:
+    XOR   A                         ;[18D7] Print a polish expression
     PUSH  AF                        ;[18D8] 
     LD    IY,SYSVAR_SYNL            ;[18D9] 
     LD    A,(DE)                    ;[18DD] 
@@ -2907,7 +2914,9 @@ SUB_BASIC_WORD:
     INC   (IX+$02)                  ;[19B6] 
     LD    A,$01                     ;[19B9] 
     JP    $19D1                     ;[19BB] 
-    XOR   A                         ;[19BE] 
+
+LYNX_NTP:
+    XOR   A                         ;[19BE] Normal to internal language conversion routine.
     PUSH  AF                        ;[19BF] 
     LD    IX,SYSVAR_SYNL            ;[19C0] 
     LD    (IX+$00),$04              ;[19C4] 
@@ -4618,7 +4627,9 @@ BASIC_COM_LINK:
     LD    HL,$0000                  ;[24DC] 
     LD    (SYSVAR_CONTLP),HL        ;[24DF] 
     JP    $38E8                     ;[24E2] 
-    PUSH  IX                        ;[24E5] 
+
+LYNX_DEBUG:
+    PUSH  IX                        ;[24E5] SPEED and TRACE routines.
     PUSH  AF                        ;[24E7] 
     BIT   0,A                       ;[24E8] 
     CALL  NZ,$24F6                  ;[24EA] 
@@ -5117,7 +5128,7 @@ SUB_PRINT_KEYWORD:
     INC   DE                        ;[27E3] 
     RET                             ;[27E4] 
 
-SUB_DISP_BAS_LINE:
+LYNX_DBASLN:
     PUSH  IX                        ;[27E5] Display coded line. Pointed to from 62B2.
     POP   HL                        ;[27E7] 
     PUSH  HL                        ;[27E8] 
@@ -5942,7 +5953,8 @@ BASIC_FN_ASC:
     POP   IX                        ;[2D59] 
     RET                             ;[2D5B] 
 
-    LD    A,(DE)                    ;[2D5C] 
+LYNX_VRPTS:
+    LD    A,(DE)                    ;[2D5C] String variable pointer routine.
     INC   DE                        ;[2D5D] 
     INC   DE                        ;[2D5E] 
     LD    C,A                       ;[2D5F] 
@@ -6778,7 +6790,9 @@ SUB_ANGLE:
     JR    $33AD                     ;[33A1] 
     CALL  $3377                     ;[33A3] 
     JP    $33AD                     ;[33A6] 
-    LD    IY,SYSVAR_CSTACK          ;[33A9] 
+
+LYNX_EE:
+    LD    IY,SYSVAR_CSTACK          ;[33A9] Evaluate expression.
     LD    A,(DE)                    ;[33AD] 
     INC   DE                        ;[33AE] 
     CP    $79                       ;[33AF] 
