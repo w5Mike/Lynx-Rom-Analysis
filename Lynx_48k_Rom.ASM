@@ -1002,33 +1002,35 @@ LYNX_OUTB:
     LD    A,(SYSVAR_PROTST)         ;[086E] 
     RRCA                            ;[0871] 
     JR    C,LYNX_OUTB1              ;[0872] 
-    LD    A,$E8                     ;[0874] 
+    LD    A,$E8                     ;[0874] BLUE Bank: A=E8 A'=63 BC=8000
     EX    AF,AF'                    ;[0876] 
     LD    A,$63                     ;[0877] 
     LD    BC,(SYSVAR_BLUBNK)        ;[0879] 
-    CALL  $08B6                     ;[087D] 
+    CALL  LYNX_OUT_TO_BANK          ;[087D] 
 LYNX_OUTB1:
     POP   DE                        ;[0880] 
     PUSH  DE                        ;[0881] 
     CALL  $0844                     ;[0882] 
     LD    A,(SYSVAR_PROTST)         ;[0885] 
     BIT   1,A                       ;[0888] 
-    JR    NZ,$0898                  ;[088A] 
-    LD    A,$E8                     ;[088C] 
+    JR    NZ,LYNX_OUTB2             ;[088A] 
+    LD    A,$E8                     ;[088C] RED Bank: A=E8 A'=63 BC=C000
     EX    AF,AF'                    ;[088E] 
     LD    A,$63                     ;[088F] 
     LD    BC,(SYSVAR_REDBNK)        ;[0891] 
-    CALL  $08B6                     ;[0895] 
+    CALL  LYNX_OUT_TO_BANK          ;[0895] 
+LYNX_OUTB2:
     POP   DE                        ;[0898] 
     CALL  $0844                     ;[0899] 
     LD    A,(SYSVAR_PROTST)         ;[089C] 
     BIT   2,A                       ;[089F] 
-    JR    NZ,$08AF                  ;[08A1] 
-    LD    A,$E4                     ;[08A3] 
+    JR    NZ,LYNX_OUTB_END          ;[08A1] 
+    LD    A,$E4                     ;[08A3] GREEN Bank: A=E4 A'=65 BC=C000
     EX    AF,AF'                    ;[08A5] 
     LD    A,$65                     ;[08A6] 
     LD    BC,(SYSVAR_GRNBNK)        ;[08A8] 
-    CALL  $08B6                     ;[08AC] 
+    CALL  LYNX_OUT_TO_BANK          ;[08AC] 
+LYNX_OUTB_END:
     POP   DE                        ;[08AF] 
     EXX                             ;[08B0] 
     POP   HL                        ;[08B1] 
@@ -1037,6 +1039,7 @@ LYNX_OUTB1:
     EX    AF,AF'                    ;[08B4] 
     RET                             ;[08B5] 
 
+LYNX_OUT_TO_BANK:
     PUSH  HL                        ;[08B6] 
     ADD   HL,BC                     ;[08B7] 
     LD    BC,$FF7F                  ;[08B8] 
