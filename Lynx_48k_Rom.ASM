@@ -1335,7 +1335,7 @@ DATA_KEYBOARD:
 LYNX_KEYB1:
     LD    A,(SYSVAR_KSMS+$01)       ;[0B1B] Find word in a list. (SYSVAR/LYNX_KEYB)
     OR    A,A                       ;[0B1E] 
-    JP    NZ,LYNX_KEYB2             ;[0B1F] 
+    JR    NZ,LYNX_KEYB2             ;[0B1F] 
     CALL  LYNX_KEYDVR               ;[0B21] 
     CALL  LYNX_ESC                  ;[0B24] 
     RET   NZ                        ;[0B27] 
