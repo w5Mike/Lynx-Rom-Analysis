@@ -1328,10 +1328,11 @@ LYNX_BEEP_LOOP:
 ;
 LYNX_DELAY:
     PUSH  DE                        ;[0978] 
+LYNX_DELAY_LOOP:
     DEC   E                         ;[0979] 
-    JR    NZ,$0979                  ;[097A] 
+    JR    NZ,LYNX_DELAY_LOOP        ;[097A] 
     DEC   D                         ;[097C] 
-    JR    NZ,$0979                  ;[097D] 
+    JR    NZ,LYNX_DELAY_LOOP        ;[097D] 
     POP   DE                        ;[097F] 
     RET                             ;[0980] 
 
@@ -1609,14 +1610,17 @@ LYNX_RSYNC:
     CALL  LYNX_MOTON                ;[0B6B] 
     LD    A,$20                     ;[0B6E] 
     OUT   ($87),A                   ;[0B70] 
+LYNX_RSYNC_LOOP40:
     LD    B,$28                     ;[0B72] 
+LYNX_RSYNC_RBYTE:
     CALL  LYNX_RBYTE                ;[0B74] 
     OR    A                         ;[0B77] 
-    JR    NZ,$0B72                  ;[0B78] 
-    DJNZ  $0B74                     ;[0B7A] 
+    JR    NZ,LYNX_RSYNC_LOOP40      ;[0B78] Repeat until A is zero
+    DJNZ  LYNX_RSYNC_RBYTE          ;[0B7A] 
+LYNX_RSYNC_FIND_A5:
     CALL  SYSVAR_RBIT               ;[0B7C] 
     CP    $A5                       ;[0B7F] 
-    JR    NZ,$0B7C                  ;[0B81] 
+    JR    NZ,LYNX_RSYNC_FIND_A5     ;[0B81] 
     POP   BC                        ;[0B83] 
     RET                             ;[0B84] 
 
@@ -1627,10 +1631,11 @@ LYNX_RBYTE:
     PUSH  BC                        ;[0B85] 
     PUSH  DE                        ;[0B86] 
     LD    B,$08                     ;[0B87] 
+LYNX_RBYTE_BIT:
     PUSH  BC                        ;[0B89] 
     CALL  SYSVAR_RBIT               ;[0B8A] 
     POP   BC                        ;[0B8D] 
-    DJNZ  $0B89                     ;[0B8E] 
+    DJNZ  LYNX_RBYTE_BIT            ;[0B8E] 
     POP   DE                        ;[0B90] 
     POP   BC                        ;[0B91] 
     RET                             ;[0B92] 
@@ -1677,7 +1682,7 @@ SUB_SAVE:
     CALL  ERR_NOT_FOUND             ;[0BC8] 
 
 ;
-; SAVE routine.
+; SAVE  BASIC command.
 ;
 BASIC_COM_SAVE:
     CALL  $0BB4                     ;[0BCB] 
@@ -1727,6 +1732,11 @@ BASIC_COM_SAVE:
     CALL  SYSVAR_WBYTE              ;[0C1D] 
     CALL  SYSVAR_WBYTE              ;[0C20] 
     JP    LYNX_MOTOFF               ;[0C23] 
+
+;
+; Called by LOAD, VERIFY, APPEND (reads file name/header?)
+;
+LYNX_TAPE_READ:
     INC   DE                        ;[0C26] 
     PUSH  DE                        ;[0C27] 
     LD    HL,$6000                  ;[0C28] 
@@ -1758,41 +1768,46 @@ BASIC_COM_SAVE:
     RET                             ;[0C59] 
 
 ;
-; VERIFY.
+; VERIFY BASIC command.
 ;
 BASIC_COM_VERIFY:
-    CALL  $0C26                     ;[0C5A] 
+    CALL  LYNX_TAPE_READ            ;[0C5A] 
     LD    HL,(SYSVAR_SOB)           ;[0C5D] 
     CALL  LYNX_RSYNC                ;[0C60] 
     CALL  LYNX_RBYTE                ;[0C63] 
     CP    $42                       ;[0C66] 
-    JR    NZ,$0C81                  ;[0C68] 
+    JR    NZ,VERIFY_ERROR_EXIT      ;[0C68] 
     CALL  LYNX_RBYTE                ;[0C6A] 
     LD    C,A                       ;[0C6D] 
     CALL  LYNX_RBYTE                ;[0C6E] 
     LD    B,A                       ;[0C71] 
+VERIFY_READ_NEXT:
     CALL  LYNX_RBYTE                ;[0C72] 
     CP    (HL)                      ;[0C75] 
     INC   HL                        ;[0C76] 
-    JR    NZ,$0C81                  ;[0C77] 
+    JR    NZ,VERIFY_ERROR_EXIT      ;[0C77] 
     DEC   BC                        ;[0C79] 
     LD    A,B                       ;[0C7A] 
     OR    C                         ;[0C7B] 
-    JR    NZ,$0C72                  ;[0C7C] 
+    JR    NZ,VERIFY_READ_NEXT       ;[0C7C] 
     JP    LYNX_MOTOFF               ;[0C7E] 
+VERIFY_ERROR_EXIT:
     CALL  LYNX_MOTOFF               ;[0C81] 
     JP    ERR_BAD_TAPE              ;[0C84] 
 
 ;
-; APPEND.
+; APPEND BASIC command.
 ;
 BASIC_COM_APPEND:
-    CALL  $0C26                     ;[0C87] 
+    CALL  LYNX_TAPE_READ            ;[0C87] 
     LD    HL,(SYSVAR_EOB)           ;[0C8A] 
     JR    $0C95                     ;[0C8D] 
 
+;
+; LOAD BASIC command.
+;
 BASIC_COM_LOAD:
-    CALL  $0C26                     ;[0C8F] 
+    CALL  LYNX_TAPE_READ            ;[0C8F] 
     LD    HL,(SYSVAR_SOB)           ;[0C92] 
     CALL  LYNX_RSYNC                ;[0C95] 
     CALL  LYNX_RBYTE                ;[0C98] 
@@ -1823,7 +1838,12 @@ BASIC_COM_LOAD:
     CALL  LYNX_ZERO_MEM             ;[0CC6] 
     POP   IX                        ;[0CC9] 
     JP    $24C5                     ;[0CCB] 
-    CALL  LYNX_MOTOFF               ;[0CCE] Escape route for read bit routine.
+
+;
+; Escape route for read bit routine.
+;
+LYNX_RBIT_END:
+    CALL  LYNX_MOTOFF               ;[0CCE] 
     JP    $38E8                     ;[0CD1] 
 
 ;
@@ -1832,15 +1852,17 @@ BASIC_COM_LOAD:
 LYNX_RBIT:
     LD    BC,$0080                  ;[0CD4] 
     LD    D,$00                     ;[0CD7] 
+LYNX_RBIT_LOOP1:
     IN    E,(C)                     ;[0CD9] 
     SRL   E                         ;[0CDB] 
-    JR    C,$0CD9                   ;[0CDD] 
+    JR    C,LYNX_RBIT_LOOP1         ;[0CDD] 
     BIT   5,E                       ;[0CDF] 
-    JR    Z,$0CCE                   ;[0CE1] 
+    JR    Z,LYNX_RBIT_END           ;[0CE1] 
+LYNX_RBIT_LOOP2:
     IN    E,(C)                     ;[0CE3] 
     INC   D                         ;[0CE5] 
     SRL   E                         ;[0CE6] 
-    JR    NC,$0CE3                  ;[0CE8] 
+    JR    NC,LYNX_RBIT_LOOP2        ;[0CE8] 
     LD    E,A                       ;[0CEA] 
     LD    A,(SYSVAR_CASLEV)         ;[0CEB] 
     CP    D                         ;[0CEE] 
@@ -9496,7 +9518,7 @@ MONITOR_P1:
     LD    BC,$00FF                  ;[3F72] 
     LDIR                            ;[3F75] 
     POP   DE                        ;[3F77] 
-    CALL  $0C26                     ;[3F78] 
+    CALL  LYNX_TAPE_READ            ;[3F78] 
     CALL  LYNX_RSYNC                ;[3F7B] 
     CALL  LYNX_RBYTE                ;[3F7E] 
     CP    $4D                       ;[3F81] 
