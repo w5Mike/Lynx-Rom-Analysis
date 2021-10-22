@@ -1601,7 +1601,7 @@ LYNX_KEYB:
     RET                             ;[0B64] 
 
 ;
-; Reads sync from cassette. 
+; Reads sync signal from cassette.
 ;
 LYNX_RSYNC:
     PUSH  BC                        ;[0B65] 
@@ -1615,7 +1615,7 @@ LYNX_RSYNC_LOOP40:
 LYNX_RSYNC_RBYTE:
     CALL  LYNX_RBYTE                ;[0B74] 
     OR    A                         ;[0B77] 
-    JR    NZ,LYNX_RSYNC_LOOP40      ;[0B78] Repeat until A is zero
+    JR    NZ,LYNX_RSYNC_LOOP40      ;[0B78] Repeat until A is zero.
     DJNZ  LYNX_RSYNC_RBYTE          ;[0B7A] 
 LYNX_RSYNC_FIND_A5:
     CALL  SYSVAR_RBIT               ;[0B7C] 
@@ -1641,7 +1641,7 @@ LYNX_RBYTE_BIT:
     RET                             ;[0B92] 
 
 ;
-; Writes sync to cassette. 
+; Writes sync signal to cassette.
 ;
 LYNX_WSYNC:
     PUSH  BC                        ;[0B93] 
@@ -1649,29 +1649,36 @@ LYNX_WSYNC:
     CALL  LYNX_MOTON                ;[0B95] 
     LD    A,$10                     ;[0B98] 
     OUT   ($87),A                   ;[0B9A] 
-    LD    A,(SYSVAR_SYNCLEN)        ;[0B9C] 
+    LD    A,(SYSVAR_SYNCLEN)        ;[0B9C] Sync length is 10,243 (&2803).
     LD    B,A                       ;[0B9F] 
+LYNX_WSYNC1:
     PUSH  BC                        ;[0BA0] 
     LD    B,$00                     ;[0BA1] 
     XOR   A                         ;[0BA3] 
+LYNX_WSYNC2:
     CALL  SYSVAR_WBYTE              ;[0BA4] 
-    DJNZ  $0BA4                     ;[0BA7] 
+    DJNZ  LYNX_WSYNC2               ;[0BA7] 
     POP   BC                        ;[0BA9] 
-    DJNZ  $0BA0                     ;[0BAA] 
-    LD    A,$A5                     ;[0BAC] 
+    DJNZ  LYNX_WSYNC1               ;[0BAA] 
+    LD    A,$A5                     ;[0BAC] Write "A5" byte (marker).
     CALL  SYSVAR_WBYTE              ;[0BAE] 
     POP   AF                        ;[0BB1] 
     POP   BC                        ;[0BB2] 
     RET                             ;[0BB3] 
 
+;
+; Save filename (I think).
+;
+LYNX_WRITE_FNAME:
     CALL  LYNX_WSYNC                ;[0BB4] 
     LD    A,(DE)                    ;[0BB7] 
     CALL  SYSVAR_WBYTE              ;[0BB8] 
-    INC   DE                        ;[0BBB] 
+LYNX_WRITE_FNAME1:
+    INC   DE                        ;[0BBB] Repeat until quote ["] character.
     LD    A,(DE)                    ;[0BBC] 
     CALL  SYSVAR_WBYTE              ;[0BBD] 
     CP    $22                       ;[0BC0] 
-    JR    NZ,$0BBB                  ;[0BC2] 
+    JR    NZ,LYNX_WRITE_FNAME1      ;[0BC2] 
     RET                             ;[0BC4] 
 
 ;
@@ -1682,16 +1689,16 @@ SUB_SAVE:
     CALL  ERR_NOT_FOUND             ;[0BC8] 
 
 ;
-; SAVE  BASIC command.
+; SAVE BASIC command. (DE -> filename?)
 ;
 BASIC_COM_SAVE:
-    CALL  $0BB4                     ;[0BCB] 
+    CALL  LYNX_WRITE_FNAME          ;[0BCB] 
     INC   DE                        ;[0BCE] 
     LD    A,(DE)                    ;[0BCF] 
     LD    HL,$0000                  ;[0BD0] 
     PUSH  HL                        ;[0BD3] 
     CP    $0D                       ;[0BD4] 
-    JR    Z,$0BED                   ;[0BD6] 
+    JR    Z,BASIC_COM_SAVE1         ;[0BD6] 
     POP   HL                        ;[0BD8] 
     INC   DE                        ;[0BD9] 
     CALL  SUB_CHK_EXP_EVAL          ;[0BDA] 
@@ -1703,7 +1710,8 @@ BASIC_COM_SAVE:
     OR    A                         ;[0BE9] 
     SBC   HL,DE                     ;[0BEA] 
     PUSH  HL                        ;[0BEC] 
-    LD    HL,(SYSVAR_EOB)           ;[0BED] 
+BASIC_COM_SAVE1:
+    LD    HL,(SYSVAR_EOB)           ;[0BED] Calculate program length.
     LD    DE,(SYSVAR_SOB)           ;[0BF0] 
     OR    A                         ;[0BF4] 
     SBC   HL,DE                     ;[0BF5] 
@@ -1711,20 +1719,21 @@ BASIC_COM_SAVE:
     PUSH  HL                        ;[0BF8] 
     LD    HL,(SYSVAR_SOB)           ;[0BF9] 
     CALL  LYNX_WSYNC                ;[0BFC] 
-    LD    A,$42                     ;[0BFF] 
+    LD    A,$42                     ;[0BFF] Write letter "B" - chr$($42)
     CALL  SYSVAR_WBYTE              ;[0C01] 
-    POP   BC                        ;[0C04] 
+    POP   BC                        ;[0C04] Write basic program length.
     LD    A,C                       ;[0C05] 
     CALL  SYSVAR_WBYTE              ;[0C06] 
     LD    A,B                       ;[0C09] 
     CALL  SYSVAR_WBYTE              ;[0C0A] 
+BASIC_COM_SAVE2:
     LD    A,(HL)                    ;[0C0D] 
     CALL  SYSVAR_WBYTE              ;[0C0E] 
     INC   HL                        ;[0C11] 
     DEC   BC                        ;[0C12] 
     LD    A,B                       ;[0C13] 
     OR    C                         ;[0C14] 
-    JR    NZ,$0C0D                  ;[0C15] 
+    JR    NZ,BASIC_COM_SAVE2        ;[0C15] 
     POP   HL                        ;[0C17] 
     LD    A,L                       ;[0C18] 
     CALL  SYSVAR_WBYTE              ;[0C19] 
@@ -1734,21 +1743,24 @@ BASIC_COM_SAVE:
     JP    LYNX_MOTOFF               ;[0C23] 
 
 ;
-; Called by LOAD, VERIFY, APPEND (reads file name/header?)
+; Called by LOAD, VERIFY, APPEND (reads filename/header?).
 ;
 LYNX_TAPE_READ:
     INC   DE                        ;[0C26] 
+LYNX_TAPE_READ_NEXT:
     PUSH  DE                        ;[0C27] 
     LD    HL,$6000                  ;[0C28] 
+LYNX_TAPE_FIND_SYNC:
     CALL  LYNX_RSYNC                ;[0C2B] 
     CALL  LYNX_RBYTE                ;[0C2E] 
-    CP    $22                       ;[0C31] 
-    JR    NZ,$0C2B                  ;[0C33] 
+    CP    $22                       ;[0C31] Find quote " character (beginning of filename).
+    JR    NZ,LYNX_TAPE_FIND_SYNC    ;[0C33] 
+LYNX_TAPE_READ_FNAME:
     CALL  LYNX_RBYTE                ;[0C35] 
     LD    (HL),A                    ;[0C38] 
     INC   L                         ;[0C39] 
-    CP    $22                       ;[0C3A] 
-    JR    NZ,$0C35                  ;[0C3C] 
+    CP    $22                       ;[0C3A] Find quote " character (end of filename).
+    JR    NZ,LYNX_TAPE_READ_FNAME   ;[0C3C] 
     POP   DE                        ;[0C3E] 
     PUSH  DE                        ;[0C3F] 
     LD    A,$20                     ;[0C40] 
@@ -1758,13 +1770,13 @@ LYNX_TAPE_READ:
     LD    (HL),$00                  ;[0C46] 
     LD    HL,$6000                  ;[0C48] 
     PUSH  HL                        ;[0C4B] 
-    CALL  LYNX_PLINE                ;[0C4C] 
+    CALL  LYNX_PLINE                ;[0C4C] Display filename.
     DEC   HL                        ;[0C4F] 
     LD    (HL),$0D                  ;[0C50] 
     POP   HL                        ;[0C52] 
-    CALL  $22D3                     ;[0C53] 
+    CALL  LYNX_STRING_CMP           ;[0C53] 
     POP   DE                        ;[0C56] 
-    JR    NZ,$0C27                  ;[0C57] 
+    JR    NZ,LYNX_TAPE_READ_NEXT    ;[0C57] Wrong file, try again.
     RET                             ;[0C59] 
 
 ;
@@ -4876,7 +4888,7 @@ BASIC_COM_GOTO:
     POP   IX                        ;[22BE] 
     POP   DE                        ;[22C0] 
     PUSH  DE                        ;[22C1] 
-    CALL  $22D3                     ;[22C2] 
+    CALL  LYNX_STRING_CMP           ;[22C2] 
     JR    Z,$22CD                   ;[22C5] 
     CALL  LYNX_ADD_LEN_TO_IX        ;[22C7] 
     POP   DE                        ;[22CA] 
@@ -4885,7 +4897,11 @@ BASIC_COM_GOTO:
     LD    (SYSVAR_CURRLP),IX        ;[22CE] 
     RET                             ;[22D2] 
 
-    LD    A,(DE)                    ;[22D3] Compare two strings for compatibility.
+;
+; Compare two strings for compatibility.
+;
+LYNX_STRING_CMP:
+    LD    A,(DE)                    ;[22D3] 
     CP    (HL)                      ;[22D4] 
     RET   NZ                        ;[22D5] 
     CP    $28                       ;[22D6] 
@@ -4894,7 +4910,7 @@ BASIC_COM_GOTO:
     RET   Z                         ;[22DB] 
     INC   HL                        ;[22DC] 
     INC   DE                        ;[22DD] 
-    JR    $22D3                     ;[22DE] 
+    JR    LYNX_STRING_CMP           ;[22DE] 
     LD    IX,(SYSVAR_SOB)           ;[22E0] LIST (in part)
     LD    DE,$FFFF                  ;[22E4] 
     JR    $230A                     ;[22E7] 
@@ -6354,7 +6370,8 @@ BASIC_COM_RENUM:
     RET                             ;[2B1E] 
 
 ;
-; Finds line with number in WRA1. IX points to line and z flag set if found, else IX points to next highest line. 
+; Finds line with number in WRA1. IX points to line and z flag set if found, 
+; else IX points to next highest line.
 ;
 LYNX_FNDLN:
     LD    IX,(SYSVAR_SOB)           ;[2B1F] 
@@ -9444,7 +9461,7 @@ MONITOR_D:
     CALL  SUB_ARGUMENT_3            ;[3EFC] 
     PUSH  HL                        ;[3EFF] 
     CALL  $3F4E                     ;[3F00] 
-    CALL  $0BB4                     ;[3F03] 
+    CALL  LYNX_WRITE_FNAME          ;[3F03] 
     POP   DE                        ;[3F06] 
     POP   HL                        ;[3F07] 
     POP   BC                        ;[3F08] 
