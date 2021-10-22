@@ -878,7 +878,7 @@ VDU_18:
 ; Clears screen and homes cursor
 ;
 VDU_4:
-    CALL  $08E5                     ;[0762] 
+    CALL  LYNX_CLS                  ;[0762] 
 
 ;
 ; Homes cursor (takes cursor inside of window)
@@ -1019,10 +1019,11 @@ SUB_BACKSPACE1:
     DEC   E                         ;[07F0] 
     LD    A,E                       ;[07F1] 
     CP    L                         ;[07F2] 
-    JR    Z,$07F8                   ;[07F3] 
+    JR    Z,SUB_BACKSPACE2          ;[07F3] 
     DJNZ  SUB_BACKSPACE1            ;[07F5] 
     RET                             ;[07F7] 
 
+SUB_BACKSPACE2:
     LD    E,H                       ;[07F8] 
     DEC   E                         ;[07F9] 
     DEC   E                         ;[07FA] 
@@ -1102,31 +1103,38 @@ BASIC_COM_WINDOW1:
     DJNZ  BASIC_COM_WINDOW1         ;[0841] 
     RET                             ;[0843] 
 
-    EXX                             ;[0844] A routine to decide which bits need to be set. Used in the output of characters to the screen.
+;
+; A routine to decide which bits need to be set. Used in the output of characters to the screen.
+;
+LYNX_OUTB_BIT_SET:
+    EXX                             ;[0844] 
     XOR   A                         ;[0845] 
     SRL   H                         ;[0846] 
     ADC   A,A                       ;[0848] 
     SRL   L                         ;[0849] 
     ADC   A,A                       ;[084B] 
     EXX                             ;[084C] 
-    JR    Z,$085C                   ;[084D] 
+    JR    Z,LYNX_OUTB_BIT_SET2      ;[084D] 
     DEC   A                         ;[084F] 
     RET   Z                         ;[0850] 
     DEC   A                         ;[0851] 
-    JR    Z,$0859                   ;[0852] 
+    JR    Z,LYNX_OUTB_BIT_SET1      ;[0852] 
     LD    A,$FF                     ;[0854] 
     XOR   E                         ;[0856] 
     LD    D,A                       ;[0857] 
     RET                             ;[0858] 
 
+LYNX_OUTB_BIT_SET1:
     LD    A,D                       ;[0859] 
     OR    E                         ;[085A] 
     CPL                             ;[085B] 
+LYNX_OUTB_BIT_SET2:
     LD    D,A                       ;[085C] 
     RET                             ;[085D] 
 
 ;
-; via OUTB - outputs byte with data in A, mask in C and relative displacement from top left in HL. Uses colour selected by INK and PAPER.
+; via OUTB - outputs byte with data in A, mask in C and relative displacement 
+; from top left in HL. Uses colour selected by INK and PAPER.
 ;
 LYNX_OUTB:
     EXX                             ;[085E] 
@@ -1140,7 +1148,7 @@ LYNX_OUTB:
     LD    E,C                       ;[0868] 
     LD    D,A                       ;[0869] 
     PUSH  DE                        ;[086A] 
-    CALL  $0844                     ;[086B] Output a byte to vdu ram.
+    CALL  LYNX_OUTB_BIT_SET         ;[086B] Output a byte to vdu ram.
     LD    A,(SYSVAR_PROTST)         ;[086E] 
     RRCA                            ;[0871] 
     JR    C,LYNX_OUTB1              ;[0872] 
@@ -1152,7 +1160,7 @@ LYNX_OUTB:
 LYNX_OUTB1:
     POP   DE                        ;[0880] 
     PUSH  DE                        ;[0881] 
-    CALL  $0844                     ;[0882] 
+    CALL  LYNX_OUTB_BIT_SET         ;[0882] 
     LD    A,(SYSVAR_PROTST)         ;[0885] 
     BIT   1,A                       ;[0888] 
     JR    NZ,LYNX_OUTB2             ;[088A] 
@@ -1163,7 +1171,7 @@ LYNX_OUTB1:
     CALL  LYNX_OUT_TO_BANK          ;[0895] 
 LYNX_OUTB2:
     POP   DE                        ;[0898] 
-    CALL  $0844                     ;[0899] 
+    CALL  LYNX_OUTB_BIT_SET         ;[0899] 
     LD    A,(SYSVAR_PROTST)         ;[089C] 
     BIT   2,A                       ;[089F] 
     JR    NZ,LYNX_OUTB_END          ;[08A1] 
@@ -1214,24 +1222,28 @@ LYNX_OUT_TO_BANK:
     OUT   (C),A                     ;[08E2] 
     RET                             ;[08E4] 
 
-    LD    A,$20                     ;[08E5] Called by clear screen routine.
+;
+; Called by BASIC clear screen routine.
+;
+LYNX_CLS:
+    LD    A,$20                     ;[08E5] 
     OUT   ($80),A                   ;[08E7] 
     LD    DE,(SYSVAR_PAPST)         ;[08E9] 
-    CALL  $0926                     ;[08ED] 
+    CALL  SUB_CLS_COLOUR            ;[08ED] 
     LD    A,(SYSVAR_PROTST)         ;[08F0] 
     RRCA                            ;[08F3] 
     JR    C,$08FE                   ;[08F4] 
     LD    HL,(SYSVAR_BLUBNK)        ;[08F6] 
     LD    A,$23                     ;[08F9] 
     CALL  $08CF                     ;[08FB] 
-    CALL  $0926                     ;[08FE] 
+    CALL  SUB_CLS_COLOUR            ;[08FE] 
     LD    A,(SYSVAR_PROTST)         ;[0901] 
     BIT   1,A                       ;[0904] 
     JR    NZ,$0910                  ;[0906] 
     LD    HL,(SYSVAR_REDBNK)        ;[0908] 
     LD    A,$23                     ;[090B] 
     CALL  $08CF                     ;[090D] 
-    CALL  $0926                     ;[0910] 
+    CALL  SUB_CLS_COLOUR            ;[0910] 
     LD    A,(SYSVAR_PROTST)         ;[0913] 
     BIT   2,A                       ;[0916] 
     JR    NZ,$0922                  ;[0918] 
@@ -1242,7 +1254,11 @@ LYNX_OUT_TO_BANK:
     OUT   ($80),A                   ;[0923] 
     RET                             ;[0925] 
 
-    LD    D,$00                     ;[0926] Returns D set to FF or 00. Used by CLS.
+;
+; Returns D set to FF or 00. Used by CLS.
+;
+SUB_CLS_COLOUR:
+    LD    D,$00                     ;[0926] 
     SRL   E                         ;[0928] 
     RET   NC                        ;[092A] 
     DEC   D                         ;[092B] 
@@ -1257,7 +1273,7 @@ VDU_7:
     LD    BC,$3F84                  ;[0933] 
     LD    A,$01                     ;[0936] 
     OUT   ($80),A                   ;[0938] 
-    JP    $095D                     ;[093A] 
+    JP    LYNX_BEEP_LOOP            ;[093A] 
 
 ;
 ; Basic BEEP routine.
@@ -1287,8 +1303,9 @@ LYNX_BEEP:
     INC   D                         ;[0957] 
     INC   E                         ;[0958] 
     DEC   E                         ;[0959] 
-    JR    NZ,$095D                  ;[095A] 
+    JR    NZ,LYNX_BEEP_LOOP         ;[095A] 
     INC   E                         ;[095C] 
+LYNX_BEEP_LOOP:
     XOR   A                         ;[095D] 
     OUT   (C),B                     ;[095E] 
     CALL  LYNX_DELAY                ;[0960] 
@@ -1303,7 +1320,7 @@ LYNX_BEEP:
     DEC   HL                        ;[0972] 
     LD    A,H                       ;[0973] 
     OR    L                         ;[0974] 
-    JR    NZ,$095D                  ;[0975] 
+    JR    NZ,LYNX_BEEP_LOOP         ;[0975] 
     RET                             ;[0977] 
 
 ;
