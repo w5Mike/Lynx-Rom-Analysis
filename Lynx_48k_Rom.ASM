@@ -133,7 +133,7 @@ SYSVAR_MASK     EQU $6275    ; Mask used by display driver: change with VDU 20/2
 SYSVAR_FLIGHT   EQU $6276    ; Jump to lightpen function. 
 SYSVAR_FJOY     EQU $6279    ; Jump to joystick function. 
 SYSVAR_FUSER0   EQU $627C    ; Jump to USER0 function. 
-SYSVAR_FUSER1   EQU $627F    ; Jump to USER I function. 
+SYSVAR_FUSER1   EQU $627F    ; Jump to USER1 function. 
 SYSVAR_FUSER2   EQU $6282    ; Jump to USER2 function. 
 SYSVAR_FUSER3   EQU $6285    ; Jump to USER3 function. 
 SYSVAR_ERRAM    EQU $6288    ; Called during error. 
@@ -260,7 +260,7 @@ RST_30H:
     NOP                             ;[0037] 
 
 ;
-; Jumps to RAM RSTRAM (see RAM variables). 
+; NOT YET IMPLEMENTED. Jumps to RAM RSTRAM (see RAM variables).
 ;
 RST_38H:
     JP    SYSVAR_RSTRAM             ;[0038] 
@@ -738,7 +738,7 @@ LYNX_PRINTD:
     CP    $20                       ;[06B2] 
     JR    C,LYNX_OUTB_OR_VDU        ;[06B4] 
     CALL  SYSVAR_VIDEO              ;[06B6] 
-    CALL  $0746                     ;[06B9] 
+    CALL  LYNX_CURSOR_RIGHT         ;[06B9] 
     LD    (SYSVAR_CURSORX),DE       ;[06BC] 
 LYNX_PRINTD4:
     LD    A,(SYSVAR_CURSTAT)        ;[06C0] 
@@ -825,7 +825,11 @@ VDU_18:
     LD    (SYSVAR_INKST),HL         ;[0742] 
     RET                             ;[0745] 
 
-    LD    HL,(SYSVAR_WINDST)        ;[0746] Move cursor over 1 character
+;
+; Move cursor over 1 character (to the right)
+;
+LYNX_CURSOR_RIGHT:
+    LD    HL,(SYSVAR_WINDST)        ;[0746] 
     LD    DE,(SYSVAR_CURSORX)       ;[0749] 
     LD    A,E                       ;[074D] 
     ADD   A,$03                     ;[074E] 
@@ -833,10 +837,12 @@ VDU_18:
     CP    H                         ;[0751] 
     RET   C                         ;[0752] 
     LD    E,L                       ;[0753] 
-    LD    HL,(SYSVAR_WINDST+$02)    ;[0754] 
+LYNX_CURSOR_RIGHT1:
+    LD    HL,(SYSVAR_WINDST+$02)    ;[0754] Window height.
     LD    A,D                       ;[0757] 
-    CALL  SYSVAR_SLFRAM             ;[0758] 
-    ADD   A,$0A                     ;[075B] 
+    CALL  SYSVAR_SLFRAM             ;[0758] Unused.
+    ADD   A,$0A                     ;[075B] Add 10 pixels
+LYNX_CURSOR_RIGHT2:
     LD    D,A                       ;[075D] 
     CP    H                         ;[075E] 
     RET   C                         ;[075F] 
@@ -853,7 +859,7 @@ VDU_4:
 ; Homes cursor (takes cursor inside of window)
 ;
 VDU_23:
-    CALL  LYNX_CURSOR_LEFT          ;[0765] 
+    CALL  LYNX_HOME_LEFT            ;[0765] 
 
 ;
 ; Moves cursor to top of screen
@@ -879,14 +885,14 @@ VDU_19:
 ; Carriage return, linefeed, clears to end of line
 ;
 VDU_13_31:
-    CALL  LYNX_CURSOR_LEFT          ;[077B] 
+    CALL  LYNX_HOME_LEFT            ;[077B] 
 
 ;
 ; Line feed (moves cursor down 10 pixel lines)
 ;
 VDU_10:
     LD    DE,(SYSVAR_CURSORX)       ;[077E] 
-    CALL  $0754                     ;[0782] 
+    CALL  LYNX_CURSOR_RIGHT1        ;[0782] 
     JR    SAVE_CURSORX              ;[0785] 
 
 ;
@@ -906,13 +912,13 @@ VDU_29A:
     LD    HL,(SYSVAR_WINDST+$02)    ;[0791] 
     LD    A,D                       ;[0794] 
     ADD   A,C                       ;[0795] 
-    CALL  $075D                     ;[0796] 
+    CALL  LYNX_CURSOR_RIGHT2        ;[0796] 
     JR    SAVE_CURSORX              ;[0799] 
 
 ;
-; Move cursor to left hand column of the WINDOW.
+; Move cursor to the leftmost column of the WINDOW.
 ;
-LYNX_CURSOR_LEFT:
+LYNX_HOME_LEFT:
     LD    A,(SYSVAR_WINDST)         ;[079B] 
     LD    (SYSVAR_CURSORX),A        ;[079E] 
     RET                             ;[07A1] 
@@ -924,19 +930,21 @@ VDU_9:
     LD    A,(SYSVAR_CURSORX)        ;[07A2] 
     INC   A                         ;[07A5] 
     LD    HL,$07BB                  ;[07A6] 
+VDU_9_LOOP1:
     INC   HL                        ;[07A9] 
     CP    (HL)                      ;[07AA] 
-    JR    NC,$07A9                  ;[07AB] 
+    JR    NC,VDU_9_LOOP1            ;[07AB] 
     LD    H,(HL)                    ;[07AD] 
     INC   H                         ;[07AE] 
     JR    Z,VDU_13_31               ;[07AF] 
     DEC   H                         ;[07B1] 
-    LD    A,$20                     ;[07B2] 
+VDU_9_LOOP2:
+    LD    A,$20                     ;[07B2] Print spaces
     RST   $08                       ;[07B4] 
     LD    A,(SYSVAR_CURSORX)        ;[07B5] 
     CP    H                         ;[07B8] 
     RET   NC                        ;[07B9] 
-    JR    $07B2                     ;[07BA] 
+    JR    VDU_9_LOOP2               ;[07BA] 
     DEC   DE                        ;[07BC] 
     INC   SP                        ;[07BD] 
     LD    C,E                       ;[07BE] 
@@ -1000,6 +1008,7 @@ SUB_BACKSPACE2:
     LD    HL,(SYSVAR_WINDST+$02)    ;[07FC] 
     LD    A,D                       ;[07FF] 
     SUB   $0A                       ;[0800] 
+SUB_BACKSPACE3:
     LD    D,A                       ;[0802] 
     SUB   L                         ;[0803] 
     CP    $F6                       ;[0804] 
@@ -1026,7 +1035,7 @@ VDU_28A:
     LD    HL,(SYSVAR_WINDST+$02)    ;[0816] 
     LD    A,D                       ;[0819] 
     SUB   C                         ;[081A] 
-    CALL  $0802                     ;[081B] 
+    CALL  SUB_BACKSPACE3            ;[081B] 
     JR    SAVE_CURSORX              ;[081E] 
 
 ;
@@ -1954,7 +1963,7 @@ DATA_TAPE:
 ; Moves cursor one character block to the right
 ;
 VDU_12:
-    CALL  $0746                     ;[0DC5] 
+    CALL  LYNX_CURSOR_RIGHT         ;[0DC5] 
     JP    SAVE_CURSORX              ;[0DC8] 
     LD    HL,$9FF8                  ;[0DCB] All set to FF ie not used.
     LD    DE,$BFF8                  ;[0DCE] 
