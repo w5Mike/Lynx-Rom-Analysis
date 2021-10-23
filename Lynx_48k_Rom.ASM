@@ -1125,29 +1125,30 @@ LYNX_OUTB:
     PUSH  DE                        ;[0867] 
     LD    E,C                       ;[0868] 
     LD    D,A                       ;[0869] 
+LYNX_OUTB_BLUE:
     PUSH  DE                        ;[086A] 
     CALL  LYNX_OUTB_BIT_SET         ;[086B] Output a byte to vdu ram.
     LD    A,(SYSVAR_PROTST)         ;[086E] 
     RRCA                            ;[0871] 
-    JR    C,LYNX_OUTB1              ;[0872] 
+    JR    C,LYNX_OUTB_RED           ;[0872] 
     LD    A,$E8                     ;[0874] BLUE Bank: A=E8 A'=63 BC=8000
     EX    AF,AF'                    ;[0876] 
     LD    A,$63                     ;[0877] 
     LD    BC,(SYSVAR_BLUBNK)        ;[0879] 
     CALL  LYNX_OUT_TO_BANK          ;[087D] 
-LYNX_OUTB1:
+LYNX_OUTB_RED:
     POP   DE                        ;[0880] 
     PUSH  DE                        ;[0881] 
     CALL  LYNX_OUTB_BIT_SET         ;[0882] 
     LD    A,(SYSVAR_PROTST)         ;[0885] 
     BIT   1,A                       ;[0888] 
-    JR    NZ,LYNX_OUTB2             ;[088A] 
+    JR    NZ,LYNX_OUTB_GREEN        ;[088A] 
     LD    A,$E8                     ;[088C] RED Bank: A=E8 A'=63 BC=C000
     EX    AF,AF'                    ;[088E] 
     LD    A,$63                     ;[088F] 
     LD    BC,(SYSVAR_REDBNK)        ;[0891] 
     CALL  LYNX_OUT_TO_BANK          ;[0895] 
-LYNX_OUTB2:
+LYNX_OUTB_GREEN:
     POP   DE                        ;[0898] 
     CALL  LYNX_OUTB_BIT_SET         ;[0899] 
     LD    A,(SYSVAR_PROTST)         ;[089C] 
@@ -1186,7 +1187,11 @@ LYNX_OUT_TO_BANK:
     POP   HL                        ;[08CD] 
     RET                             ;[08CE] 
 
-    LD    BC,$FF7F                  ;[08CF] Called by clear screen routine.
+;
+; Called by clear screen routine.
+;
+LYNX_CLS_BANK:
+    LD    BC,$FF7F                  ;[08CF] 
     OUT   (C),A                     ;[08D2] 
     LD    BC,$4000                  ;[08D4] 
     LD    (HL),D                    ;[08D7] 
@@ -1207,27 +1212,31 @@ LYNX_CLS:
     LD    A,$20                     ;[08E5] 
     OUT   ($80),A                   ;[08E7] 
     LD    DE,(SYSVAR_PAPST)         ;[08E9] 
+LYNX_CLS_BLUE:
     CALL  SUB_CLS_COLOUR            ;[08ED] 
     LD    A,(SYSVAR_PROTST)         ;[08F0] 
     RRCA                            ;[08F3] 
-    JR    C,$08FE                   ;[08F4] 
+    JR    C,LYNX_CLS_RED            ;[08F4] 
     LD    HL,(SYSVAR_BLUBNK)        ;[08F6] 
     LD    A,$23                     ;[08F9] 
-    CALL  $08CF                     ;[08FB] 
+    CALL  LYNX_CLS_BANK             ;[08FB] 
+LYNX_CLS_RED:
     CALL  SUB_CLS_COLOUR            ;[08FE] 
     LD    A,(SYSVAR_PROTST)         ;[0901] 
     BIT   1,A                       ;[0904] 
-    JR    NZ,$0910                  ;[0906] 
+    JR    NZ,LYNX_CLS_GREEN         ;[0906] 
     LD    HL,(SYSVAR_REDBNK)        ;[0908] 
     LD    A,$23                     ;[090B] 
-    CALL  $08CF                     ;[090D] 
+    CALL  LYNX_CLS_BANK             ;[090D] 
+LYNX_CLS_GREEN:
     CALL  SUB_CLS_COLOUR            ;[0910] 
     LD    A,(SYSVAR_PROTST)         ;[0913] 
     BIT   2,A                       ;[0916] 
-    JR    NZ,$0922                  ;[0918] 
+    JR    NZ,LYNX_CLS_END           ;[0918] 
     LD    HL,(SYSVAR_GRNBNK)        ;[091A] 
     LD    A,$25                     ;[091D] 
-    CALL  $08CF                     ;[091F] 
+    CALL  LYNX_CLS_BANK             ;[091F] 
+LYNX_CLS_END:
     XOR   A                         ;[0922] 
     OUT   ($80),A                   ;[0923] 
     RET                             ;[0925] 
@@ -1791,7 +1800,7 @@ VERIFY_ERROR_EXIT:
 BASIC_COM_APPEND:
     CALL  LYNX_TAPE_READ            ;[0C87] 
     LD    HL,(SYSVAR_EOB)           ;[0C8A] 
-    JR    $0C95                     ;[0C8D] 
+    JR    BASIC_COM_LOAD1           ;[0C8D] 
 
 ;
 ; LOAD BASIC command.
@@ -1799,21 +1808,23 @@ BASIC_COM_APPEND:
 BASIC_COM_LOAD:
     CALL  LYNX_TAPE_READ            ;[0C8F] 
     LD    HL,(SYSVAR_SOB)           ;[0C92] 
+BASIC_COM_LOAD1:
     CALL  LYNX_RSYNC                ;[0C95] 
     CALL  LYNX_RBYTE                ;[0C98] 
     CP    $42                       ;[0C9B] 
-    JR    NZ,$0C95                  ;[0C9D] 
+    JR    NZ,BASIC_COM_LOAD1        ;[0C9D] 
     CALL  LYNX_RBYTE                ;[0C9F] 
     LD    C,A                       ;[0CA2] 
     CALL  LYNX_RBYTE                ;[0CA3] 
     LD    B,A                       ;[0CA6] 
+BASIC_COM_LOAD2:
     CALL  LYNX_RBYTE                ;[0CA7] 
     LD    (HL),A                    ;[0CAA] 
     INC   HL                        ;[0CAB] 
     DEC   BC                        ;[0CAC] 
     LD    A,B                       ;[0CAD] 
     OR    C                         ;[0CAE] 
-    JR    NZ,$0CA7                  ;[0CAF] 
+    JR    NZ,BASIC_COM_LOAD2        ;[0CAF] 
     DEC   HL                        ;[0CB1] 
     LD    (SYSVAR_EOB),HL           ;[0CB2] 
     CALL  LYNX_RBYTE                ;[0CB5] 
@@ -4245,7 +4256,7 @@ LYNX_ZERO_MEM:
 ; LCTN.
 ;
 BASIC_FN_LCTN:
-    CALL  $2B18                     ;[1F9D] 
+    CALL  SUB_FINDLN                ;[1F9D] 
     CALL  $251B                     ;[1FA0] 
     EX    DE,HL                     ;[1FA3] 
     INC   HL                        ;[1FA4] 
@@ -4630,7 +4641,7 @@ BASIC_COM_RESTORE:
     LD    IX,(SYSVAR_SOB)           ;[217F] 
     JR    Z,$2189                   ;[2183] 
     RST   $28                       ;[2185] 
-    CALL  $2B18                     ;[2186] 
+    CALL  SUB_FINDLN                ;[2186] 
     DEC   IX                        ;[2189] 
     LD    (SYSVAR_DATAP),IX         ;[218B] 
     RET                             ;[218F] 
@@ -4834,8 +4845,8 @@ BASIC_COM_RUN:
     LD    A,(DE)                    ;[2289] 
     CP    $0D                       ;[228A] 
     JR    Z,$2292                   ;[228C] 
-    RST   $28                       ;[228E] 
-    CALL  $2B18                     ;[228F] 
+    RST   $28                       ;[228E] Evaluate expression
+    CALL  SUB_FINDLN                ;[228F] 
     POP   BC                        ;[2292] 
     JP    $24C5                     ;[2293] 
 
@@ -4949,7 +4960,7 @@ BASIC_COM_LLIST:
 BASIC_COM_DEL:
     RST   $28                       ;[233F] 
     PUSH  DE                        ;[2340] 
-    CALL  $2B18                     ;[2341] 
+    CALL  SUB_FINDLN                ;[2341] 
     POP   DE                        ;[2344] 
     LD    A,(DE)                    ;[2345] 
     CP    $0D                       ;[2346] 
@@ -4957,7 +4968,7 @@ BASIC_COM_DEL:
     PUSH  IX                        ;[2349] 
     JR    Z,$2351                   ;[234B] 
     RST   $28                       ;[234D] 
-    CALL  $2B18                     ;[234E] 
+    CALL  SUB_FINDLN                ;[234E] 
     CALL  LYNX_ADD_LEN_TO_IX        ;[2351] 
     PUSH  IX                        ;[2354] 
     POP   BC                        ;[2356] 
@@ -6343,6 +6354,7 @@ BASIC_COM_RENUM:
     POP   IX                        ;[2B11] 
     CALL  LYNX_ADD_LEN_TO_IX        ;[2B13] 
     JR    $2AFB                     ;[2B16] 
+SUB_FINDLN:
     CALL  LYNX_FNDLN                ;[2B18] 
     CALL  NZ,ERR_NOT_FOUND          ;[2B1B] 
     RET                             ;[2B1E] 
