@@ -2133,11 +2133,16 @@ BASIC_FN_INF:
 DATA_INF:
     defb $FF,$99,$99,$99,$99        ;[0E6B]  ..5.....
 
-    CALL  LYNX_FPINT                ;[0E70] Utility routine called by BNOR, BNXOR & BNAND.
-    PUSH  HL                        ;[0E73] 
-    LD    HL,SYSVAR_WRA2            ;[0E74] 
-    CALL  LYNX_LNUM1                ;[0E77] 
-    CALL  LYNX_FPINT                ;[0E7A] 
+;
+; Load BC and HL with the integers in WRA1 and WRA2. 
+; Utility routine called by BNOR, BNXOR & BNAND.
+;
+SUB_HLBC_FROM_WRA12:
+    CALL  LYNX_FPINT                ;[0E70] 
+    PUSH  HL                        ;[0E73] Push HL, HL = integer (WRA1)
+    LD    HL,SYSVAR_WRA2            ;[0E74] Let HL = WRA2
+    CALL  LYNX_LNUM1                ;[0E77] Let WRA1 = (HL) (=WRA2)
+    CALL  LYNX_FPINT                ;[0E7A] Let HL = WRA1
     POP   BC                        ;[0E7D] 
     RET                             ;[0E7E] 
 
@@ -2145,12 +2150,13 @@ DATA_INF:
 ; BNOR.
 ;
 BASIC_FN_BNOR:
-    CALL  $0E70                     ;[0E7F] 
+    CALL  SUB_HLBC_FROM_WRA12       ;[0E7F] 
     LD    A,B                       ;[0E82] 
     OR    H                         ;[0E83] 
     LD    H,A                       ;[0E84] 
     LD    A,C                       ;[0E85] 
     OR    L                         ;[0E86] 
+BN_RESULT_TO_WRA1:
     LD    L,A                       ;[0E87] 
     JP    LYNX_INTFP                ;[0E88] 
 
@@ -2158,25 +2164,25 @@ BASIC_FN_BNOR:
 ; BNXOR.
 ;
 BASIC_FN_BNXOR:
-    CALL  $0E70                     ;[0E8B] 
+    CALL  SUB_HLBC_FROM_WRA12       ;[0E8B] 
     LD    A,B                       ;[0E8E] 
     XOR   H                         ;[0E8F] 
     LD    H,A                       ;[0E90] 
     LD    A,C                       ;[0E91] 
     XOR   L                         ;[0E92] 
-    JR    $0E87                     ;[0E93] 
+    JR    BN_RESULT_TO_WRA1         ;[0E93] 
 
 ;
 ; BNAND.
 ;
 BASIC_FN_BNAND:
-    CALL  $0E70                     ;[0E95] 
+    CALL  SUB_HLBC_FROM_WRA12       ;[0E95] 
     LD    A,B                       ;[0E98] 
     AND   H                         ;[0E99] 
     LD    H,A                       ;[0E9A] 
     LD    A,C                       ;[0E9B] 
     AND   L                         ;[0E9C] 
-    JR    $0E87                     ;[0E9D] 
+    JR    BN_RESULT_TO_WRA1         ;[0E9D] 
 
 ;
 ; RAND.
@@ -2202,34 +2208,39 @@ BASIC_COM_CCHAR:
     RET                             ;[0EB7] 
 
 ;
-; WHITE.
+; List of colours - starting with WHITE
 ;
-BASIC_FN_WHITE:
+BASIC_FN_COLOUR:
     XOR   A                         ;[0EB8] 
     INC   A                         ;[0EB9] 
-    LD    B,$AF                     ;[0EBA] 
+    LD    B,$AF                     ;[0EBA] YELLOW.
     INC   A                         ;[0EBC] 
-    LD    B,$AF                     ;[0EBD] 
+    LD    B,$AF                     ;[0EBD] CYAN.
     INC   A                         ;[0EBF] 
-    LD    B,$AF                     ;[0EC0] 
+    LD    B,$AF                     ;[0EC0] GREEN.
     INC   A                         ;[0EC2] 
-    LD    B,$AF                     ;[0EC3] 
+    LD    B,$AF                     ;[0EC3] MAGENTA.
     INC   A                         ;[0EC5] 
-    LD    B,$AF                     ;[0EC6] 
+    LD    B,$AF                     ;[0EC6] RED.
     INC   A                         ;[0EC8] 
-    LD    B,$AF                     ;[0EC9] 
+    LD    B,$AF                     ;[0EC9] BLUE.
     INC   A                         ;[0ECB] 
-    LD    B,$AF                     ;[0ECC] 
+    LD    B,$AF                     ;[0ECC] BLACK.
     LD    L,A                       ;[0ECE] 
     LD    H,$00                     ;[0ECF] 
     JP    LYNX_INTFP                ;[0ED1] 
+
+;
+; To be determined
+;
+LYNX_TBD1:
     CALL  LYNX_RP                   ;[0ED4] 
     LD    (HL),A                    ;[0ED7] 
     CP    $0D                       ;[0ED8] 
     RET   Z                         ;[0EDA] 
     INC   HL                        ;[0EDB] 
     CP    $2C                       ;[0EDC] 
-    JR    Z,$0ED4                   ;[0EDE] 
+    JR    Z,LYNX_TBD1               ;[0EDE] 
     CALL  ERR_SYNTAX                ;[0EE0] 
 
 ;
@@ -5500,7 +5511,7 @@ LYNX_CHLDE:
 LYNX_RP:
     LD    (HL),$7D                  ;[25E2] 
     INC   HL                        ;[25E4] 
-    CALL  SYSVAR_NTP                ;[25E5] 
+    CALL  SYSVAR_NTP                ;[25E5] Jump to normal to internal language conversion routine. (LYNX_NTP)
     LD    A,(SYSVAR_NPM)            ;[25E8] 
     CP    $D7                       ;[25EB] 
     RET   NC                        ;[25ED] 
@@ -7061,7 +7072,7 @@ VALIDATE_DIM:
     DAA                             ;[2EB2] 
     LD    (HL),A                    ;[2EB3] 
     DJNZ  $2EAE                     ;[2EB4] 
-    CALL  $359A                     ;[2EB6] 
+    CALL  LYNX_TBD                  ;[2EB6] 
     POP   DE                        ;[2EB9] 
     RET                             ;[2EBA] 
 
@@ -7447,7 +7458,7 @@ BASIC_FN_LOG:
     SET   0,(HL)                    ;[3156] 
     POP   AF                        ;[3158] 
     LD    (SYSVAR_WRA1+$01),A       ;[3159] 
-    CALL  $359A                     ;[315C] 
+    CALL  LYNX_TBD                  ;[315C] 
     POP   AF                        ;[315F] 
     JR    NZ,$3167                  ;[3160] 
     LD    HL,SYSVAR_WRA1            ;[3162] 
@@ -7513,7 +7524,7 @@ BASIC_FN_ANTILOG:
     LD    A,$BF                     ;[31D0] 
     LD    (SYSVAR_WRA1),A           ;[31D2] 
     OR    A                         ;[31D5] 
-    CALL  $359A                     ;[31D6] 
+    CALL  LYNX_TBD                  ;[31D6] 
     LD    IX,DATA_ANTILOG           ;[31D9] 
     CALL  LYNX_MULTIPLY_ADD         ;[31DD] 
     CALL  VALIDATE_SWAP_MULTI       ;[31E0] 
@@ -7956,7 +7967,7 @@ BASIC_FN_FRAC:
     CALL  $3656                     ;[348E] 
     DJNZ  $348E                     ;[3491] 
     OR    A                         ;[3493] 
-    JP    $359A                     ;[3494] 
+    JP    LYNX_TBD                  ;[3494] 
 
 ;
 ; Floating point in WRA1 to integer in HL
@@ -8016,7 +8027,7 @@ LYNX_INTFP:
     POP   BC                        ;[34E6] 
     DJNZ  $34D6                     ;[34E7] 
     OR    A                         ;[34E9] 
-    JP    $359A                     ;[34EA] 
+    JP    LYNX_TBD                  ;[34EA] 
 
 ;
 ; Test for '0' to '9'
@@ -8193,6 +8204,11 @@ SUB_ADD:
     CP    C                         ;[3595] 
     LD    B,$05                     ;[3596] 
     JR    $3583                     ;[3598] 
+
+;
+; To be determined
+;
+LYNX_TBD:
     CALL  $361E                     ;[359A] 
     LD    A,(SYSVAR_WRA1)           ;[359D] 
     RES   7,A                       ;[35A0] 
@@ -8349,9 +8365,9 @@ LYNX_AD:
     JR    Z,$369E                   ;[3695] 
     CALL  $36A4                     ;[3697] 
     OR    A                         ;[369A] 
-    JP    $359A                     ;[369B] 
+    JP    LYNX_TBD                  ;[369B] 
     CALL  SUB_PLUS                  ;[369E] 
-    JP    $359A                     ;[36A1] 
+    JP    LYNX_TBD                  ;[36A1] 
     OR    A                         ;[36A4] 
     LD    DE,SYSVAR_WRA1+$04        ;[36A5] 
     LD    HL,SYSVAR_WRA2+$04        ;[36A8] 
@@ -8637,7 +8653,7 @@ LYNX_DIV:
     INC   HL                        ;[386E] 
     DJNZ  $3860                     ;[386F] 
     OR    A                         ;[3871] 
-    JP    $359A                     ;[3872] 
+    JP    LYNX_TBD                  ;[3872] 
     PUSH  BC                        ;[3875] 
     PUSH  AF                        ;[3876] 
     LD    A,E                       ;[3877] 
