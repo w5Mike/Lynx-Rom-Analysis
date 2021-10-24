@@ -955,7 +955,7 @@ VDU_9_LOOP2:
 ; Clears to end of line
 ;
 VDU_30:
-    LD    A,($6257)                 ;[07C1] 
+    LD    A,(SYSVAR_WINDST+$01)     ;[07C1] 
     DEC   A                         ;[07C4] 
     LD    HL,(SYSVAR_CURSORX)       ;[07C5] 
     PUSH  HL                        ;[07C8] 
