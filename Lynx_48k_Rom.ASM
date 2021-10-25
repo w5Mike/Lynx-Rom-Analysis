@@ -207,10 +207,11 @@ RST_8H:
 ; Rom version identifier L014
 ;
 DATA_L014:
-    defb $20,$4C,$30,$31,$34        ;[000B]  ..5.L014
+    defb $20,$4C,$30,$31,$34        ;[000B]  .L014
 
 ;
-; Checks if the character at the address pointed to by DE is " "; if so, increments DE until it is not a space.
+; Checks if the character at the address pointed to by DE is a space.
+;  - If so, increments DE until it is not a space.
 ;
 RST_10H:
     LD    A,(DE)                    ;[0010] 
@@ -230,7 +231,7 @@ RST_18H:
 ; The infamous Susy.
 ;
 DATA_SUSY:
-    defb $53,$75,$73,$79,$00        ;[001B]  .c#Susy.
+    defb $53,$75,$73,$79,$00        ;[001B]  Susy.
 
 ;
 ; Checks if the byte after RST is the same as A; if it is not, displays a syntax error. 
@@ -244,7 +245,8 @@ RST_20H:
     CALL  ERR_SYNTAX                ;[0025] 
 
 ;
-; Evaluates reverse polish expression pointed to by DE in floating point in WRA1 (working register area 1). 
+; Evaluates reverse polish expression pointed to by DE in floating point 
+; in WRA1 (working register area 1).
 ;
 RST_28H:
     JP    SUB_CHK_EXP_EVAL          ;[0028] 
@@ -1097,7 +1099,8 @@ BASIC_COM_WINDOW1:
     RET                             ;[0843] 
 
 ;
-; A routine to decide which bits need to be set. Used in the output of characters to the screen.
+; A routine to decide which bits need to be set. Used in the output of characters
+; to the screen.
 ;
 LYNX_OUTB_BIT_SET:
     EXX                             ;[0844] 
@@ -1209,12 +1212,13 @@ LYNX_CLS_BANK:
     LD    BC,$FF7F                  ;[08CF] 
     OUT   (C),A                     ;[08D2] 
     LD    BC,$4000                  ;[08D4] 
+LYNX_CLS_BANK1:
     LD    (HL),D                    ;[08D7] 
     DEC   BC                        ;[08D8] 
     INC   HL                        ;[08D9] 
     LD    A,B                       ;[08DA] 
     OR    C                         ;[08DB] 
-    JR    NZ,$08D7                  ;[08DC] 
+    JR    NZ,LYNX_CLS_BANK1         ;[08DC] 
     XOR   A                         ;[08DE] 
     LD    BC,$FF7F                  ;[08DF] 
     OUT   (C),A                     ;[08E2] 
@@ -1548,7 +1552,7 @@ DATA_KEYBOARD:
     defb $28,$75,$6D,$3F,$6A,$29,$69,$6F    ;[0AFE]  (um?j)io
     defb $3C,$3F,$6B,$5F,$70,$6C,$3E,$3F    ;[0B06]  <?k_pl>?
     defb $2B,$3D,$60,$5E,$3F,$2A,$2A,$08    ;[0B0E]  +=`^?**.
-    defb $7F,$16,$0D,$2A,$0C                ;[0B16]  **....*.
+    defb $7F,$16,$0D,$2A,$0C                ;[0B16]  ...*.
 
 ;
 ; Find word in a list. (SYSVAR/LYNX_KEYB)
@@ -1856,14 +1860,14 @@ BASIC_COM_LOAD2:
     CALL  LYNX_MOTOFF               ;[0CC3] 
     CALL  LYNX_ZERO_MEM             ;[0CC6] 
     POP   IX                        ;[0CC9] 
-    JP    $24C5                     ;[0CCB] 
+    JP    $24C5                     ;[0CCB] *TBD
 
 ;
 ; Escape route for read bit routine.
 ;
 LYNX_RBIT_END:
     CALL  LYNX_MOTOFF               ;[0CCE] 
-    JP    $38E8                     ;[0CD1] 
+    JP    LYNX_JUMP_TO_BASIC        ;[0CD1] 
 
 ;
 ; Read bit routine.
@@ -1928,7 +1932,7 @@ DATA_CASTBL:
     defb $3B,$3A,$39,$38,$36,$35,$33,$31    ;[0D49]  ;:986531
     defb $2F,$2D,$2B,$29,$27,$24,$22,$20    ;[0D51]  /-+)'$".
     defb $00,$00,$00,$00,$00,$00,$00,$00    ;[0D59]  ........
-    defb $00,$00,$00,$00,$00,$00            ;[0D61]  ........
+    defb $00,$00,$00,$00,$00,$00            ;[0D61]  ......
 
 ;
 ; Write byte to tape.
@@ -2131,7 +2135,7 @@ BASIC_FN_INF:
 ; Data for INF.
 ;
 DATA_INF:
-    defb $FF,$99,$99,$99,$99        ;[0E6B]  ..5.....
+    defb $FF,$99,$99,$99,$99        ;[0E6B]  .....
 
 ;
 ; Load BC and HL with the integers in WRA1 and WRA2. 
@@ -2294,11 +2298,12 @@ VALIDATE_PRINT:
     LD    A,(IX-$01)                ;[0F0A] 
     SUB   $08                       ;[0F0D] 
     LD    B,A                       ;[0F0F] 
+VALIDATE_PRINT_SPACE:
     CALL  LYNX_OUTPUT_SPACE         ;[0F10] 
     LD    A,(DE)                    ;[0F13] 
     INC   DE                        ;[0F14] 
-    CALL  $2239                     ;[0F15] 
-    DJNZ  $0F10                     ;[0F18] 
+    CALL  LYNX_PHEXHL1              ;[0F15] 
+    DJNZ  VALIDATE_PRINT_SPACE      ;[0F18] 
     JP    $2840                     ;[0F1A] 
 
 ;
@@ -2794,7 +2799,7 @@ LYNX_LINP:
 ;
 DATA_LINE_NUMBER:
     defb $4C,$69,$6E,$65,$20,$6E,$75,$6D    ;[11B9]  Line.num
-    defb $62,$65,$72,$3F,$20,$00            ;[11C1]  umber?..
+    defb $62,$65,$72,$3F,$20,$00            ;[11C1]  ber?..
 
     DEC   C                         ;[11C7] 
     INC   C                         ;[11C8] 
@@ -2864,7 +2869,7 @@ DATA_TTBL:
     defb $54,$24,$28,$CD,$49,$44,$24,$28    ;[1331]  T$(.ID$(
     defb $D5,$50,$43,$24,$28,$CB,$45,$59    ;[1339]  .PC$(.EY
     defb $24,$C7,$45,$54,$24,$D3,$54,$52    ;[1341]  $.ET$.TR
-    defb $24,$28,$80,$80                    ;[1349]  $.TR$(..
+    defb $24,$28,$80,$80                    ;[1349]  $(..
 
 ;
 ; Set to 80. Is it used ?
@@ -2873,7 +2878,7 @@ DATA_BLANK:
     defb $80,$80,$80,$80,$80,$80,$80,$80    ;[134D]  ........
     defb $80,$80,$80,$80,$80,$80,$80,$80    ;[1355]  ........
     defb $80,$80,$80,$80,$80,$80,$80,$80    ;[135D]  ........
-    defb $80,$80,$80                        ;[1365]  ........
+    defb $80,$80,$80                        ;[1365]  ...
 
 ;
 ; Function evaluation table.
@@ -2900,7 +2905,7 @@ DATA_FTBL:
     defb $6D,$36,$6A,$36,$DA,$32,$D0,$32    ;[13F8]  m6j6.2.2
     defb $BD,$32,$C2,$32,$D5,$32,$AF,$32    ;[1400]  .2.2.2.2
     defb $DF,$32,$F6,$32,$7F,$0E,$8B,$0E    ;[1408]  .2.2....
-    defb $95,$0E,$3F,$0E,$18,$0E            ;[1410]  ....?...
+    defb $95,$0E,$3F,$0E,$18,$0E            ;[1410]  ..?...
 
 ;
 ; Command token table.
@@ -2947,7 +2952,7 @@ DATA_XTTBL:
     defb $D0,$52,$4F,$54,$45,$43,$54,$C5    ;[1546]  .ROTECT.
     defb $52,$52,$4F,$52,$D4,$41,$50,$45    ;[154E]  RROR.APE
     defb $CD,$4C,$4F,$41,$44,$D4,$45,$58    ;[1556]  .LOAD.EX
-    defb $54,$80                            ;[155E]  OAD.EXT.
+    defb $54,$80                            ;[155E]  T.
 
 ;
 ; Input syntax checking table. Validation routine addresses for BASIC words.
@@ -2971,7 +2976,7 @@ DATA_XITBL:
     defb $A9,$27,$07,$27,$DB,$26,$64,$26    ;[15D8]  .'.'.&d&
     defb $DB,$26,$21,$62,$07,$27,$07,$27    ;[15E0]  .&!b.'.'
     defb $06,$26,$07,$27,$07,$27,$07,$27    ;[15E8]  .&.'.'.'
-    defb $07,$27,$16,$26,$DB,$26            ;[15F0]  .'.'.&.&
+    defb $07,$27,$16,$26,$DB,$26            ;[15F0]  .'.&.&
 
 ;
 ; Command execution table. Execution routine addresses for BASIC words.
@@ -2995,7 +3000,7 @@ DATA_XETBL:
     defb $5F,$24,$4E,$2A,$64,$3B,$7E,$2A    ;[166E]  _$N*d;~*
     defb $00,$E0,$24,$62,$AE,$0E,$B3,$0E    ;[1676]  ..$b....
     defb $6E,$24,$60,$24,$2D,$21,$05,$0E    ;[167E]  n$`$-!..
-    defb $92,$0D,$62,$3F,$32,$21            ;[1686]  ....b?2!
+    defb $92,$0D,$62,$3F,$32,$21            ;[1686]  ..b?2!
 
 ;
 ; Main routine.
@@ -3095,20 +3100,20 @@ DATA_INIT:
     defb $C3,$67,$0D,$C3,$D7,$18,$C3,$BE    ;[17CD]  .g......
     defb $19,$C3,$A9,$33,$C3,$E5,$27,$C3    ;[17D5]  ...3..'.
     defb $E5,$24,$C3,$9A,$00,$C3,$E2,$10    ;[17DD]  .$......
-    defb $C3,$5C,$2D,$00                    ;[17E5]  .....\-.
+    defb $C3,$5C,$2D,$00                    ;[17E5]  .\-.
 
 ;
 ; Data used for BASIC prompt.
 ;
 DATA_PROMPT:
-    defb $04,$07,$04,$07            ;[17E9]  .\-.....
+    defb $04,$07,$04,$07            ;[17E9]  ....
 
 ;
 ; Data used to display the 'LYNX LOGO' at power on.
 ;
 DATA_LYNX_LOGO:
     defb $04,$07,$18,$F3,$F4,$F5,$F6,$F7    ;[17ED]  ........
-    defb $F8,$F9,$19,$0A,$0A,$0D,$00        ;[17F5]  ........
+    defb $F8,$F9,$19,$0A,$0A,$0D,$00        ;[17F5]  .......
 
 ;
 ; BASIC line analysis routine.
@@ -4095,7 +4100,7 @@ BASIC_COM_STOP:
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
     LD    HL,$1E4E                  ;[1E42] 
     CALL  LYNX_PLINE                ;[1E45] 
-    CALL  $1E7F                     ;[1E48] 
+    CALL  SUB_JUMP_TO_BASIC1        ;[1E48] 
     JP    $24E2                     ;[1E4B] 
     DEC   C                         ;[1E4E] 
 
@@ -4124,29 +4129,37 @@ BASIC_FN_MEM:
     ADD   HL,SP                     ;[1E70] 
     SBC   HL,BC                     ;[1E71] 
     JP    LYNX_INTFP                ;[1E73] 
-    LD    HL,$3605                  ;[1E76] Called by 'J' command.
+
+;
+; Called by 'J' command.
+;
+SUB_JUMP_TO_BASIC:
+    LD    HL,$3605                  ;[1E76] 
     LD    (SYSVAR_CURRLP),HL        ;[1E79] 
     JP    SUB_LINK_OFF              ;[1E7C] 
+SUB_JUMP_TO_BASIC1:
     LD    HL,(SYSVAR_CURRLP)        ;[1E7F] 
     LD    A,(HL)                    ;[1E82] 
     CP    $80                       ;[1E83] 
-    JR    Z,$1E96                   ;[1E85] 
-    LD    HL,$1E9F                  ;[1E87] 
+    JR    Z,SUB_JUMP_TO_BASIC2      ;[1E85] 
+    LD    HL,DATA_IN_LINE           ;[1E87] 
     CALL  LYNX_PLINE                ;[1E8A] 
     LD    HL,(SYSVAR_CURRLP)        ;[1E8D] 
     CALL  LYNX_LNUM1                ;[1E90] 
     CALL  LYNX_PN                   ;[1E93] 
+SUB_JUMP_TO_BASIC2:
     LD    A,$1E                     ;[1E96] 
     RST   $08                       ;[1E98] 
     LD    A,$0D                     ;[1E99] 
     RST   $08                       ;[1E9B] 
-    JP    $1F0D                     ;[1E9C] 
+    JP    LYNX_READY_MSG            ;[1E9C] 
 
 ;
-; Data 'in line'.
+; String 'in line'. Used to display msg "Stopped in line [nnnn]", etc.
 ;
+DATA_IN_LINE:
     defb $20,$69,$6E,$20,$6C,$69,$6E,$65    ;[1E9F]  .in.line
-    defb $20,$00                            ;[1EA7]  n.line..
+    defb $20,$00                            ;[1EA7]  ..
 
 ;
 ; Main process loop for BASIC
@@ -4167,8 +4180,8 @@ BASIC:
     SBC   HL,BC                     ;[1EC3] 
     JR    NZ,$1EC1                  ;[1EC5] 
     JP    $249C                     ;[1EC7] 
-    CALL  $1E7F                     ;[1ECA] 
-    JP    $38E8                     ;[1ECD] 
+    CALL  SUB_JUMP_TO_BASIC1        ;[1ECA] 
+    JP    LYNX_JUMP_TO_BASIC        ;[1ECD] 
 
 ;
 ; Generates next random number in RNDNO. 
@@ -4210,14 +4223,19 @@ LYNX_ESC:
     BIT   6,B                       ;[1F0A] 
     RET                             ;[1F0C] 
 
-    LD    HL,$1F13                  ;[1F0D] Routine to print 'Ready!'.
+;
+; Routine to print 'Ready!'.
+;
+LYNX_READY_MSG:
+    LD    HL,DATA_READY_MSG         ;[1F0D] 
     JP    LYNX_PLINE                ;[1F10] 
 
 ;
 ; Data 'Ready!'.
 ;
+DATA_READY_MSG:
     defb $52,$65,$61,$64,$79,$21,$0D,$1E    ;[1F13]  Ready!..
-    defb $00                                ;[1F1B]  eady!...
+    defb $00                                ;[1F1B]  .
 
 ;
 ; Test for a full return stack
@@ -4367,7 +4385,7 @@ BASIC_COM_CLS:
 ; END.
 ;
 BASIC_COM_END:
-    CALL  $1F0D                     ;[1FBE] 
+    CALL  LYNX_READY_MSG            ;[1FBE] 
     JP    $24DC                     ;[1FC1] 
 
 ;
@@ -4856,20 +4874,23 @@ LYNX_GET_VAR_ADDR:
 ;
 LYNX_PHEXHL:
     LD    A,H                       ;[2234] 
-    CALL  $2239                     ;[2235] 
+    CALL  LYNX_PHEXHL1              ;[2235] 
     LD    A,L                       ;[2238] 
+LYNX_PHEXHL1:
     PUSH  AF                        ;[2239] 
     RRCA                            ;[223A] 
     RRCA                            ;[223B] 
     RRCA                            ;[223C] 
     RRCA                            ;[223D] 
-    CALL  $2242                     ;[223E] 
+    CALL  LYNX_PHEXHL2              ;[223E] 
     POP   AF                        ;[2241] 
+LYNX_PHEXHL2:
     AND   $0F                       ;[2242] 
     ADD   A,$30                     ;[2244] 
     CP    $3A                       ;[2246] 
-    JR    C,$224C                   ;[2248] 
+    JR    C,LYNX_PHEXHL_OUTB        ;[2248] 
     ADD   A,$07                     ;[224A] 
+LYNX_PHEXHL_OUTB:
     RST   $08                       ;[224C] 
     RET                             ;[224D] 
 
@@ -5332,7 +5353,7 @@ BASIC_COM_LINK:
     JR    $249C                     ;[24DA] 
     LD    HL,$0000                  ;[24DC] 
     LD    (SYSVAR_CONTLP),HL        ;[24DF] 
-    JP    $38E8                     ;[24E2] 
+    JP    LYNX_JUMP_TO_BASIC        ;[24E2] 
 
 ;
 ; SPEED and TRACE routines.
@@ -5681,7 +5702,7 @@ VALIDATE_LET:
     CALL  LYNX_PN                   ;[26B4] 
     LD    A,$0D                     ;[26B7] 
     RST   $08                       ;[26B9] 
-    JP    $38E8                     ;[26BA] 
+    JP    LYNX_JUMP_TO_BASIC        ;[26BA] 
 
 ;
 ; Validation routine for DPOKE, POKE, DOT, OUT, MOVE, DRAW.SOUND.
@@ -5714,7 +5735,8 @@ VALIDATE_NEXT:
     CALL  TEST_IS_VAR               ;[26D8] 
 
 ;
-; Validation for MON, ENDPROC, RANDOM, END, STOP, RETURN, CLS, CONT, NEW, WEND, REPEAT, DISK, TEXT.
+; Validation for MON, ENDPROC, RANDOM, END, STOP, RETURN, CLS, CONT, NEW, 
+; WEND, REPEAT, DISK, TEXT.
 ;
 VALIDATE_MON:
     LD    (HL),A                    ;[26DB] 
@@ -5754,7 +5776,8 @@ VALIDATE_IF:
     JP    $27A9                     ;[2704] 
 
 ;
-; Validation for INK, PAPER, PAUSE, WHILE, UNTIL, RESERVE, CFR,  CCHAR, SPEED, PROTECT, ERROR, TAPE.
+; Validation for INK, PAPER, PAUSE, WHILE, UNTIL, RESERVE, CFR,  CCHAR, SPEED, 
+; PROTECT, ERROR, TAPE.
 ;
 VALIDATE_INK:
     CALL  LYNX_RP                   ;[2707] 
@@ -6070,7 +6093,7 @@ BASIC_COM_AUTO:
 ;
 DATA_AUTO:
     defb $C2,$10,$00,$00,$00,$C1,$10,$00    ;[28CF]  ........
-    defb $00,$00                            ;[28D7]  ........
+    defb $00,$00                            ;[28D7]  ..
 
 ;
 ; BIN.
@@ -7285,7 +7308,7 @@ DATA_ARCTAN:
     defb $60,$62,$69,$BE,$79,$62,$63,$18    ;[2FF4]  `bi.ybc.
     defb $3F,$13,$23,$35,$10,$BF,$19,$80    ;[2FFC]  ?.#5....
     defb $78,$69,$3F,$33,$31,$73,$76,$BF    ;[3004]  xi?31sv.
-    defb $99,$99,$96,$11                    ;[300C]  1sv.....
+    defb $99,$99,$96,$11                    ;[300C]  ....
 
 ;
 ; FACT.
@@ -7472,7 +7495,7 @@ DATA_LOG:
     defb $04,$BF,$19,$13,$37,$71,$BE,$94    ;[316A]  ....7q..
     defb $37,$64,$76,$BF,$17,$75,$22,$07    ;[3172]  7dv..u".
     defb $BF,$28,$93,$35,$52,$BF,$86,$85    ;[317A]  .(.5R...
-    defb $91,$72                            ;[3182]  .5R....r
+    defb $91,$72                            ;[3182]  .r
 
 ;
 ; EXP.
@@ -7546,7 +7569,7 @@ DATA_ANTILOG:
     defb $42,$09,$40,$BE,$75,$46,$75,$47    ;[31FE]  B.@.uFuG
     defb $BF,$25,$36,$03,$32,$BF,$66,$28    ;[3206]  .%6.2.f(
     defb $43,$15,$C0,$11,$51,$28,$76,$C0    ;[320E]  C...Q(v.
-    defb $10,$00,$00,$00                    ;[3216]  Q(v.....
+    defb $10,$00,$00,$00                    ;[3216]  ....
 
 ;
 ; COS.
@@ -7604,7 +7627,7 @@ DATA_SINCOS:
     defb $04,$BC,$15,$14,$84,$19,$3D,$46    ;[328B]  ......=F
     defb $73,$76,$56,$BE,$79,$68,$96,$79    ;[3293]  svV.yh.y
     defb $3F,$64,$59,$63,$71,$C0,$15,$70    ;[329B]  ?dYcq..p
-    defb $79,$63                            ;[32A3]  Ycq..pyc
+    defb $79,$63                            ;[32A3]  yc
 
 ;
 ; NOT.
@@ -8081,7 +8104,7 @@ LYNX_ZWRA1:
 ;
 ; Data. Used to to 'Clear to end of line'
 ;
-    defb $0D,$1E,$00                ;[3518]  .#......
+    defb $0D,$1E,$00                ;[3518]  ...
 
 ;
 ; Display character in A (PutChar)
@@ -8089,7 +8112,7 @@ LYNX_ZWRA1:
 LYNX_PUTCHAR:
     PUSH  AF                        ;[351B] 
     CP    $0D                       ;[351C] 
-    JR    NZ,$3530                  ;[351E] 
+    JR    NZ,LYNX_OUTPUT_CHAR1      ;[351E] 
     PUSH  HL                        ;[3520] 
     LD    HL,(SYSVAR_CRST)          ;[3521] 
     CALL  LYNX_PLINE                ;[3524] 
@@ -8103,13 +8126,14 @@ LYNX_PUTCHAR:
 LYNX_OUTPUT_SPACE:
     PUSH  AF                        ;[352A] 
     LD    A,$20                     ;[352B] 
-    JR    $3530                     ;[352D] 
+    JR    LYNX_OUTPUT_CHAR1         ;[352D] 
 
 ;
 ; Output character in A to the screen.
 ;
 LYNX_OUTPUT_CHAR:
     PUSH  AF                        ;[352F] 
+LYNX_OUTPUT_CHAR1:
     PUSH  HL                        ;[3530] 
     PUSH  BC                        ;[3531] 
     CALL  SUB_PUTCHAR               ;[3532] 
@@ -8260,7 +8284,7 @@ DATA_FLOATS:
     defb $C0,$25,$06,$62,$83,$BF,$43,$42    ;[35EC]  .%.b..CB
     defb $94,$48,$C0,$31,$62,$27,$76,$BF    ;[35F4]  .H.1b'v.
     defb $50,$00,$00,$00,$3F,$50,$00,$00    ;[35FC]  P...?P..
-    defb $00,$80,$00,$00,$00,$00            ;[3604]  ........
+    defb $00,$80,$00,$00,$00,$00            ;[3604]  ......
 
     LD    B,$80                     ;[360A] I don't think that these bytes are used.
 
@@ -8275,7 +8299,7 @@ BASIC_FN_PI:
 ; Data for Pi.
 ;
 DATA_PI:
-    defb $C0,$31,$41,$59,$27        ;[3611]  6...1AY'
+    defb $C0,$31,$41,$59,$27        ;[3611]  .1AY'
 
     LD    A,(SYSVAR_WRA1)           ;[3616] Numeric manipulation routines.
     ADD   A,C                       ;[3619] 
@@ -8743,8 +8767,12 @@ SUB_MULTIPLY:
     DEC   (HL)                      ;[38E6] 
     RET                             ;[38E7] 
 
-    LD    SP,(SYSVAR_STACK)         ;[38E8] 'J' Command.
-    JP    $1E76                     ;[38EC] 
+;
+; 'J' Command.
+;
+LYNX_JUMP_TO_BASIC:
+    LD    SP,(SYSVAR_STACK)         ;[38E8] 
+    JP    SUB_JUMP_TO_BASIC         ;[38EC] 
 
 ;
 ; Data. Error messages.
@@ -8815,7 +8843,7 @@ DATA_ERROR_MSGS:
     defb $4F,$43,$20,$77,$69,$74,$68,$6F    ;[3ADF]  OC.witho
     defb $75,$74,$20,$50,$52,$4F,$43,$00    ;[3AE7]  ut.PROC.
     defb $0D,$42,$61,$64,$20,$54,$61,$70    ;[3AEF]  .Bad.Tap
-    defb $65,$00                            ;[3AF7]  ad.Tape.
+    defb $65,$00                            ;[3AF7]  e.
 
     XOR   A                         ;[3AF9] Bad Tape. Error message selection code.
     INC   A                         ;[3AFA] 
@@ -8952,7 +8980,7 @@ BASIC_COM_MON:
 ;
 ; Data ?????'. Monitor error message.
 ;
-    defb $3F,$3F,$3F,$3F,$0D,$1E,$00;[3BC8]  .????...
+    defb $3F,$3F,$3F,$3F,$0D,$1E,$00;[3BC8]  ????...
 
     ADC   A,E                       ;[3BCF] Two byte addresses for the monitor commands A-Z
     DEC   A                         ;[3BD0] 
@@ -9039,7 +9067,7 @@ MONITOR_P:
     LD    A,$3C                     ;[3C39] 
     RST   $08                       ;[3C3B] 
     LD    A,(HL)                    ;[3C3C] 
-    CALL  $2239                     ;[3C3D] 
+    CALL  LYNX_PHEXHL1              ;[3C3D] 
     LD    A,$3E                     ;[3C40] 
     RST   $08                       ;[3C42] 
     CALL  LYNX_OUTPUT_SPACE         ;[3C43] 
@@ -9162,7 +9190,7 @@ DATA_MONITOR:
     defb $20,$42,$43,$20,$41,$46,$27,$48    ;[3CF0]  .BC.AF'H
     defb $4C,$27,$44,$45,$27,$42,$43,$27    ;[3CF8]  L'DE'BC'
     defb $49,$58,$20,$49,$59,$20,$53,$50    ;[3D00]  IX.IY.SP
-    defb $20,$50,$43,$20                    ;[3D08]  Y.SP.PC.
+    defb $20,$50,$43,$20                    ;[3D08]  .PC.
 
 ;
 ; Display HL.
@@ -9170,7 +9198,7 @@ DATA_MONITOR:
 LYNX_DISPLAY_HL:
     CALL  LYNX_PHEXHL               ;[3D0C] 
     JP    LYNX_OUTPUT_SPACE         ;[3D0F] 
-    CALL  $2239                     ;[3D12] 
+    CALL  LYNX_PHEXHL1              ;[3D12] 
     JR    $3D0F                     ;[3D15] 
 
 ;
@@ -9314,7 +9342,7 @@ MONITOR_A:
 ; Data '??' used in A comand.
 ;
 DATA_MONITOR_A:
-    defb $3F,$3F,$00                ;[3DC9]  .8...??.
+    defb $3F,$3F,$00                ;[3DC9]  ??.
 
     CALL  SUB_ARGUMENT_3            ;[3DCC] ???? Doesn't seem to be used!!!!
     LD    A,L                       ;[3DCF] 
@@ -9536,7 +9564,7 @@ SUB_FLAGS:
 ;
 DATA_FLAGS:
     defb $53,$5A,$31,$48,$31,$50,$4E,$43    ;[3ECB]  SZ1H1PNC
-    defb $00                                ;[3ED3]  Z1H1PNC.
+    defb $00                                ;[3ED3]  .
 
 ;
 ; Monitor E command.
