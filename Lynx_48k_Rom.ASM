@@ -1814,7 +1814,7 @@ VERIFY_READ_NEXT:
     JP    LYNX_MOTOFF               ;[0C7E] 
 VERIFY_ERROR_EXIT:
     CALL  LYNX_MOTOFF               ;[0C81] 
-    JP    ERR_BAD_TAPE              ;[0C84] 
+    JP    LYNX_ERROR                ;[0C84] 
 
 ;
 ; APPEND BASIC command.
@@ -1911,10 +1911,11 @@ LYNX_MOTOFF:
     OUT   ($87),A                   ;[0CFC] 
     OUT   ($80),A                   ;[0CFE] 
     LD    BC,$1770                  ;[0D00] 
+LYNX_MOTOFF_DELAY:
     DEC   BC                        ;[0D03] 
     LD    A,B                       ;[0D04] 
     OR    C                         ;[0D05] 
-    JR    NZ,$0D03                  ;[0D06] 
+    JR    NZ,LYNX_MOTOFF_DELAY      ;[0D06] 
     RET                             ;[0D08] 
 
 ;
@@ -1947,21 +1948,26 @@ LYNX_WBYTE:
     LD    A,(SYSVAR_FINE)           ;[0D6E] 
     LD    D,A                       ;[0D71] 
     SCF                             ;[0D72] 
+LYNX_WBYTE_COARSE:
     RL    E                         ;[0D73] 
-    JR    Z,$0D8D                   ;[0D75] 
+    JR    Z,LYNX_WBYTE_END          ;[0D75] 
     LD    A,(SYSVAR_COARSE)         ;[0D77] 
-    JR    C,$0D7D                   ;[0D7A] 
+    JR    C,LYNX_WBYTE_WAVE         ;[0D7A] 
     RLCA                            ;[0D7C] 
+LYNX_WBYTE_WAVE:
     LD    C,A                       ;[0D7D] 
-    LD    HL,(SYSVAR_CASTBL)        ;[0D7E] 
+    LD    HL,(SYSVAR_CASTBL)        ;[0D7E] Load the waveform values
+LYNX_WBYTE_SAMPLE:
     LD    A,(HL)                    ;[0D81] 
     OR    A                         ;[0D82] 
-    JR    Z,$0D73                   ;[0D83] 
+    JR    Z,LYNX_WBYTE_COARSE       ;[0D83] 
     OUT   ($84),A                   ;[0D85] 
     ADD   HL,BC                     ;[0D87] 
     LD    B,D                       ;[0D88] 
-    DJNZ  $0D89                     ;[0D89] 
-    JR    $0D81                     ;[0D8B] 
+LYNX_WBYTE_DELAY:
+    DJNZ  LYNX_WBYTE_DELAY          ;[0D89] 
+    JR    LYNX_WBYTE_SAMPLE         ;[0D8B] 
+LYNX_WBYTE_END:
     POP   BC                        ;[0D8D] 
     POP   DE                        ;[0D8E] 
     POP   HL                        ;[0D8F] 
@@ -1969,7 +1975,7 @@ LYNX_WBYTE:
     RET                             ;[0D91] 
 
 ;
-; TAPE.
+; TAPE. Loads a 4 byte tape speed into HL and DE using the lookup table (DATA_TAPE).
 ;
 BASIC_COM_TAPE:
     RST   $18                       ;[0D92] 
@@ -1983,11 +1989,12 @@ BASIC_COM_TAPE:
     ADD   HL,DE                     ;[0DA0] 
     LD    DE,SYSVAR_CASLEV          ;[0DA1] 
     LD    B,$04                     ;[0DA4] 
+BASIC_COM_TAPE1:
     LD    A,(HL)                    ;[0DA6] 
     LD    (DE),A                    ;[0DA7] 
     INC   DE                        ;[0DA8] 
     INC   HL                        ;[0DA9] 
-    DJNZ  $0DA6                     ;[0DAA] 
+    DJNZ  BASIC_COM_TAPE1           ;[0DAA] 
     RET                             ;[0DAC] 
 
 ;
@@ -2004,7 +2011,12 @@ DATA_TAPE:
 VDU_12:
     CALL  LYNX_CURSOR_RIGHT         ;[0DC5] 
     JP    SAVE_CURSORX              ;[0DC8] 
-    LD    HL,$9FF8                  ;[0DCB] All set to FF ie not used.
+
+;
+; To be determined. Called from LYNX_MAIN.
+;
+SUB_MAIN:
+    LD    HL,$9FF8                  ;[0DCB] 
     LD    DE,$BFF8                  ;[0DCE] 
     LD    A,(DE)                    ;[0DD1] 
     CPL                             ;[0DD2] 
@@ -2014,9 +2026,10 @@ VDU_12:
     LD    (DE),A                    ;[0DD6] 
     LD    A,(HL)                    ;[0DD7] 
     CP    C                         ;[0DD8] 
-    JR    NZ,$0DEB                  ;[0DD9] 
+    JR    NZ,SUB_MAIN2              ;[0DD9] 
     LD    HL,$0FF8                  ;[0DDB] 
     LD    DE,$F000                  ;[0DDE] 
+SUB_MAIN1:
     ADD   HL,DE                     ;[0DE1] 
     LD    A,(HL)                    ;[0DE2] 
     CPL                             ;[0DE3] 
@@ -2025,9 +2038,10 @@ VDU_12:
     CPL                             ;[0DE6] 
     LD    (HL),A                    ;[0DE7] 
     CP    C                         ;[0DE8] 
-    JR    Z,$0DE1                   ;[0DE9] 
+    JR    Z,SUB_MAIN1               ;[0DE9] 
+SUB_MAIN2:
     LD    SP,HL                     ;[0DEB] 
-    JP    $16A3                     ;[0DEC] 
+    JP    LYNX_MAIN1                ;[0DEC] 
     INC   D                         ;[0DEF] 
     INC   DE                        ;[0DF0] 
     LD    A,$00                     ;[0DF1] 
@@ -2038,7 +2052,7 @@ VDU_12:
     POP   DE                        ;[0DFB] 
     POP   BC                        ;[0DFC] 
     LD    IX,(SYSVAR_CURRLP)        ;[0DFD] 
-    JP    $1E3E                     ;[0E01] 
+    JP    BASIC_COM_STOP1           ;[0E01] 
     RST   $38                       ;[0E04] 
 
 ;
@@ -3015,7 +3029,8 @@ LYNX_MAIN:
     LD    (HL),$80                  ;[169B] 
     DEC   HL                        ;[169D] 
     LD    (HL),$0D                  ;[169E] 
-    JP    $0DCB                     ;[16A0] 
+    JP    SUB_MAIN                  ;[16A0] 
+LYNX_MAIN1:
     LD    A,($4000)                 ;[16A3] 
     OR    A                         ;[16A6] 
     CALL  Z,$4000                   ;[16A7] 
@@ -4097,11 +4112,12 @@ BASIC_COM_STOP:
     CP    $80                       ;[1E36] 
     CALL  Z,ERR_WRONG_MODE          ;[1E38] 
     CALL  LYNX_ADD_LEN_TO_IX        ;[1E3B] 
+BASIC_COM_STOP1:
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
     LD    HL,$1E4E                  ;[1E42] 
     CALL  LYNX_PLINE                ;[1E45] 
     CALL  SUB_JUMP_TO_BASIC1        ;[1E48] 
-    JP    $24E2                     ;[1E4B] 
+    JP    JUMP_TO_BASIC             ;[1E4B] 
     DEC   C                         ;[1E4E] 
 
 ;
@@ -5042,7 +5058,7 @@ BASIC_COM_LIST:
     JR    C,$230A                   ;[2330] 
     LD    A,$1E                     ;[2332] 
     RST   $08                       ;[2334] 
-    JP    $24E2                     ;[2335] 
+    JP    JUMP_TO_BASIC             ;[2335] 
 
 ;
 ; LLIST.
@@ -5346,13 +5362,14 @@ BASIC_COM_LINK:
     LD    (SYSVAR_CURRLP),IX        ;[24C5] 
     LD    A,(IX+$00)                ;[24C9] 
     CP    $80                       ;[24CC] 
-    JR    Z,$24E2                   ;[24CE] 
+    JR    Z,JUMP_TO_BASIC           ;[24CE] 
     LD    (SYSVAR_CONTLP),IX        ;[24D0] 
     CALL  LYNX_ESC                  ;[24D4] 
     JP    Z,$1E42                   ;[24D7] 
     JR    $249C                     ;[24DA] 
     LD    HL,$0000                  ;[24DC] 
     LD    (SYSVAR_CONTLP),HL        ;[24DF] 
+JUMP_TO_BASIC:
     JP    LYNX_JUMP_TO_BASIC        ;[24E2] 
 
 ;
@@ -8845,7 +8862,11 @@ DATA_ERROR_MSGS:
     defb $0D,$42,$61,$64,$20,$54,$61,$70    ;[3AEF]  .Bad.Tap
     defb $65,$00                            ;[3AF7]  e.
 
-    XOR   A                         ;[3AF9] Bad Tape. Error message selection code.
+;
+; Error message selection code. (also BAD_TAPE jump)
+;
+LYNX_ERROR:
+    XOR   A                         ;[3AF9] 
     INC   A                         ;[3AFA] 
     LD    B,$AF                     ;[3AFB] ENDPROC without PROC
     INC   A                         ;[3AFD] 
@@ -8903,15 +8924,16 @@ DATA_ERROR_MSGS:
     INC   A                         ;[3B4B] 
     LD    B,$AF                     ;[3B4C] Out of Memory
     INC   A                         ;[3B4E] 
-    CALL  SYSVAR_ERRAM              ;[3B4F] 
+    CALL  SYSVAR_ERRAM              ;[3B4F] Unused??
     LD    HL,(SYSVAR_ERRTBL)        ;[3B52] 
     LD    C,A                       ;[3B55] 
+LYNX_ERROR_FIND:
     LD    A,(HL)                    ;[3B56] 
     INC   HL                        ;[3B57] 
     OR    A                         ;[3B58] 
-    JR    NZ,$3B56                  ;[3B59] 
+    JR    NZ,LYNX_ERROR_FIND        ;[3B59] 
     DEC   C                         ;[3B5B] 
-    JR    NZ,$3B56                  ;[3B5C] 
+    JR    NZ,LYNX_ERROR_FIND        ;[3B5C] 
     CALL  LYNX_PLINE                ;[3B5E] 
     JP    BASIC                     ;[3B61] 
 
