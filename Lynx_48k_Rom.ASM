@@ -4791,11 +4791,11 @@ BASIC_COM_LET:
     INC   DE                        ;[2168] 
     PUSH  HL                        ;[2169] 
     PUSH  BC                        ;[216A] 
-    CALL  $2BDD                     ;[216B] 
+    CALL  LYNX_STRING_EXEC          ;[216B] 
     POP   BC                        ;[216E] 
     POP   IX                        ;[216F] 
     LD    HL,SYSVAR_STRBUF          ;[2171] 
-    CALL  $2C7F                     ;[2174] 
+    CALL  LYNX_STRING_SEEK_END      ;[2174] 
     LD    (IX+$00),$0D              ;[2177] 
     JR    $215A                     ;[217B] 
 
@@ -6322,59 +6322,76 @@ SUB_PRINT:
 ;
 BASIC_COM_PRINT:
     LD    C,$00                     ;[29A9] 
+BASIC_COM_PRINT0:
     LD    A,(DE)                    ;[29AB] 
     CP    $0D                       ;[29AC] 
-    JR    Z,$29D6                   ;[29AE] 
+    JR    Z,BASIC_COM_PRINT1        ;[29AE] Do carriage return
     CP    $2C                       ;[29B0] 
-    JR    Z,$29DD                   ;[29B2] 
+    JR    Z,LYNX_PRINT_TAB          ;[29B2] Do comma
     CP    $3B                       ;[29B4] 
-    JR    Z,$29E0                   ;[29B6] 
+    JR    Z,$29E0                   ;[29B6] Do semicolon
     CP    $23                       ;[29B8] 
-    JR    Z,SUB_PRINT               ;[29BA] 
+    JR    Z,SUB_PRINT               ;[29BA] Do hash #
     CP    $7D                       ;[29BC] 
-    JR    Z,$29A3                   ;[29BE] 
+    JR    Z,$29A3                   ;[29BE] Do close brace }
     CP    $DE                       ;[29C0] 
-    JP    Z,$29E5                   ;[29C2] 
+    JP    Z,LYNX_PRINT_EXPR         ;[29C2] 
     CP    $D9                       ;[29C5] 
-    JP    Z,$29F8                   ;[29C7] 
-    CALL  $2BDD                     ;[29CA] 
+    JP    Z,LYNX_PRINT_AT           ;[29C7] 
+    CALL  LYNX_STRING_EXEC          ;[29CA] 
     LD    HL,SYSVAR_STRBUF          ;[29CD] 
     CALL  LYNX_PRTSTR               ;[29D0] 
     JP    BASIC_COM_PRINT           ;[29D3] 
+BASIC_COM_PRINT1:
     LD    A,C                       ;[29D6] 
     OR    A                         ;[29D7] 
     RET   NZ                        ;[29D8] 
-    LD    A,$0D                     ;[29D9] 
+    LD    A,$0D                     ;[29D9] Print CR
     RST   $08                       ;[29DB] 
     RET                             ;[29DC] 
 
+;
+; Print TAB char
+;
+LYNX_PRINT_TAB:
     LD    A,$09                     ;[29DD] 
     RST   $08                       ;[29DF] 
     LD    C,$01                     ;[29E0] 
     INC   DE                        ;[29E2] 
-    JR    $29AB                     ;[29E3] 
+    JR    BASIC_COM_PRINT0          ;[29E3] 
+
+;
+; Print expression?
+;
+LYNX_PRINT_EXPR:
     INC   DE                        ;[29E5] 
-    RST   $18                       ;[29E6] 
+    RST   $18                       ;[29E6] Evaluate expression
     RLCA                            ;[29E7] 
     ADD   A,L                       ;[29E8] 
     LD    HL,(SYSVAR_CURSORX)       ;[29E9] 
     CP    L                         ;[29EC] 
-    JR    C,$29F5                   ;[29ED] 
+    JR    C,LYNX_PRINT_NEXT         ;[29ED] 
     LD    (SYSVAR_CURSORX),A        ;[29EF] 
     LD    A,$1E                     ;[29F2] 
     RST   $08                       ;[29F4] 
+LYNX_PRINT_NEXT:
     JP    BASIC_COM_PRINT           ;[29F5] 
+
+;
+; Print @ x,y ?
+;
+LYNX_PRINT_AT:
     INC   DE                        ;[29F8] 
     RST   $18                       ;[29F9] 
     LD    (SYSVAR_CURSORX),HL       ;[29FA] 
     INC   DE                        ;[29FD] 
     RST   $18                       ;[29FE] 
     LD    (SYSVAR_CURSORY),A        ;[29FF] 
-    JR    $29F5                     ;[2A02] 
+    JR    LYNX_PRINT_NEXT           ;[2A02] 
     LD    (HL),A                    ;[2A04] 
     INC   DE                        ;[2A05] 
     INC   HL                        ;[2A06] 
-    JR    $2A43                     ;[2A07] 
+    JR    LYNX_VALIDATE_PRINT1A     ;[2A07] 
     CALL  $2C9D                     ;[2A09] 
     JR    $2A10                     ;[2A0C] 
     INC   HL                        ;[2A0E] 
@@ -6415,6 +6432,7 @@ VALIDATE_PRINT1:
     INC   HL                        ;[2A40] 
     PUSH  DE                        ;[2A41] 
     POP   DE                        ;[2A42] 
+LYNX_VALIDATE_PRINT1A:
     CALL  LYNX_RP                   ;[2A43] 
     CP    $80                       ;[2A46] 
     CALL  NC,ERR_SYNTAX             ;[2A48] 
@@ -6625,7 +6643,7 @@ BASIC_FN_STR_STRING:
     POP   HL                        ;[2B8C] 
     LD    (SYSVAR_PRINTD),HL        ;[2B8D] 
     POP   DE                        ;[2B90] 
-    JR    $2BC2                     ;[2B91] 
+    JR    LYNX_LEFT_STRING          ;[2B91] 
 
 ;
 ; KEY$
@@ -6657,18 +6675,25 @@ BASIC_FN_GET_STRING:
 ;
 BASIC_FN_UPC_STRING:
     CALL  SYSVAR_VRPTS              ;[2BA8] 
+BASIC_FN_UPC_STRING1:
     LD    A,(HL)                    ;[2BAB] 
     CP    $0D                       ;[2BAC] 
-    JR    Z,$2BC2                   ;[2BAE] 
+    JR    Z,LYNX_LEFT_STRING        ;[2BAE] 
     CP    $61                       ;[2BB0] 
-    JR    C,$2BBA                   ;[2BB2] 
+    JR    C,BASIC_FN_UPC_STRING2    ;[2BB2] 
     CP    $7B                       ;[2BB4] 
-    JR    NC,$2BBA                  ;[2BB6] 
+    JR    NC,BASIC_FN_UPC_STRING2   ;[2BB6] 
     RES   5,A                       ;[2BB8] 
+BASIC_FN_UPC_STRING2:
     LD    (IX+$00),A                ;[2BBA] 
     INC   IX                        ;[2BBD] 
     INC   HL                        ;[2BBF] 
-    JR    $2BAB                     ;[2BC0] 
+    JR    BASIC_FN_UPC_STRING1      ;[2BC0] 
+
+;
+; Left String function?
+;
+LYNX_LEFT_STRING:
     INC   DE                        ;[2BC2] 
     PUSH  IX                        ;[2BC3] 
     POP   HL                        ;[2BC5] 
@@ -6685,14 +6710,20 @@ BASIC_FN_UPC_STRING:
     CP    $2B                       ;[2BD7] 
     RET   NZ                        ;[2BD9] 
     INC   DE                        ;[2BDA] 
-    JR    $2BE5                     ;[2BDB] 
-    LD    IY,SYSVAR_CSTACK          ;[2BDD] String execution routine.
+    JR    LYNX_STRING_EXEC0         ;[2BDB] 
+
+;
+; String function execution routine. (LEFT$, GET$, KEY$,.etc.)
+;
+LYNX_STRING_EXEC:
+    LD    IY,SYSVAR_CSTACK          ;[2BDD] 
     LD    IX,SYSVAR_STRBUF          ;[2BE1] 
+LYNX_STRING_EXEC0:
     LD    A,(DE)                    ;[2BE5] 
-    CP    $22                       ;[2BE6] 
-    JR    Z,$2C15                   ;[2BE8] 
+    CP    $22                       ;[2BE6] Quote "
+    JR    Z,LYNX_STRING_EXEC1       ;[2BE8] 
     CALL  LYNX_VALID_VAR_TEST       ;[2BEA] 
-    JR    Z,$2C20                   ;[2BED] 
+    JR    Z,LYNX_STRING_EXEC2       ;[2BED] 
     LD    A,(DE)                    ;[2BEF] 
     INC   DE                        ;[2BF0] 
     CP    $E3                       ;[2BF1] 
@@ -6712,15 +6743,17 @@ BASIC_FN_UPC_STRING:
     CP    $E2                       ;[2C0E] 
     JR    Z,BASIC_FN_MID_STRING     ;[2C10] 
     CALL  ERR_SOMETHG_MISSG         ;[2C12] 
+LYNX_STRING_EXEC1:
     INC   DE                        ;[2C15] 
     LD    B,$00                     ;[2C16] 
     EX    DE,HL                     ;[2C18] 
-    CALL  $2C7F                     ;[2C19] 
+    CALL  LYNX_STRING_SEEK_END      ;[2C19] 
     EX    DE,HL                     ;[2C1C] 
     INC   DE                        ;[2C1D] 
     JR    $2BC3                     ;[2C1E] 
+LYNX_STRING_EXEC2:
     CALL  SYSVAR_VRPTS              ;[2C20] 
-    CALL  $2C7F                     ;[2C23] 
+    CALL  LYNX_STRING_SEEK_END      ;[2C23] 
     JR    $2BC3                     ;[2C26] 
 
 ;
@@ -6730,7 +6763,7 @@ BASIC_FN_CHR_STRING:
     CALL  SUB_LINE_ANALYSIS2        ;[2C28] 
     LD    (IX+$00),L                ;[2C2B] 
     INC   IX                        ;[2C2E] 
-    JR    $2BC2                     ;[2C30] 
+    JR    LYNX_LEFT_STRING          ;[2C30] 
 
 ;
 ; LEFT$
@@ -6743,7 +6776,7 @@ BASIC_FN_LEFT_STRING:
     LD    B,L                       ;[2C3A] 
     POP   HL                        ;[2C3B] 
     CALL  $3FE5                     ;[2C3C] 
-    JR    $2BC2                     ;[2C3F] 
+    JR    LYNX_LEFT_STRING          ;[2C3F] 
 
 ;
 ; MID$
@@ -6759,16 +6792,17 @@ BASIC_FN_MID_STRING:
     LD    C,L                       ;[2C4E] 
     POP   HL                        ;[2C4F] 
     LD    B,L                       ;[2C50] 
+BASIC_FN_MID_STRING1:
     POP   HL                        ;[2C51] 
     LD    A,(HL)                    ;[2C52] 
     CP    $0D                       ;[2C53] 
-    JP    Z,$2BC2                   ;[2C55] 
+    JP    Z,LYNX_LEFT_STRING        ;[2C55] 
     INC   HL                        ;[2C58] 
     DJNZ  $2C52                     ;[2C59] 
     DEC   HL                        ;[2C5B] 
     LD    B,C                       ;[2C5C] 
     CALL  $3FE5                     ;[2C5D] 
-    JP    $2BC2                     ;[2C60] 
+    JP    LYNX_LEFT_STRING          ;[2C60] 
 
 ;
 ; RIGHT$
@@ -6791,7 +6825,12 @@ BASIC_FN_RIGHT_STRING:
     SUB   C                         ;[2C78] 
     CALL  C,ERR_STRING              ;[2C79] 
     LD    B,A                       ;[2C7C] 
-    JR    $2C51                     ;[2C7D] 
+    JR    BASIC_FN_MID_STRING1      ;[2C7D] 
+
+;
+; Returns when it sees quote " or CR
+;
+LYNX_STRING_SEEK_END:
     LD    A,(HL)                    ;[2C7F] 
     CP    $22                       ;[2C80] 
     RET   Z                         ;[2C82] 
@@ -6800,7 +6839,7 @@ BASIC_FN_RIGHT_STRING:
     LD    (IX+$00),A                ;[2C86] 
     INC   IX                        ;[2C89] 
     INC   HL                        ;[2C8B] 
-    DJNZ  $2C7F                     ;[2C8C] 
+    DJNZ  LYNX_STRING_SEEK_END      ;[2C8C] 
     RET                             ;[2C8E] 
 
     CALL  LYNX_VALIDATE_VAR         ;[2C8F] 
@@ -7882,7 +7921,7 @@ SUB_ANGLE:
     LD    D,A                       ;[335A] 
     ADD   A,B                       ;[335B] 
     LD    IX,$6487                  ;[335C] 
-    CALL  $2BE5                     ;[3360] 
+    CALL  LYNX_STRING_EXEC0         ;[3360] 
     INC   DE                        ;[3363] 
     PUSH  DE                        ;[3364] 
     LD    DE,$6487                  ;[3365] 
@@ -9844,7 +9883,7 @@ SUB_DIM:
     LD    A,B                       ;[3FE5] Set to FF and not used.
     OR    A                         ;[3FE6] 
     RET   Z                         ;[3FE7] 
-    JP    $2C7F                     ;[3FE8] 
+    JP    LYNX_STRING_SEEK_END      ;[3FE8] 
     CALL  BASIC_FN_ARCCOS           ;[3FEB] 
     JP    $2FCB                     ;[3FEE] 
 SUB_MOD:
