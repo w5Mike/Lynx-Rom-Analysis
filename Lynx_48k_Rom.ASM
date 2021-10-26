@@ -2489,22 +2489,26 @@ BASIC_COM_PLOT:
     LD    B,$01                     ;[0FEA] 
     OR    E                         ;[0FEC] 
     OR    D                         ;[0FED] 
-    JR    Z,$1008                   ;[0FEE] 
+    JR    Z,BASIC_COM_PLOT4         ;[0FEE] 
     DEC   B                         ;[0FF0] 
     CALL  SUB_PLOT5                 ;[0FF1] 
-    JR    NZ,$1001                  ;[0FF4] 
+    JR    NZ,BASIC_COM_PLOT2        ;[0FF4] 
     SCF                             ;[0FF6] 
+BASIC_COM_PLOT1:
     RR    B                         ;[0FF7] 
     CALL  SUB_PLOT4                 ;[0FF9] 
     CALL  SUB_PLOT5                 ;[0FFC] 
-    JR    Z,$0FF7                   ;[0FFF] 
+    JR    Z,BASIC_COM_PLOT1         ;[0FFF] 
+BASIC_COM_PLOT2:
     CALL  SUB_PLOT3                 ;[1001] 
+BASIC_COM_PLOT3:
     ADD   HL,DE                     ;[1004] 
     EXX                             ;[1005] 
     ADD   HL,DE                     ;[1006] 
     EXX                             ;[1007] 
+BASIC_COM_PLOT4:
     CALL  SUB_PLOT3                 ;[1008] 
-    DJNZ  $1004                     ;[100B] 
+    DJNZ  BASIC_COM_PLOT3           ;[100B] 
     POP   HL                        ;[100D] 
     LD    A,L                       ;[100E] 
     LD    (SYSVAR_GOLDY),A          ;[100F] 
@@ -2538,10 +2542,12 @@ SUB_PLOT3:
     ADD   HL,BC                     ;[102F] 
     LD    C,$80                     ;[1030] 
     AND   $07                       ;[1032] 
-    JR    Z,$103B                   ;[1034] 
+    JR    Z,SUB_PLOT3B              ;[1034] 
+SUB_PLOT3A:
     SRL   C                         ;[1036] 
     DEC   A                         ;[1038] 
-    JR    NZ,$1036                  ;[1039] 
+    JR    NZ,SUB_PLOT3A             ;[1039] 
+SUB_PLOT3B:
     LD    A,C                       ;[103B] 
     CPL                             ;[103C] 
     LD    C,A                       ;[103D] 
@@ -2590,10 +2596,15 @@ LYNX_PRTSTR:
     RST   $08                       ;[1062] 
     INC   HL                        ;[1063] 
     JR    LYNX_PRTSTR               ;[1064] 
-    CALL  $1095                     ;[1066] Flash cursor and scan keyboard.
+
+;
+; Flash cursor and scan keyboard.
+;
+LYNX_CURSOR_INPUT:
+    CALL  LYNX_FLASH_CURSOR         ;[1066] 
     CALL  LYNX_KEY                  ;[1069] 
     OR    A                         ;[106C] 
-    JR    Z,$1066                   ;[106D] 
+    JR    Z,LYNX_CURSOR_INPUT       ;[106D] 
     RET                             ;[106F] 
 
 ;
@@ -2606,12 +2617,14 @@ LYNX_DISPLAY_BUFFER:
     LD    A,$20                     ;[1076] 
     RST   $08                       ;[1078] 
     DEC   HL                        ;[1079] 
+LYNX_DISPLAY_BUFFER1:
     INC   HL                        ;[107A] 
     LD    A,(HL)                    ;[107B] 
     CP    $0D                       ;[107C] 
-    JR    Z,$1083                   ;[107E] 
+    JR    Z,LYNX_DISPLAY_BUFFER2    ;[107E] 
     RST   $08                       ;[1080] 
-    JR    $107A                     ;[1081] 
+    JR    LYNX_DISPLAY_BUFFER1      ;[1081] 
+LYNX_DISPLAY_BUFFER2:
     LD    A,$20                     ;[1083] 
     RST   $08                       ;[1085] 
     LD    (SYSVAR_CURSORX),DE       ;[1086] 
@@ -2619,17 +2632,26 @@ LYNX_DISPLAY_BUFFER:
     POP   HL                        ;[108B] 
     RET                             ;[108C] 
 
-    LD    A,(DE)                    ;[108D] Loop until CR.
+;
+; Loop until CR.
+;
+LYNX_LINP_LOOP:
+    LD    A,(DE)                    ;[108D] 
     CP    $0D                       ;[108E] 
     RET   Z                         ;[1090] 
     INC   B                         ;[1091] 
     INC   DE                        ;[1092] 
-    JR    $108D                     ;[1093] 
-    EXX                             ;[1095] Output the cursor.
+    JR    LYNX_LINP_LOOP            ;[1093] 
+
+;
+; Output the cursor.
+;
+LYNX_FLASH_CURSOR:
+    EXX                             ;[1095] 
     DEC   HL                        ;[1096] 
     LD    A,H                       ;[1097] 
     OR    L                         ;[1098] 
-    JR    NZ,$10A5                  ;[1099] 
+    JR    NZ,LYNX_FLASH_CURSOR_END  ;[1099] 
     LD    HL,(SYSVAR_FLASH)         ;[109B] 
     LD    A,B                       ;[109E] 
     LD    B,C                       ;[109F] 
@@ -2637,13 +2659,18 @@ LYNX_DISPLAY_BUFFER:
     RST   $08                       ;[10A1] 
     LD    A,$16                     ;[10A2] 
     RST   $08                       ;[10A4] 
+LYNX_FLASH_CURSOR_END:
     EXX                             ;[10A5] 
     RET                             ;[10A6] 
 
-    EX    AF,AF'                    ;[10A7] Character input routines
+;
+; Character input routines
+;
+LYNX_CHAR_INPUT:
+    EX    AF,AF'                    ;[10A7] 
     LD    A,B                       ;[10A8] 
     CP    $F0                       ;[10A9] 
-    JR    NC,$10F5                  ;[10AB] 
+    JR    NC,LYNX_LINP1             ;[10AB] 
     EX    AF,AF'                    ;[10AD] 
     RST   $08                       ;[10AE] 
     INC   DE                        ;[10AF] 
@@ -2669,7 +2696,12 @@ LYNX_DISPLAY_BUFFER:
     CALL  LYNX_DISPLAY_BUFFER       ;[10C5] 
     INC   B                         ;[10C8] 
     INC   C                         ;[10C9] 
-    JR    $10F5                     ;[10CA] 
+    JR    LYNX_LINP1                ;[10CA] 
+
+;
+; Load flash rate and cursor characters.
+;
+LYNX_CURS_VALUES:
     LD    HL,$6000                  ;[10CC] 
     LD    D,H                       ;[10CF] 
     LD    E,L                       ;[10D0] 
@@ -2680,30 +2712,37 @@ LYNX_DISPLAY_BUFFER:
     EXX                             ;[10DC] 
     RET                             ;[10DD] 
 
+;
+; Carriage Return, Linefeed
+;
+LYNX_LINP_CRLF:
     LD    (HL),$0D                  ;[10DE] 
-    JR    $10FF                     ;[10E0] 
+    JR    LYNX_LINP2                ;[10E0] 
 
 ;
 ; Line input routine.
 ;
 LYNX_LINP:
-    CALL  $10CC                     ;[10E2] 
+    CALL  LYNX_CURS_VALUES          ;[10E2] 
     LD    A,$0F                     ;[10E5] 
     RST   $08                       ;[10E7] 
-    CALL  $1066                     ;[10E8] 
+    CALL  LYNX_CURSOR_INPUT         ;[10E8] 
     CP    $11                       ;[10EB] 
-    JR    NZ,$10DE                  ;[10ED] 
-    CALL  $108D                     ;[10EF] 
+    JR    NZ,LYNX_LINP_CRLF         ;[10ED] 
+LYNX_LINP0:
+    CALL  LYNX_LINP_LOOP            ;[10EF] 
     CALL  LYNX_DISPLAY_BUFFER       ;[10F2] 
+LYNX_LINP1:
     EXX                             ;[10F5] 
     LD    A,B                       ;[10F6] 
     RST   $08                       ;[10F7] 
     LD    A,$16                     ;[10F8] 
     RST   $08                       ;[10FA] 
     EXX                             ;[10FB] 
-    CALL  $1066                     ;[10FC] 
+    CALL  LYNX_CURSOR_INPUT         ;[10FC] 
+LYNX_LINP2:
     CP    $20                       ;[10FF] 
-    JR    NC,$10A7                  ;[1101] 
+    JR    NC,LYNX_CHAR_INPUT        ;[1101] 
     CP    $08                       ;[1103] 
     JR    Z,$1145                   ;[1105] 
     CP    $0B                       ;[1107] 
@@ -2711,13 +2750,13 @@ LYNX_LINP:
     CP    $0A                       ;[110C] 
     JP    Z,$11D6                   ;[110E] 
     CP    $16                       ;[1111] 
-    JR    Z,$112E                   ;[1113] 
+    JR    Z,LYNX_LINP3              ;[1113] 
     CP    $0C                       ;[1115] 
     JR    Z,$113C                   ;[1117] 
     CP    $05                       ;[1119] 
     JP    Z,$1167                   ;[111B] 
     CP    $0D                       ;[111E] 
-    JR    NZ,$10F5                  ;[1120] 
+    JR    NZ,LYNX_LINP1             ;[1120] 
     CALL  LYNX_PRTSTR               ;[1122] 
     LD    A,$20                     ;[1125] 
     RST   $08                       ;[1127] 
@@ -2727,9 +2766,13 @@ LYNX_LINP:
     DEC   B                         ;[112C] 
     RET                             ;[112D] 
 
+;
+; *tbd
+;
+LYNX_LINP3:
     DEC   C                         ;[112E] 
     INC   C                         ;[112F] 
-    JR    Z,$10F5                   ;[1130] 
+    JR    Z,LYNX_LINP1              ;[1130] 
     DEC   HL                        ;[1132] 
     DEC   C                         ;[1133] 
     LD    A,(HL)                    ;[1134] 
@@ -2737,16 +2780,16 @@ LYNX_LINP:
     LD    A,$16                     ;[1136] 
     RST   $08                       ;[1138] 
     RST   $08                       ;[1139] 
-    JR    $10F5                     ;[113A] 
+    JR    LYNX_LINP1                ;[113A] 
     LD    A,(HL)                    ;[113C] 
     CP    $0D                       ;[113D] 
-    JR    Z,$10F5                   ;[113F] 
+    JR    Z,LYNX_LINP1              ;[113F] 
     INC   HL                        ;[1141] 
     INC   C                         ;[1142] 
     JR    $1139                     ;[1143] 
     DEC   C                         ;[1145] 
     INC   C                         ;[1146] 
-    JR    Z,$10F5                   ;[1147] 
+    JR    Z,LYNX_LINP1              ;[1147] 
     DEC   HL                        ;[1149] 
     PUSH  HL                        ;[114A] 
     PUSH  DE                        ;[114B] 
@@ -2769,14 +2812,14 @@ LYNX_LINP:
     LD    A,$16                     ;[115E] 
     RST   $08                       ;[1160] 
     CALL  LYNX_DISPLAY_BUFFER       ;[1161] 
-    JP    $10F5                     ;[1164] 
+    JP    LYNX_LINP1                ;[1164] 
     INC   B                         ;[1167] 
     DEC   B                         ;[1168] 
-    JP    NZ,$10F5                  ;[1169] 
+    JP    NZ,LYNX_LINP1             ;[1169] 
     LD    HL,DATA_LINE_NUMBER       ;[116C] 
     CALL  LYNX_PLINE                ;[116F] 
-    CALL  $10CC                     ;[1172] 
-    CALL  $10DE                     ;[1175] 
+    CALL  LYNX_CURS_VALUES          ;[1172] 
+    CALL  LYNX_LINP_CRLF            ;[1175] 
     LD    DE,$6000                  ;[1178] 
     RST   $10                       ;[117B] 
     CALL  LYNX_RDN                  ;[117C] 
@@ -2793,8 +2836,8 @@ LYNX_LINP:
     CALL  SYSVAR_DBASLN             ;[1199] 
     POP   HL                        ;[119C] 
     LD    (SYSVAR_PRINTD),HL        ;[119D] 
-    CALL  $10CC                     ;[11A0] 
-    JP    $10EF                     ;[11A3] 
+    CALL  LYNX_CURS_VALUES          ;[11A0] 
+    JP    LYNX_LINP0                ;[11A3] 
     PUSH  AF                        ;[11A6] 
     CP    $1E                       ;[11A7] 
     JR    NZ,$11AD                  ;[11A9] 
@@ -2817,7 +2860,7 @@ DATA_LINE_NUMBER:
 
     DEC   C                         ;[11C7] 
     INC   C                         ;[11C8] 
-    JP    Z,$10F5                   ;[11C9] 
+    JP    Z,LYNX_LINP1              ;[11C9] 
     DEC   HL                        ;[11CC] 
     DEC   C                         ;[11CD] 
     LD    A,(HL)                    ;[11CE] 
@@ -2828,7 +2871,7 @@ DATA_LINE_NUMBER:
     JR    $11C7                     ;[11D4] 
     LD    A,(HL)                    ;[11D6] 
     CP    $0D                       ;[11D7] 
-    JP    Z,$10F5                   ;[11D9] 
+    JP    Z,LYNX_LINP1              ;[11D9] 
     INC   HL                        ;[11DC] 
     INC   C                         ;[11DD] 
     RST   $08                       ;[11DE] 
@@ -5101,12 +5144,16 @@ SUB_ARGUMENT:
     RST   $28                       ;[2363] 
     LD    A,(SYSVAR_WRA1)           ;[2364] 
     BIT   7,A                       ;[2367] 
-    CALL  Z,$2371                   ;[2369] 
+    CALL  Z,SUB_ARGUMENT1           ;[2369] 
     CALL  LYNX_FPINT                ;[236C] 
     LD    A,L                       ;[236F] 
     RET                             ;[2370] 
 
-    PUSH  DE                        ;[2371] Called by 2363-2370
+;
+; Called by SUB_ARGUMENT
+;
+SUB_ARGUMENT1:
+    PUSH  DE                        ;[2371] 
     LD    HL,FLOAT5                 ;[2372] 
     CALL  LYNX_LNUM2                ;[2375] 
     CALL  LYNX_AD                   ;[2378] 
@@ -7287,7 +7334,7 @@ BASIC_FN_ARCTAN:
     SET   7,A                       ;[2FA9] 
     LD    (SYSVAR_WRA1),A           ;[2FAB] 
     CP    $C0                       ;[2FAE] 
-    JR    NC,$2FBF                  ;[2FB0] 
+    JR    NC,SUB_ARCTAN1            ;[2FB0] 
     CALL  SUB_ARCTAN                ;[2FB2] 
     POP   AF                        ;[2FB5] 
     BIT   7,A                       ;[2FB6] 
@@ -7296,6 +7343,7 @@ BASIC_FN_ARCTAN:
     RES   7,(HL)                    ;[2FBC] 
     RET                             ;[2FBE] 
 
+SUB_ARCTAN1:
     CALL  $2759                     ;[2FBF] 
     CALL  LYNX_LONE                 ;[2FC2] 
     CALL  LYNX_DIV                  ;[2FC5] 
@@ -7600,8 +7648,8 @@ BASIC_FN_COS:
 ; SIN.
 ;
 BASIC_FN_SIN:
-    LD    HL,FLOAT6                 ;[3223] 
-    CALL  LYNX_LNUM2                ;[3226] 
+    LD    HL,FLOATAU                ;[3223] 
+    CALL  LYNX_LNUM2                ;[3226] Convert degrees to radians
     CALL  LYNX_DIV                  ;[3229] 
     CALL  BASIC_FN_FRAC             ;[322C] 
     LD    HL,FLOAT4                 ;[322F] 
@@ -8292,13 +8340,14 @@ LYNX_LONE:
 
 ;
 ; 14 predefined five-byte floating-point numbers, used for various things.
+; (1, 2, 3, 4, 65536, 6.28319, 1.5708, 0.785398, 2.50663, 0.434294, 3.16228, 0.5, -0.5, 0)
 ;
 FLOAT1:     defb $C0,$10,$00,$00,$00        ;[35C4] 
 FLOAT2:     defb $C0,$20,$00,$00,$00        ;[35C9] 
 FLOAT3:     defb $C0,$30,$00,$00,$00        ;[35CE] 
 FLOAT4:     defb $C0,$40,$00,$00,$00        ;[35D3] 
 FLOAT5:     defb $C4,$65,$53,$60,$00        ;[35D8] 
-FLOAT6:     defb $C0,$62,$83,$18,$53        ;[35DD] 
+FLOATAU:    defb $C0,$62,$83,$18,$53        ;[35DD] 
 FLOAT7:     defb $C0,$15,$70,$79,$63        ;[35E2] 
 FLOAT8:     defb $BF,$78,$53,$98,$16        ;[35E7] 
 FLOAT9:     defb $C0,$25,$06,$62,$83        ;[35EC] 
