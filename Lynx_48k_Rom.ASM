@@ -2744,17 +2744,17 @@ LYNX_LINP2:
     CP    $20                       ;[10FF] 
     JR    NC,LYNX_CHAR_INPUT        ;[1101] 
     CP    $08                       ;[1103] 
-    JR    Z,$1145                   ;[1105] 
+    JR    Z,LYNX_LINP3C             ;[1105] 
     CP    $0B                       ;[1107] 
-    JP    Z,$11C7                   ;[1109] 
+    JP    Z,LYNX_LINP4              ;[1109] 
     CP    $0A                       ;[110C] 
-    JP    Z,$11D6                   ;[110E] 
+    JP    Z,LYNX_LINP_CR            ;[110E] 
     CP    $16                       ;[1111] 
     JR    Z,LYNX_LINP3              ;[1113] 
     CP    $0C                       ;[1115] 
-    JR    Z,$113C                   ;[1117] 
+    JR    Z,LYNX_LINP3B             ;[1117] 
     CP    $05                       ;[1119] 
-    JP    Z,$1167                   ;[111B] 
+    JP    Z,LYNX_LINP3D             ;[111B] 
     CP    $0D                       ;[111E] 
     JR    NZ,LYNX_LINP1             ;[1120] 
     CALL  LYNX_PRTSTR               ;[1122] 
@@ -2779,14 +2779,17 @@ LYNX_LINP3:
     RST   $08                       ;[1135] 
     LD    A,$16                     ;[1136] 
     RST   $08                       ;[1138] 
+LYNX_LINP3A:
     RST   $08                       ;[1139] 
     JR    LYNX_LINP1                ;[113A] 
+LYNX_LINP3B:
     LD    A,(HL)                    ;[113C] 
     CP    $0D                       ;[113D] 
     JR    Z,LYNX_LINP1              ;[113F] 
     INC   HL                        ;[1141] 
     INC   C                         ;[1142] 
-    JR    $1139                     ;[1143] 
+    JR    LYNX_LINP3A               ;[1143] 
+LYNX_LINP3C:
     DEC   C                         ;[1145] 
     INC   C                         ;[1146] 
     JR    Z,LYNX_LINP1              ;[1147] 
@@ -2813,6 +2816,7 @@ LYNX_LINP3:
     RST   $08                       ;[1160] 
     CALL  LYNX_DISPLAY_BUFFER       ;[1161] 
     JP    LYNX_LINP1                ;[1164] 
+LYNX_LINP3D:
     INC   B                         ;[1167] 
     DEC   B                         ;[1168] 
     JP    NZ,LYNX_LINP1             ;[1169] 
@@ -2827,21 +2831,23 @@ LYNX_LINP3:
     CALL  NZ,ERR_NOT_FOUND          ;[1182] 
     LD    HL,(SYSVAR_PRINTD)        ;[1185] 
     PUSH  HL                        ;[1188] 
-    LD    HL,$11A6                  ;[1189] 
-    LD    (SYSVAR_PRINTD),HL        ;[118C] 
+    LD    HL,LYNX_LINP3E            ;[1189] 
+    LD    (SYSVAR_PRINTD),HL        ;[118C] Display driver
     LD    HL,$6000                  ;[118F] 
-    LD    (SYSVAR_EDST),HL          ;[1192] 
+    LD    (SYSVAR_EDST),HL          ;[1192] Edit buffer driver
     XOR   A                         ;[1195] 
-    LD    (SYSVAR_SBC),A            ;[1196] 
-    CALL  SYSVAR_DBASLN             ;[1199] 
+    LD    (SYSVAR_SBC),A            ;[1196] Space before command
+    CALL  SYSVAR_DBASLN             ;[1199] Display Basic line
     POP   HL                        ;[119C] 
     LD    (SYSVAR_PRINTD),HL        ;[119D] 
-    CALL  LYNX_CURS_VALUES          ;[11A0] 
+    CALL  LYNX_CURS_VALUES          ;[11A0] Load cursor flash rate and chars
     JP    LYNX_LINP0                ;[11A3] 
+LYNX_LINP3E:
     PUSH  AF                        ;[11A6] 
     CP    $1E                       ;[11A7] 
-    JR    NZ,$11AD                  ;[11A9] 
+    JR    NZ,LYNX_LINP3F            ;[11A9] 
     LD    A,$0D                     ;[11AB] 
+LYNX_LINP3F:
     PUSH  HL                        ;[11AD] 
     LD    HL,(SYSVAR_EDST)          ;[11AE] 
     LD    (HL),A                    ;[11B1] 
@@ -2858,6 +2864,7 @@ DATA_LINE_NUMBER:
     defb $4C,$69,$6E,$65,$20,$6E,$75,$6D    ;[11B9]  Line.num
     defb $62,$65,$72,$3F,$20,$00            ;[11C1]  ber?..
 
+LYNX_LINP4:
     DEC   C                         ;[11C7] 
     INC   C                         ;[11C8] 
     JP    Z,LYNX_LINP1              ;[11C9] 
@@ -2868,14 +2875,19 @@ DATA_LINE_NUMBER:
     LD    A,$16                     ;[11D0] 
     RST   $08                       ;[11D2] 
     RST   $08                       ;[11D3] 
-    JR    $11C7                     ;[11D4] 
+    JR    LYNX_LINP4                ;[11D4] 
+
+;
+; Search (HL) and print chars until CR
+;
+LYNX_LINP_CR:
     LD    A,(HL)                    ;[11D6] 
     CP    $0D                       ;[11D7] 
     JP    Z,LYNX_LINP1              ;[11D9] 
     INC   HL                        ;[11DC] 
     INC   C                         ;[11DD] 
     RST   $08                       ;[11DE] 
-    JR    $11D6                     ;[11DF] 
+    JR    LYNX_LINP_CR              ;[11DF] 
 
 ;
 ; Non-command token table
