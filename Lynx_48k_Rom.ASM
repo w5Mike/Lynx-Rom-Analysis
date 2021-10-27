@@ -2753,7 +2753,7 @@ LYNX_LINP2:
     CP    $08                       ;[1103] Backspace
     JR    Z,LYNX_LINP4              ;[1105] 
     CP    $0B                       ;[1107] 
-    JP    Z,LYNX_LINP4              ;[1109] 
+    JP    Z,LYNX_LINP6              ;[1109] 
     CP    $0A                       ;[110C] Linefeed
     JP    Z,LYNX_LINP_CR            ;[110E] 
     CP    $16                       ;[1111] 
@@ -2891,7 +2891,7 @@ DATA_LINE_NUMBER:
     defb $4C,$69,$6E,$65,$20,$6E,$75,$6D    ;[11B9]  Line.num
     defb $62,$65,$72,$3F,$20,$00            ;[11C1]  ber?..
 
-LYNX_LINP4:
+LYNX_LINP6:
     DEC   C                         ;[11C7] 
     INC   C                         ;[11C8] 
     JP    Z,LYNX_LINP1              ;[11C9] 
@@ -2902,7 +2902,7 @@ LYNX_LINP4:
     LD    A,$16                     ;[11D0] Backspace?
     RST   $08                       ;[11D2] 
     RST   $08                       ;[11D3] 
-    JR    LYNX_LINP4                ;[11D4] 
+    JR    LYNX_LINP6                ;[11D4] 
 
 ;
 ; Search (HL) and print chars until CR
