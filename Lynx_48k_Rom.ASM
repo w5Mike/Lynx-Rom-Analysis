@@ -70,6 +70,7 @@ ERR_OUT_OF_MEM          EQU $3B4D    ; Out of Memory
 ;
 ; Lynx System Variables (RAM Addresses)
 ;
+LYNX_INP_BUFFER EQU $6000    ; Reference to edit buffer at $6000 (constant, not variable)
 SYSVAR_STACK    EQU $61EE    ; Stores address of Basic stack pointer (STACK) + 2 HIMEM. 
 SYSVAR_RNDNO    EQU $61F0    ; 31 bit random number seed. 
 SYSVAR_HLSTORE  EQU $61F4    ; Used to store HL after a CALL. 
@@ -1758,7 +1759,7 @@ LYNX_TAPE_READ:
     INC   DE                        ;[0C26] 
 LYNX_TAPE_READ_NEXT:
     PUSH  DE                        ;[0C27] 
-    LD    HL,$6000                  ;[0C28] 
+    LD    HL,LYNX_INP_BUFFER        ;[0C28] 
 LYNX_TAPE_FIND_SYNC:
     CALL  LYNX_RSYNC                ;[0C2B] 
     CALL  LYNX_RBYTE                ;[0C2E] 
@@ -1777,7 +1778,7 @@ LYNX_TAPE_READ_FNAME:
     LD    A,$22                     ;[0C43] 
     RST   $08                       ;[0C45] 
     LD    (HL),$00                  ;[0C46] 
-    LD    HL,$6000                  ;[0C48] 
+    LD    HL,LYNX_INP_BUFFER        ;[0C48] 
     PUSH  HL                        ;[0C4B] 
     CALL  LYNX_PLINE                ;[0C4C] Display filename.
     DEC   HL                        ;[0C4F] 
@@ -2702,7 +2703,7 @@ LYNX_CHAR_INPUT:
 ; Load flash rate and cursor characters.
 ;
 LYNX_CURS_VALUES:
-    LD    HL,$6000                  ;[10CC] 
+    LD    HL,LYNX_INP_BUFFER        ;[10CC] 
     LD    D,H                       ;[10CF] 
     LD    E,L                       ;[10D0] 
     LD    BC,$0000                  ;[10D1] 
@@ -2743,24 +2744,24 @@ LYNX_LINP1:
 LYNX_LINP2:
     CP    $20                       ;[10FF] 
     JR    NC,LYNX_CHAR_INPUT        ;[1101] 
-    CP    $08                       ;[1103] 
-    JR    Z,LYNX_LINP3C             ;[1105] 
+    CP    $08                       ;[1103] Backspace
+    JR    Z,LYNX_LINP4              ;[1105] 
     CP    $0B                       ;[1107] 
     JP    Z,LYNX_LINP4              ;[1109] 
-    CP    $0A                       ;[110C] 
+    CP    $0A                       ;[110C] Linefeed
     JP    Z,LYNX_LINP_CR            ;[110E] 
     CP    $16                       ;[1111] 
     JR    Z,LYNX_LINP3              ;[1113] 
-    CP    $0C                       ;[1115] 
-    JR    Z,LYNX_LINP3B             ;[1117] 
+    CP    $0C                       ;[1115] Cursor right
+    JR    Z,LYNX_LINP_INP_CHR       ;[1117] 
     CP    $05                       ;[1119] 
-    JP    Z,LYNX_LINP3D             ;[111B] 
-    CP    $0D                       ;[111E] 
+    JP    Z,LYNX_LINP5              ;[111B] 
+    CP    $0D                       ;[111E] Carriage return
     JR    NZ,LYNX_LINP1             ;[1120] 
     CALL  LYNX_PRTSTR               ;[1122] 
-    LD    A,$20                     ;[1125] 
+    LD    A,$20                     ;[1125] Space
     RST   $08                       ;[1127] 
-    LD    A,$0D                     ;[1128] 
+    LD    A,$0D                     ;[1128] Carriage return
     RST   $08                       ;[112A] 
     INC   B                         ;[112B] 
     DEC   B                         ;[112C] 
@@ -2777,19 +2778,31 @@ LYNX_LINP3:
     DEC   C                         ;[1133] 
     LD    A,(HL)                    ;[1134] 
     RST   $08                       ;[1135] 
-    LD    A,$16                     ;[1136] 
+    LD    A,$16                     ;[1136] Backspace
     RST   $08                       ;[1138] 
-LYNX_LINP3A:
+
+;
+; Output char in A
+;
+LYNX_LINP_OUTA:
     RST   $08                       ;[1139] 
     JR    LYNX_LINP1                ;[113A] 
-LYNX_LINP3B:
+
+;
+; Input char
+;
+LYNX_LINP_INP_CHR:
     LD    A,(HL)                    ;[113C] 
-    CP    $0D                       ;[113D] 
+    CP    $0D                       ;[113D] Carriage return
     JR    Z,LYNX_LINP1              ;[113F] 
     INC   HL                        ;[1141] 
     INC   C                         ;[1142] 
-    JR    LYNX_LINP3A               ;[1143] 
-LYNX_LINP3C:
+    JR    LYNX_LINP_OUTA            ;[1143] 
+
+;
+; TBD
+;
+LYNX_LINP4:
     DEC   C                         ;[1145] 
     INC   C                         ;[1146] 
     JR    Z,LYNX_LINP1              ;[1147] 
@@ -2812,11 +2825,15 @@ LYNX_LINP3C:
     DEC   DE                        ;[115B] 
     DEC   B                         ;[115C] 
     DEC   C                         ;[115D] 
-    LD    A,$16                     ;[115E] 
+    LD    A,$16                     ;[115E] Backspace cursor
     RST   $08                       ;[1160] 
     CALL  LYNX_DISPLAY_BUFFER       ;[1161] 
     JP    LYNX_LINP1                ;[1164] 
-LYNX_LINP3D:
+
+;
+; TBD
+;
+LYNX_LINP5:
     INC   B                         ;[1167] 
     DEC   B                         ;[1168] 
     JP    NZ,LYNX_LINP1             ;[1169] 
@@ -2824,17 +2841,17 @@ LYNX_LINP3D:
     CALL  LYNX_PLINE                ;[116F] 
     CALL  LYNX_CURS_VALUES          ;[1172] 
     CALL  LYNX_LINP_CRLF            ;[1175] 
-    LD    DE,$6000                  ;[1178] 
-    RST   $10                       ;[117B] 
+    LD    DE,LYNX_INP_BUFFER        ;[1178] 
+    RST   $10                       ;[117B] is (DE) a space?
     CALL  LYNX_RDN                  ;[117C] 
     CALL  LYNX_FNDLN                ;[117F] 
     CALL  NZ,ERR_NOT_FOUND          ;[1182] 
     LD    HL,(SYSVAR_PRINTD)        ;[1185] 
     PUSH  HL                        ;[1188] 
-    LD    HL,LYNX_LINP3E            ;[1189] 
+    LD    HL,LYNX_LINP_EDITB        ;[1189] 
     LD    (SYSVAR_PRINTD),HL        ;[118C] Display driver
-    LD    HL,$6000                  ;[118F] 
-    LD    (SYSVAR_EDST),HL          ;[1192] Edit buffer driver
+    LD    HL,LYNX_INP_BUFFER        ;[118F] 
+    LD    (SYSVAR_EDST),HL          ;[1192] LET Edit buffer = $6000 (beginning of RAM)
     XOR   A                         ;[1195] 
     LD    (SYSVAR_SBC),A            ;[1196] Space before command
     CALL  SYSVAR_DBASLN             ;[1199] Display Basic line
@@ -2842,14 +2859,18 @@ LYNX_LINP3D:
     LD    (SYSVAR_PRINTD),HL        ;[119D] 
     CALL  LYNX_CURS_VALUES          ;[11A0] Load cursor flash rate and chars
     JP    LYNX_LINP0                ;[11A3] 
-LYNX_LINP3E:
+
+;
+; Put a character into edit buffer and also handle CR
+;
+LYNX_LINP_EDITB:
     PUSH  AF                        ;[11A6] 
-    CP    $1E                       ;[11A7] 
-    JR    NZ,LYNX_LINP3F            ;[11A9] 
-    LD    A,$0D                     ;[11AB] 
-LYNX_LINP3F:
+    CP    $1E                       ;[11A7] Clears to end of line
+    JR    NZ,LYNX_LINP_EDITB1       ;[11A9] 
+    LD    A,$0D                     ;[11AB] Carriage return, linefeed
+LYNX_LINP_EDITB1:
     PUSH  HL                        ;[11AD] 
-    LD    HL,(SYSVAR_EDST)          ;[11AE] 
+    LD    HL,(SYSVAR_EDST)          ;[11AE] Let HL = Edit buffer
     LD    (HL),A                    ;[11B1] 
     INC   HL                        ;[11B2] 
     LD    (SYSVAR_EDST),HL          ;[11B3] 
@@ -2872,7 +2893,7 @@ LYNX_LINP4:
     DEC   C                         ;[11CD] 
     LD    A,(HL)                    ;[11CE] 
     RST   $08                       ;[11CF] 
-    LD    A,$16                     ;[11D0] 
+    LD    A,$16                     ;[11D0] Backspace?
     RST   $08                       ;[11D2] 
     RST   $08                       ;[11D3] 
     JR    LYNX_LINP4                ;[11D4] 
@@ -3090,7 +3111,7 @@ LYNX_MAIN1:
     OR    A                         ;[16A6] 
     CALL  Z,$4000                   ;[16A7] 
     CALL  LYNX_ZERO_MEM             ;[16AA] 
-    LD    HL,$6000                  ;[16AD] 
+    LD    HL,LYNX_INP_BUFFER        ;[16AD] 
     LD    (HL),$0D                  ;[16B0] 
     ADD   HL,SP                     ;[16B2] 
     LD    HL,DATA_LYNX_LOGO         ;[16B3] 
@@ -3127,7 +3148,7 @@ SUB_MAIN:
     RET                             ;[16EF] 
 
     LD    (SYSVAR_STACK),SP         ;[16F0] 
-    LD    DE,$6000                  ;[16F4] 
+    LD    DE,LYNX_INP_BUFFER        ;[16F4] 
     CALL  $2524                     ;[16F7] 
     LD    A,(SYSVAR_AUTOFL)         ;[16FA] 
     OR    A                         ;[16FD] 
@@ -4642,7 +4663,7 @@ BASIC_COM_INPUT:
     CALL  $0DF3                     ;[20A4] 
     LD    A,$0F                     ;[20A7] 
     RST   $08                       ;[20A9] 
-    LD    DE,$6000                  ;[20AA] 
+    LD    DE,LYNX_INP_BUFFER        ;[20AA] 
     EXX                             ;[20AD] 
     POP   DE                        ;[20AE] 
     CALL  $20B5                     ;[20AF] 
@@ -5769,7 +5790,7 @@ VALIDATE_LET:
     CALL  $2C9D                     ;[26A0] 
     INC   DE                        ;[26A3] 
     JR    $268F                     ;[26A4] 
-    LD    DE,$6000                  ;[26A6] 
+    LD    DE,LYNX_INP_BUFFER        ;[26A6] 
     LD    HL,(SYSVAR_POLBUF)        ;[26A9] 
     PUSH  HL                        ;[26AC] 
     CALL  VALIDATE_INK              ;[26AD] 
@@ -9085,7 +9106,7 @@ BASIC_COM_MON:
     LD    A,$2A                     ;[3B9E] 
     RST   $08                       ;[3BA0] 
     CALL  SYSVAR_LINP               ;[3BA1] 
-    LD    DE,$6000                  ;[3BA4] 
+    LD    DE,LYNX_INP_BUFFER        ;[3BA4] 
     LD    A,(DE)                    ;[3BA7] 
     CALL  TEST_MON_LETTER           ;[3BA8] 
     SUB   $41                       ;[3BAB] 
@@ -9204,7 +9225,7 @@ MONITOR_P:
     CALL  LYNX_OUTPUT_SPACE         ;[3C43] 
     CALL  SYSVAR_LINP               ;[3C46] 
     POP   BC                        ;[3C49] 
-    LD    DE,$6000                  ;[3C4A] 
+    LD    DE,LYNX_INP_BUFFER        ;[3C4A] 
     LD    A,(DE)                    ;[3C4D] 
     CP    $0D                       ;[3C4E] 
     JR    Z,$3C2F                   ;[3C50] 
