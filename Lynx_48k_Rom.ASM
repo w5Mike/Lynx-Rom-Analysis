@@ -71,6 +71,7 @@ ERR_OUT_OF_MEM          EQU $3B4D    ; Out of Memory
 ; Lynx System Variables (RAM Addresses)
 ;
 LYNX_INP_BUFFER EQU $6000    ; Reference to edit buffer at $6000 (constant, not variable)
+LYNX_EXT_ROM    EQU $4000    ; External ROM address (constant)
 SYSVAR_STACK    EQU $61EE    ; Stores address of Basic stack pointer (STACK) + 2 HIMEM. 
 SYSVAR_RNDNO    EQU $61F0    ; 31 bit random number seed. 
 SYSVAR_HLSTORE  EQU $61F4    ; Used to store HL after a CALL. 
@@ -293,7 +294,7 @@ INIT_CRT1:
     INC   A                         ;[004E] 
     INC   HL                        ;[004F] 
     DJNZ  INIT_CRT1                 ;[0050] 
-    JP    LYNX_MAIN                 ;[0052] 
+    JP    LYNX_INIT                 ;[0052] 
     NOP                             ;[0055] 
 
 ;
@@ -1212,7 +1213,7 @@ LYNX_OUT_TO_BANK:
 LYNX_CLS_BANK:
     LD    BC,$FF7F                  ;[08CF] 
     OUT   (C),A                     ;[08D2] 
-    LD    BC,$4000                  ;[08D4] 
+    LD    BC,LYNX_EXT_ROM           ;[08D4] 
 LYNX_CLS_BANK1:
     LD    (HL),D                    ;[08D7] 
     DEC   BC                        ;[08D8] 
@@ -2014,9 +2015,9 @@ VDU_12:
     JP    SAVE_CURSORX              ;[0DC8] 
 
 ;
-; To be determined. Called from LYNX_MAIN.
+; I believe it tests if 96k or 48k memory, and sets SP accordingly. Called from LYNX_INIT.
 ;
-SUB_MAIN0:
+SUB_TEST_4896K:
     LD    HL,$9FF8                  ;[0DCB] 
     LD    DE,$BFF8                  ;[0DCE] 
     LD    A,(DE)                    ;[0DD1] 
@@ -2027,10 +2028,10 @@ SUB_MAIN0:
     LD    (DE),A                    ;[0DD6] 
     LD    A,(HL)                    ;[0DD7] 
     CP    C                         ;[0DD8] 
-    JR    NZ,SUB_MAIN2              ;[0DD9] 
+    JR    NZ,SUB_TEST_48K           ;[0DD9] 
     LD    HL,$0FF8                  ;[0DDB] 
     LD    DE,$F000                  ;[0DDE] 
-SUB_MAIN1:
+SUB_TEST_96K:
     ADD   HL,DE                     ;[0DE1] 
     LD    A,(HL)                    ;[0DE2] 
     CPL                             ;[0DE3] 
@@ -2039,13 +2040,18 @@ SUB_MAIN1:
     CPL                             ;[0DE6] 
     LD    (HL),A                    ;[0DE7] 
     CP    C                         ;[0DE8] 
-    JR    Z,SUB_MAIN1               ;[0DE9] 
-SUB_MAIN2:
+    JR    Z,SUB_TEST_96K            ;[0DE9] 
+SUB_TEST_48K:
     LD    SP,HL                     ;[0DEB] 
-    JP    LYNX_MAIN1                ;[0DEC] 
-    INC   D                         ;[0DEF] 
-    INC   DE                        ;[0DF0] 
-    LD    A,$00                     ;[0DF1] 
+    JP    LYNX_START                ;[0DEC] 
+
+;
+; Cursor ON, CR/LF,  greater than symbol >
+;
+DATA_PROMPT1:
+    defb $14,$13,$3E,$00            ;[0DEF]  ..>.
+
+SUB_INIT3:
     CALL  SYSVAR_LINP               ;[0DF3] 
     CALL  LYNX_ESC                  ;[0DF6] 
     RET   NZ                        ;[0DF9] 
@@ -2848,7 +2854,7 @@ LYNX_LINP5:
     CALL  NZ,ERR_NOT_FOUND          ;[1182] 
     LD    HL,(SYSVAR_PRINTD)        ;[1185] 
     PUSH  HL                        ;[1188] 
-    LD    HL,LYNX_LINP_EDITB        ;[1189] 
+    LD    HL,SUB_LINP_EDITB         ;[1189] 
     LD    (SYSVAR_PRINTD),HL        ;[118C] Display driver
     LD    HL,LYNX_INP_BUFFER        ;[118F] 
     LD    (SYSVAR_EDST),HL          ;[1192] LET Edit buffer = $6000 (beginning of RAM)
@@ -2863,12 +2869,12 @@ LYNX_LINP5:
 ;
 ; Put a character into edit buffer and also handle CR
 ;
-LYNX_LINP_EDITB:
+SUB_LINP_EDITB:
     PUSH  AF                        ;[11A6] 
     CP    $1E                       ;[11A7] Clears to end of line
-    JR    NZ,LYNX_LINP_EDITB1       ;[11A9] 
+    JR    NZ,SUB_LINP_EDITB1        ;[11A9] 
     LD    A,$0D                     ;[11AB] Carriage return, linefeed
-LYNX_LINP_EDITB1:
+SUB_LINP_EDITB1:
     PUSH  HL                        ;[11AD] 
     LD    HL,(SYSVAR_EDST)          ;[11AE] Let HL = Edit buffer
     LD    (HL),A                    ;[11B1] 
@@ -3093,60 +3099,72 @@ DATA_XETBL:
     defb $92,$0D,$62,$3F,$32,$21            ;[1686]  ..b?2!
 
 ;
-; Main routine.
+; Lynx initialisation (called after INIT CRT)
 ;
-LYNX_MAIN:
+LYNX_INIT:
     DI                              ;[168C] 
-    LD    HL,DATA_INIT              ;[168D] 
+    LD    HL,DATA_INIT              ;[168D] Initialise stack.
     LD    DE,SYSVAR_STACK           ;[1690] 
     LD    BC,$00D3                  ;[1693] 
     LDIR                            ;[1696] 
-    LD    HL,(SYSVAR_SOB)           ;[1698] 
+    LD    HL,(SYSVAR_SOB)           ;[1698] Setup start of basic.
     LD    (HL),$80                  ;[169B] 
     DEC   HL                        ;[169D] 
     LD    (HL),$0D                  ;[169E] 
-    JP    SUB_MAIN0                 ;[16A0] 
-LYNX_MAIN1:
-    LD    A,($4000)                 ;[16A3] 
+    JP    SUB_TEST_4896K            ;[16A0] 
+
+;
+; Check for external ROM, display Lynx Logo, start main loop
+;
+LYNX_START:
+    LD    A,(LYNX_EXT_ROM)          ;[16A3] 
     OR    A                         ;[16A6] 
-    CALL  Z,$4000                   ;[16A7] 
+    CALL  Z,LYNX_EXT_ROM            ;[16A7] 
     CALL  LYNX_ZERO_MEM             ;[16AA] 
     LD    HL,LYNX_INP_BUFFER        ;[16AD] 
     LD    (HL),$0D                  ;[16B0] 
     ADD   HL,SP                     ;[16B2] 
     LD    HL,DATA_LYNX_LOGO         ;[16B3] 
-    JR    NC,$16BC                  ;[16B6] 
+    JR    NC,LYNX_LOGO_OUTPUT       ;[16B6] 
     LD    HL,$17EB                  ;[16B8] 
     NOP                             ;[16BB] 
+LYNX_LOGO_OUTPUT:
     CALL  LYNX_PLINE                ;[16BC] 
+LYNX_MAIN_LOOP:
     CALL  SUB_MAIN                  ;[16BF] 
-    JR    $16BF                     ;[16C2] 
+    JR    LYNX_MAIN_LOOP            ;[16C2] 
 
 ;
-; Primary routine - called from MAIN routine.
+; Primary routine - called from STARTUP routine.
 ;
 SUB_MAIN:
-    LD    HL,$0DEF                  ;[16C4] 
+    LD    HL,DATA_PROMPT1           ;[16C4] 
     CALL  LYNX_PLINE                ;[16C7] 
     LD    A,(SYSVAR_AUTOFL)         ;[16CA] 
     OR    A                         ;[16CD] 
-    JR    Z,$16E5                   ;[16CE] 
+    JR    Z,SUB_MAIN2               ;[16CE] 
     LD    HL,SYSVAR_AUTOST          ;[16D0] 
     CALL  LYNX_LNUM1                ;[16D3] 
     CALL  LYNX_FNDLN                ;[16D6] 
     LD    A,$20                     ;[16D9] 
-    JR    NZ,$16DF                  ;[16DB] 
+    JR    NZ,SUB_MAIN1              ;[16DB] 
     LD    A,$21                     ;[16DD] 
+SUB_MAIN1:
     PUSH  AF                        ;[16DF] 
     CALL  LYNX_PN                   ;[16E0] 
     POP   AF                        ;[16E3] 
     RST   $08                       ;[16E4] 
+SUB_MAIN2:
     CALL  SYSVAR_LINP               ;[16E5] 
-    JR    NZ,$16F0                  ;[16E8] 
+    JR    NZ,SUB_MAIN3              ;[16E8] 
     LD    HL,SYSVAR_AUTOFL          ;[16EA] 
     LD    (HL),$00                  ;[16ED] 
     RET                             ;[16EF] 
 
+;
+; TBD, called from SUB_MAIN
+;
+SUB_MAIN3:
     LD    (SYSVAR_STACK),SP         ;[16F0] 
     LD    DE,LYNX_INP_BUFFER        ;[16F4] 
     CALL  $2524                     ;[16F7] 
@@ -4419,24 +4437,25 @@ SUB_LINK_OFF:
 LYNX_ZERO_MEM:
     CALL  $25CA                     ;[1F6E] 
     LD    HL,$0000                  ;[1F71] 
-    LD    (SYSVAR_PROCST),HL        ;[1F74] 
+    LD    (SYSVAR_PROCST),HL        ;[1F74] Ptr to first DEFPROC
     LD    HL,(SYSVAR_EOB)           ;[1F77] 
     INC   HL                        ;[1F7A] 
-    LD    (SYSVAR_TOV),HL           ;[1F7B] 
+    LD    (SYSVAR_TOV),HL           ;[1F7B] reset "top of variables"
     LD    HL,(SYSVAR_SOB)           ;[1F7E] 
     DEC   HL                        ;[1F81] 
-    LD    (SYSVAR_DATAP),HL         ;[1F82] 
+    LD    (SYSVAR_DATAP),HL         ;[1F82] reset DATA pointer
     LD    HL,(SYSVAR_RSTACK)        ;[1F85] 
     LD    (HL),$00                  ;[1F88] 
     INC   HL                        ;[1F8A] 
-    LD    (SYSVAR_RSP),HL           ;[1F8B] 
-    LD    HL,(SYSVAR_VTBL)          ;[1F8E] 
+    LD    (SYSVAR_RSP),HL           ;[1F8B] Return stack pointer
+    LD    HL,(SYSVAR_VTBL)          ;[1F8E] Variable A-Z,a-z table
     LD    DE,$0005                  ;[1F91] 
     LD    B,$35                     ;[1F94] 
     INC   HL                        ;[1F96] 
+LYNX_ZERO_VARS:
     LD    (HL),$FF                  ;[1F97] 
     ADD   HL,DE                     ;[1F99] 
-    DJNZ  $1F97                     ;[1F9A] 
+    DJNZ  LYNX_ZERO_VARS            ;[1F9A] 
     RET                             ;[1F9C] 
 
 ;
@@ -4660,7 +4679,7 @@ BASIC_COM_INPUT:
     RST   $08                       ;[20A0] 
     LD    A,$20                     ;[20A1] 
     RST   $08                       ;[20A3] 
-    CALL  $0DF3                     ;[20A4] 
+    CALL  SUB_INIT3                 ;[20A4] 
     LD    A,$0F                     ;[20A7] 
     RST   $08                       ;[20A9] 
     LD    DE,LYNX_INP_BUFFER        ;[20AA] 
