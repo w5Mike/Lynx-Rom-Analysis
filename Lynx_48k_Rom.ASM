@@ -1572,7 +1572,7 @@ LYNX_KEYB1:
     CP    $5B                       ;[0B2D] 
     RET   NC                        ;[0B2F] 
     SUB   $41                       ;[0B30] 
-    LD    HL,SYSVAR_KTBL            ;[0B32] 
+    LD    HL,SYSVAR_KTBL            ;[0B32] Shorthand char table
     LD    C,A                       ;[0B35] 
     LD    B,$00                     ;[0B36] 
     ADD   HL,BC                     ;[0B38] 
@@ -2015,7 +2015,7 @@ VDU_12:
     JP    SAVE_CURSORX              ;[0DC8] 
 
 ;
-; I believe it tests if 96k or 48k memory, and sets SP accordingly. Called from LYNX_INIT.
+; Test if 96k or 48k and set SP accordingly. Called from LYNX_INIT.
 ;
 SUB_TEST_4896K:
     LD    HL,$9FF8                  ;[0DCB] 
@@ -2028,7 +2028,7 @@ SUB_TEST_4896K:
     LD    (DE),A                    ;[0DD6] 
     LD    A,(HL)                    ;[0DD7] 
     CP    C                         ;[0DD8] 
-    JR    NZ,SUB_TEST_48K           ;[0DD9] 
+    JR    NZ,SUB_TEST_END           ;[0DD9] 
     LD    HL,$0FF8                  ;[0DDB] 
     LD    DE,$F000                  ;[0DDE] 
 SUB_TEST_96K:
@@ -2041,7 +2041,7 @@ SUB_TEST_96K:
     LD    (HL),A                    ;[0DE7] 
     CP    C                         ;[0DE8] 
     JR    Z,SUB_TEST_96K            ;[0DE9] 
-SUB_TEST_48K:
+SUB_TEST_END:
     LD    SP,HL                     ;[0DEB] 
     JP    LYNX_START                ;[0DEC] 
 
@@ -2051,14 +2051,17 @@ SUB_TEST_48K:
 DATA_PROMPT1:
     defb $14,$13,$3E,$00            ;[0DEF]  ..>.
 
-SUB_INIT3:
+;
+; Test for [Esc] key. Stop BASIC if necessary.
+;
+SUB_INPUT_IS_ESC:
     CALL  SYSVAR_LINP               ;[0DF3] 
     CALL  LYNX_ESC                  ;[0DF6] 
-    RET   NZ                        ;[0DF9] 
+    RET   NZ                        ;[0DF9] Zero if ESC pressed
     POP   DE                        ;[0DFA] 
     POP   DE                        ;[0DFB] 
     POP   BC                        ;[0DFC] 
-    LD    IX,(SYSVAR_CURRLP)        ;[0DFD] 
+    LD    IX,(SYSVAR_CURRLP)        ;[0DFD] Current BASIC line
     JP    BASIC_COM_STOP1           ;[0E01] 
     RST   $38                       ;[0E04] 
 
@@ -2727,7 +2730,7 @@ LYNX_LINP_CRLF:
     JR    LYNX_LINP2                ;[10E0] 
 
 ;
-; Line input routine.
+; Line input routine - via SYSVAR_LINP (see SUB_MAIN2, SUB_INIT3, monitor)
 ;
 LYNX_LINP:
     CALL  LYNX_CURS_VALUES          ;[10E2] 
@@ -4208,16 +4211,17 @@ BASIC_COM_STOP:
     CALL  LYNX_ADD_LEN_TO_IX        ;[1E3B] 
 BASIC_COM_STOP1:
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
-    LD    HL,$1E4E                  ;[1E42] 
+    LD    HL,DATA_STOPPED           ;[1E42] 
     CALL  LYNX_PLINE                ;[1E45] 
     CALL  SUB_JUMP_TO_BASIC1        ;[1E48] 
     JP    JUMP_TO_BASIC             ;[1E4B] 
-    DEC   C                         ;[1E4E] 
 
 ;
-; Data 'Stopped'.
+; Data 'Stopped' message.
 ;
-    defb $53,$74,$6F,$70,$70,$65,$64,$00    ;[1E4F]  Stopped.
+DATA_STOPPED:
+    defb $0D,$53,$74,$6F,$70,$70,$65,$64    ;[1E4E]  .Stopped
+    defb $00                                ;[1E56]  .
 
 ;
 ; RND.
@@ -4226,7 +4230,7 @@ BASIC_FN_RND:
     CALL  LYNX_FRNDS                ;[1E57] 
     LD    HL,(SYSVAR_RNDNO)         ;[1E5A] 
     CALL  LYNX_INTFP                ;[1E5D] 
-    LD    HL,FLOAT5                 ;[1E60] 
+    LD    HL,FLOAT_16B              ;[1E60] 
     CALL  LYNX_LNUM2                ;[1E63] 
     JP    LYNX_DIV                  ;[1E66] 
 
@@ -4244,7 +4248,7 @@ BASIC_FN_MEM:
 ; Called by 'J' command.
 ;
 SUB_JUMP_TO_BASIC:
-    LD    HL,FLOAT14                ;[1E76] 
+    LD    HL,FLOAT_ZERO             ;[1E76] 
     LD    (SYSVAR_CURRLP),HL        ;[1E79] 
     JP    SUB_LINK_OFF              ;[1E7C] 
 SUB_JUMP_TO_BASIC1:
@@ -4582,7 +4586,7 @@ BASIC_FN_KEYN:
 ;
 LYNX_KEY:
     PUSH  HL                        ;[202F] 
-    LD    HL,(SYSVAR_KEYB)          ;[2030] 
+    LD    HL,(SYSVAR_KEYB)          ;[2030] ie. LYNX_KEYB
     PUSH  BC                        ;[2033] 
     LD    BC,$2039                  ;[2034] 
     PUSH  BC                        ;[2037] 
@@ -4679,7 +4683,7 @@ BASIC_COM_INPUT:
     RST   $08                       ;[20A0] 
     LD    A,$20                     ;[20A1] 
     RST   $08                       ;[20A3] 
-    CALL  SUB_INIT3                 ;[20A4] 
+    CALL  SUB_INPUT_IS_ESC          ;[20A4] 
     LD    A,$0F                     ;[20A7] 
     RST   $08                       ;[20A9] 
     LD    DE,LYNX_INP_BUFFER        ;[20AA] 
@@ -5206,7 +5210,7 @@ SUB_ARGUMENT:
 ;
 SUB_ARGUMENT1:
     PUSH  DE                        ;[2371] 
-    LD    HL,FLOAT5                 ;[2372] 
+    LD    HL,FLOAT_16B              ;[2372] 
     CALL  LYNX_LNUM2                ;[2375] 
     CALL  LYNX_AD                   ;[2378] 
     POP   DE                        ;[237B] 
@@ -5427,7 +5431,7 @@ BASIC_COM_LINK:
     RET                             ;[2488] 
 
     PUSH  HL                        ;[2489] Called from 252D. (part of LIST)
-    LD    HL,FLOAT14                ;[248A] 
+    LD    HL,FLOAT_ZERO             ;[248A] 
     LD    (SYSVAR_CURRLP),HL        ;[248D] 
     POP   HL                        ;[2490] 
     JR    $2496                     ;[2491] 
@@ -7370,7 +7374,7 @@ LYNX_POP_WRA2:
 ;
 BASIC_FN_LN:
     CALL  BASIC_FN_LOG              ;[2F4C] 
-    LD    HL,FLOAT10                ;[2F4F] 
+    LD    HL,FLOAT_LOGE             ;[2F4F] 
     CALL  LYNX_LNUM2                ;[2F52] 
     JP    LYNX_DIV                  ;[2F55] 
 
@@ -7440,7 +7444,7 @@ SUB_ARCTAN1:
     CALL  LYNX_DIV                  ;[2FC5] 
     CALL  SUB_ARCTAN                ;[2FC8] 
     CALL  $2759                     ;[2FCB] 
-    LD    HL,FLOAT7                 ;[2FCE] 
+    LD    HL,FLOAT_RDEG             ;[2FCE] 
     CALL  LYNX_LNUM1                ;[2FD1] 
     CALL  LYNX_SBT                  ;[2FD4] 
     JR    $2FB5                     ;[2FD7] 
@@ -7522,7 +7526,7 @@ BASIC_FN_SQR:
     CALL  LYNX_DIV                  ;[307E] 
     CALL  LYNX_POP_WRA2             ;[3081] 
     CALL  LYNX_AD                   ;[3084] 
-    LD    HL,FLOAT12                ;[3087] 
+    LD    HL,FLOAT_05               ;[3087] 
     CALL  LYNX_LNUM2                ;[308A] 
     CALL  LYNX_MLT                  ;[308D] 
     POP   BC                        ;[3090] 
@@ -7609,12 +7613,12 @@ BASIC_FN_LOG:
     ADD   A,B                       ;[3109] 
     PUSH  AF                        ;[310A] 
     CALL  LYNX_PUSH_WRA1            ;[310B] 
-    LD    HL,FLOAT11                ;[310E] 
+    LD    HL,FLOAT_RT10             ;[310E] 
     CALL  LYNX_LNUM2                ;[3111] 
     CALL  LYNX_AD                   ;[3114] 
     CALL  LYNX_POP_WRA2             ;[3117] 
     CALL  LYNX_PUSH_WRA1            ;[311A] 
-    LD    HL,FLOAT11                ;[311D] 
+    LD    HL,FLOAT_RT10             ;[311D] 
     CALL  LYNX_LNUM1                ;[3120] 
     CALL  LYNX_SWAP                 ;[3123] 
     CALL  LYNX_SBT                  ;[3126] 
@@ -7626,7 +7630,7 @@ BASIC_FN_LOG:
     CALL  LYNX_MULTIPLY_ADD         ;[3139] 
     CALL  LYNX_POP_WRA2             ;[313C] 
     CALL  LYNX_MLT                  ;[313F] 
-    LD    HL,FLOAT12                ;[3142] 
+    LD    HL,FLOAT_05               ;[3142] 
     CALL  LYNX_LNUM2                ;[3145] 
     CALL  LYNX_AD                   ;[3148] 
     LD    HL,SYSVAR_WRA1            ;[314B] 
@@ -7657,7 +7661,7 @@ DATA_LOG:
 ; EXP.
 ;
 BASIC_FN_EXP:
-    LD    HL,FLOAT10                ;[3184] 
+    LD    HL,FLOAT_LOGE             ;[3184] 
     CALL  LYNX_LNUM2                ;[3187] 
     CALL  LYNX_MLT                  ;[318A] 
     JP    BASIC_FN_ANTILOG          ;[318D] 
@@ -7731,7 +7735,7 @@ DATA_ANTILOG:
 ; COS.
 ;
 BASIC_FN_COS:
-    LD    HL,FLOAT7                 ;[321A] 
+    LD    HL,FLOAT_RDEG             ;[321A] 
     CALL  LYNX_LNUM2                ;[321D] 
     CALL  LYNX_AD                   ;[3220] 
 
@@ -7739,7 +7743,7 @@ BASIC_FN_COS:
 ; SIN.
 ;
 BASIC_FN_SIN:
-    LD    HL,FLOATAU                ;[3223] 
+    LD    HL,FLOAT_TAU              ;[3223] 
     CALL  LYNX_LNUM2                ;[3226] Convert degrees to radians
     CALL  LYNX_DIV                  ;[3229] 
     CALL  BASIC_FN_FRAC             ;[322C] 
@@ -7799,7 +7803,7 @@ BASIC_FN_NOT:
 ;
 BASIC_FN_EQUAL:
     CALL  LYNX_CMP                  ;[32AF] 
-    LD    HL,FLOAT14                ;[32B2] 
+    LD    HL,FLOAT_ZERO             ;[32B2] 
     JR    NZ,$32BA                  ;[32B5] 
     LD    HL,FLOAT1                 ;[32B7] 
     JP    LYNX_LNUM1                ;[32BA] 
@@ -7819,7 +7823,7 @@ BASIC_FN_GREATERTHAN:
     CALL  LYNX_CMP                  ;[32C3] 
     LD    HL,FLOAT1                 ;[32C6] 
     JR    C,$32BA                   ;[32C9] 
-    LD    HL,FLOAT14                ;[32CB] 
+    LD    HL,FLOAT_ZERO             ;[32CB] 
     JR    $32BA                     ;[32CE] 
 
 ;
@@ -7854,7 +7858,7 @@ BASIC_FN_OR:
     CP    $80                       ;[32E9] 
     LD    HL,FLOAT1                 ;[32EB] 
     JR    NZ,$32F3                  ;[32EE] 
-    LD    HL,FLOAT14                ;[32F0] 
+    LD    HL,FLOAT_ZERO             ;[32F0] 
     JP    LYNX_LNUM1                ;[32F3] 
 
 ;
@@ -7985,7 +7989,7 @@ SUB_ANGLE:
     PUSH  DE                        ;[3383] 
     LD    DE,FLOAT1                 ;[3384] 
     JR    Z,$338C                   ;[3387] 
-    LD    DE,FLOAT14                ;[3389] 
+    LD    DE,FLOAT_ZERO             ;[3389] 
     CALL  $3428                     ;[338C] 
     POP   DE                        ;[338F] 
     RET                             ;[3390] 
@@ -8120,11 +8124,13 @@ BASIC_FN_INT:
     NEG                             ;[3465] 
     LD    B,A                       ;[3467] 
     PUSH  BC                        ;[3468] 
+BASIC_FN_INT1:
     CALL  $3643                     ;[3469] 
-    DJNZ  $3469                     ;[346C] 
+    DJNZ  BASIC_FN_INT1             ;[346C] 
     POP   BC                        ;[346E] 
+BASIC_FN_INT2:
     CALL  $3656                     ;[346F] 
-    DJNZ  $346F                     ;[3472] 
+    DJNZ  BASIC_FN_INT2             ;[3472] 
     RET                             ;[3474] 
 
 ;
@@ -8403,7 +8409,7 @@ LYNX_TBD:
 ; Basic FALSE Function: Loads-WRA1 with floating point 0.
 ;
 LYNX_LZERO:
-    LD    HL,FLOAT14                ;[35AE] 
+    LD    HL,FLOAT_ZERO             ;[35AE] 
 
 ;
 ; Loads number pointed to by HL into WRA1
@@ -8433,20 +8439,20 @@ LYNX_LONE:
 ; 14 predefined five-byte floating-point numbers, used for various things.
 ; (1, 2, 3, 4, 65536, 6.28319, 1.5708, 0.785398, 2.50663, 0.434294, 3.16228, 0.5, -0.5, 0)
 ;
-FLOAT1:     defb $C0,$10,$00,$00,$00        ;[35C4] 
-FLOAT2:     defb $C0,$20,$00,$00,$00        ;[35C9] 
-FLOAT3:     defb $C0,$30,$00,$00,$00        ;[35CE] 
-FLOAT4:     defb $C0,$40,$00,$00,$00        ;[35D3] 
-FLOAT5:     defb $C4,$65,$53,$60,$00        ;[35D8] 
-FLOATAU:    defb $C0,$62,$83,$18,$53        ;[35DD] 
-FLOAT7:     defb $C0,$15,$70,$79,$63        ;[35E2] 
-FLOAT8:     defb $BF,$78,$53,$98,$16        ;[35E7] 
-FLOAT9:     defb $C0,$25,$06,$62,$83        ;[35EC] 
-FLOAT10:    defb $BF,$43,$42,$94,$48        ;[35F1] 
-FLOAT11:    defb $C0,$31,$62,$27,$76        ;[35F6] 
-FLOAT12:    defb $BF,$50,$00,$00,$00        ;[35FB] 
-FLOAT13:    defb $3F,$50,$00,$00,$00        ;[3600] 
-FLOAT14:    defb $80,$00,$00,$00,$00        ;[3605] 
+FLOAT1:        defb $C0,$10,$00,$00,$00        ;[35C4] 
+FLOAT2:        defb $C0,$20,$00,$00,$00        ;[35C9] 
+FLOAT3:        defb $C0,$30,$00,$00,$00        ;[35CE] 
+FLOAT4:        defb $C0,$40,$00,$00,$00        ;[35D3] 
+FLOAT_16B:     defb $C4,$65,$53,$60,$00        ;[35D8] 
+FLOAT_TAU:     defb $C0,$62,$83,$18,$53        ;[35DD] 
+FLOAT_RDEG:    defb $C0,$15,$70,$79,$63        ;[35E2] 
+FLOAT_DRAD:    defb $BF,$78,$53,$98,$16        ;[35E7] 
+FLOAT_RTAU:    defb $C0,$25,$06,$62,$83        ;[35EC] 
+FLOAT_LOGE:    defb $BF,$43,$42,$94,$48        ;[35F1] 
+FLOAT_RT10:    defb $C0,$31,$62,$27,$76        ;[35F6] 
+FLOAT_05:      defb $BF,$50,$00,$00,$00        ;[35FB] 
+FLOAT_M05:     defb $3F,$50,$00,$00,$00        ;[3600] 
+FLOAT_ZERO:    defb $80,$00,$00,$00,$00        ;[3605] 
 ;
 ; I don't think these bytes are used.
 ;
@@ -9115,7 +9121,7 @@ BASIC_COM_MON:
     LD    ($61BA),SP                ;[3B83] 
     LD    A,$C3                     ;[3B87] 
     LD    ($61B2),A                 ;[3B89] 
-    CALL  $3E8E                     ;[3B8C] 
+    CALL  MONITOR_X1                ;[3B8C] 
     LD    A,$0E                     ;[3B8F] 
     RST   $08                       ;[3B91] 
     JR    $3B9E                     ;[3B92] 
@@ -9226,7 +9232,12 @@ MONITOR_P:
     LD    DE,($61B0)                ;[3C22] 
     ADD   HL,DE                     ;[3C26] 
     LD    ($61B0),HL                ;[3C27] 
-    JP    $3E8E                     ;[3C2A] 
+    JP    MONITOR_X1                ;[3C2A] 
+
+;
+; TBD
+;
+SUB_TBD_3C2D:
     DEC   BC                        ;[3C2D] 
     DEC   BC                        ;[3C2E] 
     INC   BC                        ;[3C2F] 
@@ -9249,7 +9260,7 @@ MONITOR_P:
     CP    $0D                       ;[3C4E] 
     JR    Z,$3C2F                   ;[3C50] 
     CP    $2F                       ;[3C52] 
-    JR    Z,$3C2D                   ;[3C54] 
+    JR    Z,SUB_TBD_3C2D            ;[3C54] 
     CP    $2E                       ;[3C56] 
     RET   Z                         ;[3C58] 
     RST   $10                       ;[3C59] 
@@ -9688,6 +9699,7 @@ MONITOR_X:
     CALL  SUB_ARGUMENT_INTO_HL      ;[3E85] 
     LD    (IX+$00),L                ;[3E88] Display memory starting from where DE points.
     LD    (IX+$01),H                ;[3E8B] 
+MONITOR_X1:
     LD    DE,$619A                  ;[3E8E] 
     LD    B,$04                     ;[3E91] 
     CALL  SUB_FLAGS                 ;[3E93] 
@@ -9929,7 +9941,7 @@ SUB_DIM:
 SUB_MOD:
     RLA                             ;[3FF1] 
     CALL  NC,LYNX_AD                ;[3FF2] 
-    LD    HL,FLOAT12                ;[3FF5] FLOAT: $BF,$50,$00,$00,$00
+    LD    HL,FLOAT_05               ;[3FF5] Let HL = 0.5
     CALL  LYNX_LNUM2                ;[3FF8] 
     JP    LYNX_AD                   ;[3FFB] 
     RST   $38                       ;[3FFE] 
