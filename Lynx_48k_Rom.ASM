@@ -205,7 +205,7 @@ BEGIN:
 ;
 ; Output character in the A register
 ;
-RST_8H:
+RST_8:
     JP    PUTCHAR                   ;[0008] 
 
 ;
@@ -218,22 +218,22 @@ DATA_L014:
 ; Checks if the character at the address pointed to by DE is a space.
 ;  - If so, increments DE until it is not a space.
 ;
-RST_10H:
+RST_10:
     LD    A,(DE)                    ;[0010] 
     CP    $20                       ;[0011] 
     RET   NZ                        ;[0013] 
     INC   DE                        ;[0014] 
-    JR    RST_10H                   ;[0015] 
+    JR    RST_10                    ;[0015] 
     NOP                             ;[0017] 
 
 ;
 ; Evaluates the reverse polish expression pointed to by DE as a binary integer in HL. 
 ;
-RST_18H:
+RST_18:
     JP    SUB_ARGUMENT              ;[0018] 
 
 ;
-; The infamous Susy.
+; Sue Jansons - who wrote the User Manual
 ;
 DATA_SUSY:
     defb $53,$75,$73,$79,$00        ;[001B]  Susy.
@@ -241,7 +241,7 @@ DATA_SUSY:
 ;
 ; Checks if the byte after RST is the same as A; if it is not, displays a syntax error. 
 ;
-RST_20H:
+RST_20:
     EX    (SP),HL                   ;[0020] 
     CP    (HL)                      ;[0021] 
     INC   HL                        ;[0022] 
@@ -253,7 +253,7 @@ RST_20H:
 ; Evaluates reverse polish expression pointed to by DE in floating point 
 ; in WRA1 (working register area 1).
 ;
-RST_28H:
+RST_28:
     JP    SUB_CHK_EXP_EVAL          ;[0028] 
     NOP                             ;[002B] 
     NOP                             ;[002C] 
@@ -264,7 +264,7 @@ RST_28H:
 ;
 ; Jumps to monitor TRAP routine. 
 ;
-RST_30H:
+RST_30:
     JP    BASIC_COM_MON             ;[0030] 
     POP   HL                        ;[0033] Has POP HL JP (HL) 
     JP    (HL)                      ;[0034] 
@@ -275,7 +275,7 @@ RST_30H:
 ;
 ; NOT YET IMPLEMENTED. Jumps to RAM RSTRAM (see RAM variables).
 ;
-RST_38H:
+RST_38:
     JP    SYSVAR_RSTRAM             ;[0038] 
 
 ;
@@ -1560,7 +1560,7 @@ DATA_KEYBOARD:
     defb $7F,$16,$0D,$2A,$0C                ;[0B16]  ...*.
 
 ;
-; Find word in a list. (SYSVAR/LYNX_KEYB)
+; Find word in a list. (SYSVAR/KEYB)
 ;
 KEYB1:
     LD    A,(SYSVAR_KSMS+$01)       ;[0B1B] 
@@ -2018,7 +2018,7 @@ VDU_12:
     JP    SAVE_CURSORX              ;[0DC8] 
 
 ;
-; Test if 96k or 48k and set SP accordingly. Called from LYNX_INIT.
+; Test if 96k or 48k and set SP accordingly. Called from INIT.
 ;
 SUB_TEST_4896K:
     LD    HL,$9FF8                  ;[0DCB] 
@@ -2099,6 +2099,7 @@ BASIC_FN_MOD:
     CALL  POP_WRA2                  ;[0E33] 
     LD    A,(SYSVAR_WRA1)           ;[0E36] 
     CALL  SUB_MOD                   ;[0E39] 
+JP_FN_INT:
     JP    BASIC_FN_INT              ;[0E3C] 
 
 ;
@@ -2106,14 +2107,16 @@ BASIC_FN_MOD:
 ;
 BASIC_FN_DIV:
     CALL  DIV                       ;[0E3F] 
-    JR    $0E3C                     ;[0E42] 
+    JR    JP_FN_INT                 ;[0E42] 
 
 ;
 ; Return INK value.
 ;
 BASIC_FN_INK:
     LD    HL,(SYSVAR_INKST)         ;[0E44] 
+L_TO_WRA1:
     LD    H,$00                     ;[0E47] 
+HL_TO_WRA1:
     JP    INTFP                     ;[0E49] 
 
 ;
@@ -2121,35 +2124,35 @@ BASIC_FN_INK:
 ;
 BASIC_FN_PAPER:
     LD    HL,(SYSVAR_PAPST)         ;[0E4C] 
-    JR    $0E47                     ;[0E4F] 
+    JR    L_TO_WRA1                 ;[0E4F] 
 
 ;
 ; POS.
 ;
 BASIC_FN_POS:
     LD    HL,(SYSVAR_CURSORX)       ;[0E51] 
-    JR    $0E47                     ;[0E54] 
+    JR    L_TO_WRA1                 ;[0E54] 
 
 ;
 ; VPOS.
 ;
 BASIC_FN_VPOS:
     LD    HL,(SYSVAR_CURSORY)       ;[0E56] 
-    JR    $0E47                     ;[0E59] 
+    JR    L_TO_WRA1                 ;[0E59] 
 
 ;
 ; GRAPHIC.
 ;
 BASIC_FN_GRAPHIC:
     LD    HL,SYSVAR_GPHTBL          ;[0E5B] 
-    JR    $0E49                     ;[0E5E] 
+    JR    HL_TO_WRA1                ;[0E5E] 
 
 ;
 ; ALPHA.
 ;
 BASIC_FN_ALPHA:
     LD    HL,SYSVAR_CHRTBL          ;[0E60] 
-    JR    $0E49                     ;[0E63] 
+    JR    HL_TO_WRA1                ;[0E63] 
 
 ;
 ; INF.
@@ -2262,16 +2265,16 @@ BASIC_FN_COLOUR:
     JP    INTFP                     ;[0ED1] 
 
 ;
-; To be determined
+; Reads reverse polish until CR or comma reached (unused?)
 ;
-TBD1:
+READ_RP:
     CALL  RP                        ;[0ED4] 
     LD    (HL),A                    ;[0ED7] 
     CP    $0D                       ;[0ED8] 
     RET   Z                         ;[0EDA] 
     INC   HL                        ;[0EDB] 
     CP    $2C                       ;[0EDC] 
-    JR    Z,TBD1                    ;[0EDE] 
+    JR    Z,READ_RP                 ;[0EDE] 
     CALL  ERR_SYNTAX                ;[0EE0] 
 
 ;
@@ -2321,17 +2324,22 @@ VALIDATE_WORD_ABCD:
 VALIDATE_PRINT:
     DEC   HL                        ;[0F04] 
     LD    A,$1D                     ;[0F05] 
-    JP    $27BC                     ;[0F07] 
+    JP    SUB_FIND2                 ;[0F07] 
+
+;
+; Called from DBASLN (Display Basic Line)
+;
+PRINT_BAS_LINE:
     LD    A,(IX-$01)                ;[0F0A] 
     SUB   $08                       ;[0F0D] 
     LD    B,A                       ;[0F0F] 
-VALIDATE_PRINT_SPACE:
+PRINT_BAS_LINE_LOOP:
     CALL  OUTPUT_SPACE              ;[0F10] 
     LD    A,(DE)                    ;[0F13] 
     INC   DE                        ;[0F14] 
-    CALL  PHEXHL1                   ;[0F15] 
-    DJNZ  VALIDATE_PRINT_SPACE      ;[0F18] 
-    JP    $2840                     ;[0F1A] 
+    CALL  PRINT_HEX_A               ;[0F15] 
+    DJNZ  PRINT_BAS_LINE_LOOP       ;[0F18] 
+    JP    DO_INDENT                 ;[0F1A] 
 
 ;
 ; Part of CODE validation.
@@ -3141,7 +3149,7 @@ START_LOOP:
     JR    START_LOOP                ;[16C2] 
 
 ;
-; MAIN - called repeatedly from LYNX_START loop.
+; MAIN - called repeatedly from START loop.
 ;
 MAIN:
     LD    HL,DATA_PROMPT1           ;[16C4] 
@@ -4593,7 +4601,7 @@ BASIC_FN_KEYN:
 ;
 KEY:
     PUSH  HL                        ;[202F] 
-    LD    HL,(SYSVAR_KEYB)          ;[2030] ie. LYNX_KEYB
+    LD    HL,(SYSVAR_KEYB)          ;[2030] ie. KEYB
     PUSH  BC                        ;[2033] 
     LD    BC,$2039                  ;[2034] 
     PUSH  BC                        ;[2037] 
@@ -4996,9 +5004,9 @@ GET_VAR_ADDR:
 ;
 PHEXHL:
     LD    A,H                       ;[2234] 
-    CALL  PHEXHL1                   ;[2235] 
+    CALL  PRINT_HEX_A               ;[2235] 
     LD    A,L                       ;[2238] 
-PHEXHL1:
+PRINT_HEX_A:
     PUSH  AF                        ;[2239] 
     RRCA                            ;[223A] 
     RRCA                            ;[223B] 
@@ -5682,7 +5690,7 @@ CLEAR_VARS_LOOP:
 RP:
     LD    (HL),$7D                  ;[25E2] 
     INC   HL                        ;[25E4] 
-    CALL  SYSVAR_NTP                ;[25E5] Jump to normal to internal language conversion routine. (LYNX_NTP)
+    CALL  SYSVAR_NTP                ;[25E5] Jump to normal to internal language conversion routine. (NTP)
     LD    A,(SYSVAR_NPM)            ;[25E8] 
     CP    $D7                       ;[25EB] 
     RET   NC                        ;[25ED] 
@@ -5705,7 +5713,7 @@ VALIDATE_UTILITY:
     CALL  Z,ERR_SYNTAX              ;[25FC] 
     CP    $22                       ;[25FF] 
     JR    NZ,$25F6                  ;[2601] 
-    JP    RST_10H                   ;[2603] 
+    JP    RST_10                    ;[2603] 
 
 ;
 ; Validation for ROUND, TRAIL, LINK, TRACE.
@@ -5953,7 +5961,7 @@ TEST_IS_VAR:
     LD    (HL),A                    ;[271B] 
     INC   DE                        ;[271C] 
     INC   HL                        ;[271D] 
-    JP    RST_10H                   ;[271E] 
+    JP    RST_10                    ;[271E] 
 
 ;
 ; is validation routine for READ.
@@ -5975,7 +5983,7 @@ VALIDATE_READ:
     ADD   HL,HL                     ;[2736] 
     LD    (HL),A                    ;[2737] 
     INC   HL                        ;[2738] 
-    JP    RST_10H                   ;[2739] 
+    JP    RST_10                    ;[2739] 
 
 ;
 ; Validation for REM, DATA, EXT, LABEL.
@@ -6065,6 +6073,7 @@ SUB_FIND:
     POP   AF                        ;[27B9] 
     SUB   B                         ;[27BA] 
     POP   HL                        ;[27BB] 
+SUB_FIND2:
     LD    (HL),A                    ;[27BC] 
     INC   HL                        ;[27BD] 
     LD    IX,(SYSVAR_XITBL)         ;[27BE] 
@@ -6075,7 +6084,7 @@ SUB_FIND:
     LD    C,(IX+$00)                ;[27C8] 
     LD    B,(IX+$01)                ;[27CB] 
     PUSH  BC                        ;[27CE] 
-    JP    RST_10H                   ;[27CF] 
+    JP    RST_10                    ;[27CF] 
 
 ;
 ; Print a word from a list (6219).
@@ -6110,14 +6119,14 @@ DBASLN:
     CP    $3C                       ;[27FE] 
     JR    Z,$27F8                   ;[2800] 
     CP    $33                       ;[2802] 
-    JP    Z,$0F0A                   ;[2804] 
+    JP    Z,PRINT_BAS_LINE          ;[2804] 
     DEC   DE                        ;[2807] 
     INC   DE                        ;[2808] 
     LD    A,(DE)                    ;[2809] 
     CP    $7B                       ;[280A] 
     RET   Z                         ;[280C] 
     CP    $0D                       ;[280D] 
-    JR    Z,$2840                   ;[280F] 
+    JR    Z,DO_INDENT               ;[280F] 
     CP    $7D                       ;[2811] 
     JR    Z,$2824                   ;[2813] 
     CP    $80                       ;[2815] 
@@ -6143,25 +6152,27 @@ DBASLN:
     CP    $D7                       ;[283A] 
     JR    Z,$27F8                   ;[283C] 
     JR    $2809                     ;[283E] 
+DO_INDENT:
     POP   IX                        ;[2840] 
-    CALL  TEST_IS_LOOP              ;[2842] 
-    LD    A,$1E                     ;[2845] 
+    CALL  INDENT_IF_LOOP            ;[2842] 
+    LD    A,$1E                     ;[2845] Clear to end of line
     RST   $08                       ;[2847] 
-    LD    A,$1F                     ;[2848] 
+    LD    A,$1F                     ;[2848] CR/LF
     RST   $08                       ;[284A] 
     RET                             ;[284B] 
 
 ;
 ; Test for FOR, WHILE and REPEAT.
 ;
-TEST_IS_LOOP:
+INDENT_IF_LOOP:
     LD    A,(IX+$06)                ;[284C] 
     CP    $36                       ;[284F] 
-    JR    Z,$285A                   ;[2851] 
+    JR    Z,INDENT_SPACES           ;[2851] 
     CP    $0F                       ;[2853] 
-    JR    Z,$285A                   ;[2855] 
+    JR    Z,INDENT_SPACES           ;[2855] 
     CP    $38                       ;[2857] 
     RET   NZ                        ;[2859] 
+INDENT_SPACES:
     LD    HL,SYSVAR_SBC             ;[285A] 
     INC   (HL)                      ;[285D] 
     RET                             ;[285E] 
@@ -7241,7 +7252,7 @@ VALIDATE_DIM:
     CALL  VALID_VAR_TEST            ;[2E66] 
     JR    NZ,$2E7C                  ;[2E69] VALIDATE_DIM+$16
     CALL  VALIDATE_VAR              ;[2E6B] 
-    CALL  $2206                     ;[2E6E] LYNX_VALIDATE_VAR+$12
+    CALL  $2206                     ;[2E6E] VALIDATE_VAR+$12
     RST   $10                       ;[2E71] 
     LD    (HL),A                    ;[2E72] 
     CP    $0D                       ;[2E73] 
@@ -9283,7 +9294,7 @@ SUB_TBD_3C2D:
     LD    A,$3C                     ;[3C39] 
     RST   $08                       ;[3C3B] 
     LD    A,(HL)                    ;[3C3C] 
-    CALL  PHEXHL1                   ;[3C3D] 
+    CALL  PRINT_HEX_A               ;[3C3D] 
     LD    A,$3E                     ;[3C40] 
     RST   $08                       ;[3C42] 
     CALL  OUTPUT_SPACE              ;[3C43] 
@@ -9414,7 +9425,7 @@ DATA_MONITOR:
 DISPLAY_HL:
     CALL  PHEXHL                    ;[3D0C] 
     JP    OUTPUT_SPACE              ;[3D0F] 
-    CALL  PHEXHL1                   ;[3D12] 
+    CALL  PRINT_HEX_A               ;[3D12] 
     JR    $3D0F                     ;[3D15] 
 
 ;
