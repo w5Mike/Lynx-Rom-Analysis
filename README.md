@@ -3,8 +3,10 @@ Camputers Lynx 48k ROM disassembly (version L014)
 
 Reconstructed from Lynx 48k eprom memory images and supplemented with information 
 from Lynx User Magazine Issue 1 (Camputers, June 1983, pages 16-18) and Nilug News
-(Issue 6) by R.B.Poate. This is just *my* interpretation of the ROMs - *not* the
-original source code. The whereabouts of the original source are unknown.
+(Issue 6) by R.B.Poate. 
+
+Disclaimer: this is just my interpretation of the ROMs - *not* the original source
+code (- the whereabouts are unknown).
 
 Disassembly, analysis and mistakes by: Mike Panter 10/10/2021
 
@@ -31,4 +33,3 @@ Free to distribute. Please include attribution.
  - VDU_        - VDU commands
  - SUB_        - internal subroutines used by ROM
 
-Note: 
