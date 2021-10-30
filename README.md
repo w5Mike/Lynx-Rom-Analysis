@@ -6,7 +6,8 @@ from Lynx User Magazine Issue 1 (Camputers, June 1983, pages 16-18) and Nilug Ne
 (Issue 6) by R.B.Poate. 
 
 Disclaimer: this is just my interpretation of the ROMs - *not* the original source
-code (- the whereabouts are unknown).
+code (- the whereabouts are unknown). The analysis is far from complete, and may 
+change, but hopefully it is a useful starting point.
 
 Disassembly, analysis and mistakes by: Mike Panter 10/10/2021
 
