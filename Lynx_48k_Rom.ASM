@@ -1073,7 +1073,7 @@ VDU_8:
 ;
 VDU_14:
     LD    A,$01                     ;[0828] 
-VDU_14A:
+GET_CURSTAT:
     LD    (SYSVAR_CURSTAT),A        ;[082A] 
     RET                             ;[082D] 
 
@@ -1082,7 +1082,7 @@ VDU_14A:
 ;
 VDU_15:
     XOR   A                         ;[082E] 
-    JR    VDU_14A                   ;[082F] 
+    JR    GET_CURSTAT               ;[082F] 
 
 ;
 ; WINDOW routine.
@@ -1560,33 +1560,33 @@ DATA_KEYBOARD:
     defb $7F,$16,$0D,$2A,$0C                ;[0B16]  ...*.
 
 ;
-; Find word in a list. (SYSVAR/KEYB)
+; Find [ESC] shorthand in a list. (Called from SYSVAR_/KEYB)
 ;
-KEYB1:
+KEYB_ESCKEY:
     LD    A,(SYSVAR_KSMS+$01)       ;[0B1B] 
     OR    A,A                       ;[0B1E] 
-    JR    NZ,KEYB2                  ;[0B1F] 
-    CALL  KEYDVR                    ;[0B21] 
+    JR    NZ,KEYB2                  ;[0B1F] Keyboard modifiers? Like [CTRL] [SHIFT]?
+    CALL  KEYDVR                    ;[0B21] Get key in A
     CALL  ESC                       ;[0B24] 
-    RET   NZ                        ;[0B27] 
+    RET   NZ                        ;[0B27] Return if NOT escape
     RES   5,A                       ;[0B28] 
     CP    $41                       ;[0B2A] 
     RET   C                         ;[0B2C] 
     CP    $5B                       ;[0B2D] 
     RET   NC                        ;[0B2F] 
-    SUB   $41                       ;[0B30] 
+    SUB   $41                       ;[0B30] Letter found [A-Z]
     LD    HL,SYSVAR_KTBL            ;[0B32] Shorthand char table
     LD    C,A                       ;[0B35] 
     LD    B,$00                     ;[0B36] 
     ADD   HL,BC                     ;[0B38] 
     LD    A,(HL)                    ;[0B39] 
-    LD    HL,(SYSVAR_XTTBL)         ;[0B3A] 
+    LD    HL,(SYSVAR_XTTBL)         ;[0B3A] Shorthand token table (Auto, Beep, etc)
     INC   A                         ;[0B3D] 
     LD    B,A                       ;[0B3E] 
-    CALL  SUB_WORD_LIST1            ;[0B3F] 
+    CALL  FIND_WORD_IN_LIST         ;[0B3F] 
     LD    (SYSVAR_KSMS),HL          ;[0B42] 
     LD    A,(HL)                    ;[0B45] 
-    RES   7,A                       ;[0B46] 
+    RES   7,A                       ;[0B46] Reset Bit 7 (word marker)
     RET                             ;[0B48] 
 
 KEYB2:
@@ -1602,13 +1602,13 @@ KEYB2:
     RET                             ;[0B5A] 
 
 ;
-; Scan for a key. (SYSVAR_KEYB)
+; Scan for a key. Called from "KEY:"  (via SYSVAR_KEYB)
 ;
 KEYB:
     PUSH  HL                        ;[0B5B] 
     PUSH  BC                        ;[0B5C] 
     PUSH  DE                        ;[0B5D] 
-    CALL  KEYB1                     ;[0B5E] 
+    CALL  KEYB_ESCKEY               ;[0B5E] 
     POP   DE                        ;[0B61] 
     POP   BC                        ;[0B62] 
     POP   HL                        ;[0B63] 
@@ -2051,7 +2051,7 @@ SUB_TEST_END:
 ;
 ; Cursor ON, CR/LF,  greater than symbol >
 ;
-DATA_PROMPT1:
+DATA_PROMPT:
     defb $14,$13,$3E,$00            ;[0DEF]  ..>.
 
 ;
@@ -2619,7 +2619,7 @@ PRTSTR:
     JR    PRTSTR                    ;[1064] 
 
 ;
-; Flash cursor and scan keyboard.
+; Flash cursor and scan keyboard. (flash rate is in HL)
 ;
 CURSOR_INPUT:
     CALL  FLASH_CURSOR              ;[1066] 
@@ -2669,16 +2669,17 @@ LINP_LOOP:
 ;
 FLASH_CURSOR:
     EXX                             ;[1095] 
-    DEC   HL                        ;[1096] 
+    DEC   HL                        ;[1096] Decrement flash delay counter
     LD    A,H                       ;[1097] 
     OR    L                         ;[1098] 
     JR    NZ,FLASH_CURSOR_END       ;[1099] 
-    LD    HL,(SYSVAR_FLASH)         ;[109B] 
-    LD    A,B                       ;[109E] 
+    LD    HL,(SYSVAR_FLASH)         ;[109B] Reset flash delay counter
+SWAP_CCHARS:
+    LD    A,B                       ;[109E] Swap cursor chars
     LD    B,C                       ;[109F] 
     LD    C,A                       ;[10A0] 
     RST   $08                       ;[10A1] 
-    LD    A,$16                     ;[10A2] 
+    LD    A,$16                     ;[10A2] Backspace
     RST   $08                       ;[10A4] 
 FLASH_CURSOR_END:
     EXX                             ;[10A5] 
@@ -2741,7 +2742,7 @@ LINP_CRLF:
     JR    LINP2                     ;[10E0] 
 
 ;
-; Line input routine - via SYSVAR_LINP (see SUB_MAIN2, SUB_INIT3, monitor)
+; Line input routine - called via SYSVAR_LINP
 ;
 LINP:
     CALL  CURS_VALUES               ;[10E2] 
@@ -2766,7 +2767,7 @@ LINP2:
     JR    NC,CHAR_INPUT             ;[1101] 
     CP    $08                       ;[1103] Backspace
     JR    Z,LINP4                   ;[1105] 
-    CP    $0B                       ;[1107] 
+    CP    $0B                       ;[1107] Move right
     JP    Z,LINP6                   ;[1109] 
     CP    $0A                       ;[110C] Linefeed
     JP    Z,LINP_CR                 ;[110E] 
@@ -2774,8 +2775,8 @@ LINP2:
     JR    Z,LINP3                   ;[1113] 
     CP    $0C                       ;[1115] Cursor right
     JR    Z,LINP_INP_CHR            ;[1117] 
-    CP    $05                       ;[1119] 
-    JP    Z,LINP5                   ;[111B] 
+    CP    $05                       ;[1119] Control E?
+    JP    Z,CONTROL_E               ;[111B] 
     CP    $0D                       ;[111E] Carriage return
     JR    NZ,LINP1                  ;[1120] 
     CALL  PRTSTR                    ;[1122] 
@@ -2851,15 +2852,15 @@ LINP4:
     JP    LINP1                     ;[1164] 
 
 ;
-; TBD
+; Handle edit line - [CTRL] E
 ;
-LINP5:
+CONTROL_E:
     INC   B                         ;[1167] 
     DEC   B                         ;[1168] 
     JP    NZ,LINP1                  ;[1169] 
-    LD    HL,DATA_LINE_NUMBER       ;[116C] 
+    LD    HL,DATA_LINE_NUMBER       ;[116C] Print "Line Number?"
     CALL  PLINE                     ;[116F] 
-    CALL  CURS_VALUES               ;[1172] 
+    CALL  CURS_VALUES               ;[1172] Load cursor values (rate,etc)
     CALL  LINP_CRLF                 ;[1175] 
     LD    DE,INP_BUFFER             ;[1178] 
     RST   $10                       ;[117B] is (DE) a space?
@@ -3133,14 +3134,14 @@ INIT:
 START:
     LD    A,(EXT_ROM)               ;[16A3] 
     OR    A                         ;[16A6] 
-    CALL  Z,EXT_ROM                 ;[16A7] 
+    CALL  Z,EXT_ROM                 ;[16A7] External rom is present, boot it. (otherwise FF)
     CALL  ZERO_MEM                  ;[16AA] 
     LD    HL,INP_BUFFER             ;[16AD] 
     LD    (HL),$0D                  ;[16B0] 
     ADD   HL,SP                     ;[16B2] 
     LD    HL,DATA_LYNX_LOGO         ;[16B3] 
-    JR    NC,LOGO_OUTPUT            ;[16B6] Two beeps
-    LD    HL,DATA_PROMPT+$02        ;[16B8] Skip a beep
+    JR    NC,LOGO_OUTPUT            ;[16B6] 
+    LD    HL,DATA_2BEEPS+$02        ;[16B8] Skip a beep
     NOP                             ;[16BB] 
 LOGO_OUTPUT:
     CALL  PLINE                     ;[16BC] 
@@ -3152,33 +3153,37 @@ START_LOOP:
 ; MAIN - called repeatedly from START loop.
 ;
 MAIN:
-    LD    HL,DATA_PROMPT1           ;[16C4] 
+    LD    HL,DATA_PROMPT            ;[16C4] 
     CALL  PLINE                     ;[16C7] Display prompt
     LD    A,(SYSVAR_AUTOFL)         ;[16CA] Auto line numbering?
     OR    A                         ;[16CD] 
-    JR    Z,SUB_MAIN2               ;[16CE] 
+    JR    Z,USER_INPUT              ;[16CE] 
     LD    HL,SYSVAR_AUTOST          ;[16D0] Auto increment
     CALL  LNUM1                     ;[16D3] -> WRA1
-    CALL  FNDLN_WRA1                ;[16D6] 
+    CALL  FNDLN_WRA1                ;[16D6] Find line with number in WRA1
     LD    A,$20                     ;[16D9] 
-    JR    NZ,SUB_MAIN1              ;[16DB] 
-    LD    A,$21                     ;[16DD] 
-SUB_MAIN1:
+    JR    NZ,PRINT_LNUM             ;[16DB] 
+    LD    A,$21                     ;[16DD] Line already exists - exclamation mark!
+PRINT_LNUM:
     PUSH  AF                        ;[16DF] 
-    CALL  PN                        ;[16E0] Display line number
+    CALL  PN                        ;[16E0] Print number in WRA1
     POP   AF                        ;[16E3] 
     RST   $08                       ;[16E4] 
-SUB_MAIN2:
+
+;
+; Handle user input at the prompt
+;
+USER_INPUT:
     CALL  SYSVAR_LINP               ;[16E5] 
-    JR    NZ,SUB_MAIN3              ;[16E8] 
+    JR    NZ,DO_AUTONUM             ;[16E8] 
     LD    HL,SYSVAR_AUTOFL          ;[16EA] 
     LD    (HL),$00                  ;[16ED] 
     RET                             ;[16EF] 
 
 ;
-; TBD, called from SUB_MAIN
+; Called from USER_INPUT
 ;
-SUB_MAIN3:
+DO_AUTONUM:
     LD    (SYSVAR_STACK),SP         ;[16F0] 
     LD    DE,INP_BUFFER             ;[16F4] 
     CALL  LINP_ANLYS                ;[16F7] 
@@ -3226,9 +3231,9 @@ DATA_INIT:
     defb $C3,$5C,$2D,$00                    ;[17E5]  .\-.
 
 ;
-; Data used for BASIC prompt.
+; BEEP,BEEP
 ;
-DATA_PROMPT:
+DATA_2BEEPS:
     defb $04,$07,$04,$07            ;[17E9]  ....
 
 ;
@@ -3363,11 +3368,11 @@ SUB_WORD_LIST:
 ;
 ; Loop down a list of words to find an address.
 ;
-SUB_WORD_LIST1:
+FIND_WORD_IN_LIST:
     INC   HL                        ;[1893] 
     BIT   7,(HL)                    ;[1894] 
-    JR    Z,SUB_WORD_LIST1          ;[1896] 
-    DJNZ  SUB_WORD_LIST1            ;[1898] 
+    JR    Z,FIND_WORD_IN_LIST       ;[1896] 
+    DJNZ  FIND_WORD_IN_LIST         ;[1898] 
     RET                             ;[189A] 
 
 ;
@@ -4343,7 +4348,7 @@ FRNDS:
     JR    $1F00                     ;[1F03] 
 
 ;
-; Sets Z flag if ESC key is currently press- 
+; Sets Z flag to zero if ESC key is currently pressed (negative logic)
 ;
 ESC:
     LD    BC,$0080                  ;[1F05] 
@@ -4603,9 +4608,10 @@ KEY:
     PUSH  HL                        ;[202F] 
     LD    HL,(SYSVAR_KEYB)          ;[2030] ie. KEYB
     PUSH  BC                        ;[2033] 
-    LD    BC,$2039                  ;[2034] 
+    LD    BC,KEY_END                ;[2034] 
     PUSH  BC                        ;[2037] 
-    JP    (HL)                      ;[2038] 
+    JP    (HL)                      ;[2038] Jump to KEYB
+KEY_END:
     POP   BC                        ;[2039] 
     POP   HL                        ;[203A] 
     RET                             ;[203B] 
@@ -6094,7 +6100,7 @@ SUB_PRINT_KEYWORD:
     LD    HL,(SYSVAR_XTTBL)         ;[27D5] 
     LD    B,A                       ;[27D8] 
     INC   B                         ;[27D9] 
-    CALL  SUB_WORD_LIST1            ;[27DA] 
+    CALL  FIND_WORD_IN_LIST         ;[27DA] 
     CALL  $1870                     ;[27DD] 
     CALL  OUTPUT_SPACE              ;[27E0] 
     INC   DE                        ;[27E3] 
