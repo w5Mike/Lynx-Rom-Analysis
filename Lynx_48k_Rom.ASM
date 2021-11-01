@@ -155,8 +155,8 @@ SYSVAR_FINE     EQU $629E    ; Fine adjustment on cassette speed.
 SYSVAR_SYNCLEN  EQU $629F    ; Length of sync. 
 SYSVAR_PLYLEV   EQU $62A0    ; Voltage reference for comparator. Used by LOAD instruction. 
 SYSVAR_CASTBL   EQU $62A1    ; Pointer to table used to generate wave. (SOUND?)
-SYSVAR_RBIT     EQU $62A3    ; Jumps to read bit routine. 
-SYSVAR_WBYTE    EQU $62A6    ; Jumps to write byte routine. 
+SYSVAR_RBIT     EQU $62A3    ; Jump to read bit routine. 
+SYSVAR_WBYTE    EQU $62A6    ; Jump to write byte routine (to tape).
 SYSVAR_PP       EQU $62A9    ; Jump to print a polish expression. 
 SYSVAR_NTP      EQU $62AC    ; Jump to normal to internal language conversion routine. 
 SYSVAR_EE       EQU $62AF    ; Jump to evaluate expression. 
@@ -1681,24 +1681,24 @@ WSYNC2:
     RET                             ;[0BB3] 
 
 ;
-; Save filename (I think).
+; Output filename to tape.
 ;
 WRITE_FNAME:
     CALL  WSYNC                     ;[0BB4] 
     LD    A,(DE)                    ;[0BB7] 
     CALL  SYSVAR_WBYTE              ;[0BB8] 
-WRITE_FNAME1:
+WRITE_FNAME_LOOP:
     INC   DE                        ;[0BBB] Repeat until quote ["] character.
     LD    A,(DE)                    ;[0BBC] 
     CALL  SYSVAR_WBYTE              ;[0BBD] 
     CP    $22                       ;[0BC0] 
-    JR    NZ,WRITE_FNAME1           ;[0BC2] 
+    JR    NZ,WRITE_FNAME_LOOP       ;[0BC2] 
     RET                             ;[0BC4] 
 
 ;
-; Part of SAVE routine.
+; Disable motor. Line "Not Found".
 ;
-SUB_SAVE:
+SAVE_END_ERROR:
     CALL  MOTOFF                    ;[0BC5] 
     CALL  ERR_NOT_FOUND             ;[0BC8] 
 
@@ -1712,19 +1712,19 @@ BASIC_COM_SAVE:
     LD    HL,$0000                  ;[0BD0] 
     PUSH  HL                        ;[0BD3] 
     CP    $0D                       ;[0BD4] 
-    JR    Z,BASIC_COM_SAVE1         ;[0BD6] 
+    JR    Z,SAVE_HEADER             ;[0BD6] 
     POP   HL                        ;[0BD8] 
     INC   DE                        ;[0BD9] 
     CALL  SUB_CHK_EXP_EVAL          ;[0BDA] 
     CALL  FNDLN_WRA1                ;[0BDD] 
-    JR    NZ,SUB_SAVE               ;[0BE0] 
+    JR    NZ,SAVE_END_ERROR         ;[0BE0] Error - basic line not found.
     PUSH  IX                        ;[0BE2] 
     POP   HL                        ;[0BE4] 
     LD    DE,(SYSVAR_EOB)           ;[0BE5] 
     OR    A                         ;[0BE9] 
     SBC   HL,DE                     ;[0BEA] 
     PUSH  HL                        ;[0BEC] 
-BASIC_COM_SAVE1:
+SAVE_HEADER:
     LD    HL,(SYSVAR_EOB)           ;[0BED] Calculate program length.
     LD    DE,(SYSVAR_SOB)           ;[0BF0] 
     OR    A                         ;[0BF4] 
@@ -1740,20 +1740,20 @@ BASIC_COM_SAVE1:
     CALL  SYSVAR_WBYTE              ;[0C06] 
     LD    A,B                       ;[0C09] 
     CALL  SYSVAR_WBYTE              ;[0C0A] 
-BASIC_COM_SAVE2:
+SAVE_BASIC:
     LD    A,(HL)                    ;[0C0D] 
     CALL  SYSVAR_WBYTE              ;[0C0E] 
     INC   HL                        ;[0C11] 
     DEC   BC                        ;[0C12] 
     LD    A,B                       ;[0C13] 
     OR    C                         ;[0C14] 
-    JR    NZ,BASIC_COM_SAVE2        ;[0C15] 
-    POP   HL                        ;[0C17] 
+    JR    NZ,SAVE_BASIC             ;[0C15] 
+    POP   HL                        ;[0C17] Write auto-run line number.
     LD    A,L                       ;[0C18] 
     CALL  SYSVAR_WBYTE              ;[0C19] 
     LD    A,H                       ;[0C1C] 
     CALL  SYSVAR_WBYTE              ;[0C1D] 
-    CALL  SYSVAR_WBYTE              ;[0C20] 
+    CALL  SYSVAR_WBYTE              ;[0C20] Twice, for some reason?
     JP    MOTOFF                    ;[0C23] 
 
 ;
@@ -1827,7 +1827,7 @@ VERIFY_ERROR_EXIT:
 BASIC_COM_APPEND:
     CALL  TAPE_READ                 ;[0C87] 
     LD    HL,(SYSVAR_EOB)           ;[0C8A] 
-    JR    BASIC_COM_LOAD1           ;[0C8D] 
+    JR    BLOAD_READ_B              ;[0C8D] 
 
 ;
 ; LOAD BASIC command.
@@ -1835,26 +1835,26 @@ BASIC_COM_APPEND:
 BASIC_COM_LOAD:
     CALL  TAPE_READ                 ;[0C8F] 
     LD    HL,(SYSVAR_SOB)           ;[0C92] 
-BASIC_COM_LOAD1:
+BLOAD_READ_B:
     CALL  RSYNC                     ;[0C95] 
     CALL  RBYTE                     ;[0C98] 
-    CP    $42                       ;[0C9B] 
-    JR    NZ,BASIC_COM_LOAD1        ;[0C9D] 
-    CALL  RBYTE                     ;[0C9F] 
+    CP    $42                       ;[0C9B] 'B' char
+    JR    NZ,BLOAD_READ_B           ;[0C9D] 
+    CALL  RBYTE                     ;[0C9F] Read length into BC
     LD    C,A                       ;[0CA2] 
     CALL  RBYTE                     ;[0CA3] 
     LD    B,A                       ;[0CA6] 
-BASIC_COM_LOAD2:
+BLOAD_READ_PROG:
     CALL  RBYTE                     ;[0CA7] 
     LD    (HL),A                    ;[0CAA] 
     INC   HL                        ;[0CAB] 
     DEC   BC                        ;[0CAC] 
     LD    A,B                       ;[0CAD] 
     OR    C                         ;[0CAE] 
-    JR    NZ,BASIC_COM_LOAD2        ;[0CAF] 
+    JR    NZ,BLOAD_READ_PROG        ;[0CAF] 
     DEC   HL                        ;[0CB1] 
-    LD    (SYSVAR_EOB),HL           ;[0CB2] 
-    CALL  RBYTE                     ;[0CB5] 
+    LD    (SYSVAR_EOB),HL           ;[0CB2] end of basic = HL
+    CALL  RBYTE                     ;[0CB5] Read execution point -> DE (-ve offset from end)
     LD    E,A                       ;[0CB8] 
     CALL  RBYTE                     ;[0CB9] 
     LD    D,A                       ;[0CBC] 
@@ -1864,15 +1864,15 @@ BASIC_COM_LOAD2:
     PUSH  HL                        ;[0CC2] 
     CALL  MOTOFF                    ;[0CC3] 
     CALL  ZERO_MEM                  ;[0CC6] 
-    POP   IX                        ;[0CC9] 
-    JP    $24C5                     ;[0CCB] *TBD
+    POP   IX                        ;[0CC9] Start pos/line
+    JP    RUN_BASIC_PROG            ;[0CCB] 
 
 ;
 ; Escape route for read bit routine.
 ;
 RBIT_END:
     CALL  MOTOFF                    ;[0CCE] 
-    JP    JUMP_TO_BASIC             ;[0CD1] 
+    JP    JUMP_TO_CMDLINE           ;[0CD1] 
 
 ;
 ; Read bit routine.
@@ -2003,7 +2003,7 @@ BASIC_COM_TAPE1:
     RET                             ;[0DAC] 
 
 ;
-; Data for the TAPE command.
+; Six 32 bit timing values, used by the TAPE command.
 ;
 DATA_TAPE:
     defb $50,$01,$04,$03,$38,$01,$01,$04    ;[0DAD]  P...8...
@@ -2011,7 +2011,7 @@ DATA_TAPE:
     defb $1B,$02,$01,$07,$14,$03,$02,$08    ;[0DBD]  ........
 
 ;
-; Moves cursor one character block to the right
+; Moves cursor one character block to the right.
 ;
 VDU_12:
     CALL  CURSOR_RIGHT              ;[0DC5] 
@@ -2049,7 +2049,7 @@ SUB_TEST_END:
     JP    START                     ;[0DEC] 
 
 ;
-; Cursor ON, CR/LF,  greater than symbol >
+; Overwrite off, CR/LF,  greater than symbol >
 ;
 DATA_PROMPT:
     defb $14,$13,$3E,$00            ;[0DEF]  ..>.
@@ -2069,12 +2069,15 @@ SUB_INPUT_IS_ESC:
     RST   $38                       ;[0E04] 
 
 ;
-; ERROR.
+; ERROR. Outputs specified error message.
 ;
 BASIC_COM_ERROR:
     RST   $18                       ;[0E05] 
-    JP    ERROR0                    ;[0E06] 
+    JP    DISP_ERROR_A              ;[0E06] 
 
+;
+; LETTER - ptr to specified DATA_CHARS definitions.
+;
 BASIC_FN_LETTER:
     CALL  FPINT                     ;[0E09] 
     LD    A,L                       ;[0E0C] 
@@ -2171,7 +2174,7 @@ DATA_INF:
 ; Load BC and HL with the integers in WRA1 and WRA2. 
 ; Utility routine called by BNOR, BNXOR & BNAND.
 ;
-SUB_HLBC_FROM_WRA12:
+HLBC_FROM_WRA12:
     CALL  FPINT                     ;[0E70] 
     PUSH  HL                        ;[0E73] Push HL, HL = integer (WRA1)
     LD    HL,SYSVAR_WRA2            ;[0E74] Let HL = WRA2
@@ -2184,7 +2187,7 @@ SUB_HLBC_FROM_WRA12:
 ; BNOR.
 ;
 BASIC_FN_BNOR:
-    CALL  SUB_HLBC_FROM_WRA12       ;[0E7F] 
+    CALL  HLBC_FROM_WRA12           ;[0E7F] 
     LD    A,B                       ;[0E82] 
     OR    H                         ;[0E83] 
     LD    H,A                       ;[0E84] 
@@ -2198,7 +2201,7 @@ BN_RESULT_TO_WRA1:
 ; BNXOR.
 ;
 BASIC_FN_BNXOR:
-    CALL  SUB_HLBC_FROM_WRA12       ;[0E8B] 
+    CALL  HLBC_FROM_WRA12           ;[0E8B] 
     LD    A,B                       ;[0E8E] 
     XOR   H                         ;[0E8F] 
     LD    H,A                       ;[0E90] 
@@ -2210,7 +2213,7 @@ BASIC_FN_BNXOR:
 ; BNAND.
 ;
 BASIC_FN_BNAND:
-    CALL  SUB_HLBC_FROM_WRA12       ;[0E95] 
+    CALL  HLBC_FROM_WRA12           ;[0E95] 
     LD    A,B                       ;[0E98] 
     AND   H                         ;[0E99] 
     LD    H,A                       ;[0E9A] 
@@ -2228,6 +2231,9 @@ BASIC_FN_RAND:
     CALL  MLT                       ;[0EA8] 
     JP    BASIC_FN_INT              ;[0EAB] 
 
+;
+; CFR. Cursor flash rate.
+;
 BASIC_COM_CFR:
     RST   $18                       ;[0EAE] 
     LD    (SYSVAR_FLASH),HL         ;[0EAF] CFR.
@@ -3284,7 +3290,7 @@ SUB_LINE_ANALYSIS3:
 ;
 SUB_LINE_ANALYSIS4:
     PUSH  DE                        ;[1827] 
-    CALL  $2808                     ;[1828] 
+    CALL  DBASLN2                   ;[1828] 
     POP   DE                        ;[182B] 
     RET                             ;[182C] 
 
@@ -4227,13 +4233,13 @@ BASIC_COM_STOP:
     LD    A,(IX+$00)                ;[1E33] 
     CP    $80                       ;[1E36] 
     CALL  Z,ERR_WRONG_MODE          ;[1E38] 
-    CALL  ADD_LEN_TO_IX             ;[1E3B] 
+    CALL  SKIP_TO_LINE_END          ;[1E3B] 
 BASIC_COM_STOP1:
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
     LD    HL,DATA_STOPPED           ;[1E42] 
     CALL  PLINE                     ;[1E45] 
-    CALL  SUB_JUMP_TO_BASIC1        ;[1E48] 
-    JP    CONT_TO_BASIC             ;[1E4B] 
+    CALL  SUB_JUMP_TO_CMDLINE1      ;[1E48] 
+    JP    TO_CMDLINE                ;[1E4B] 
 
 ;
 ; Data 'Stopped' message.
@@ -4266,21 +4272,21 @@ BASIC_FN_MEM:
 ;
 ; Called by 'J' command.
 ;
-SUB_JUMP_TO_BASIC:
+SUB_JUMP_TO_CMDLINE:
     LD    HL,FLOAT_ZERO             ;[1E76] 
     LD    (SYSVAR_CURRLP),HL        ;[1E79] 
     JP    SUB_LINK_OFF              ;[1E7C] 
-SUB_JUMP_TO_BASIC1:
+SUB_JUMP_TO_CMDLINE1:
     LD    HL,(SYSVAR_CURRLP)        ;[1E7F] 
     LD    A,(HL)                    ;[1E82] 
     CP    $80                       ;[1E83] 
-    JR    Z,SUB_JUMP_TO_BASIC2      ;[1E85] 
+    JR    Z,SUB_JUMP_TO_CMDLINE2    ;[1E85] 
     LD    HL,DATA_IN_LINE           ;[1E87] 
     CALL  PLINE                     ;[1E8A] 
     LD    HL,(SYSVAR_CURRLP)        ;[1E8D] 
     CALL  LNUM1                     ;[1E90] 
     CALL  PN                        ;[1E93] 
-SUB_JUMP_TO_BASIC2:
+SUB_JUMP_TO_CMDLINE2:
     LD    A,$1E                     ;[1E96] 
     RST   $08                       ;[1E98] 
     LD    A,$0D                     ;[1E99] 
@@ -4307,14 +4313,14 @@ BASIC:
     JR    NZ,$1ECA                  ;[1EB9] 
     LD    A,$0D                     ;[1EBB] 
     RST   $08                       ;[1EBD] 
-    LD    BC,$24BE                  ;[1EBE] 
+    LD    BC,EXEC_LINE_RETURN       ;[1EBE] 
     POP   HL                        ;[1EC1] 
     OR    A                         ;[1EC2] 
     SBC   HL,BC                     ;[1EC3] 
     JR    NZ,$1EC1                  ;[1EC5] 
-    JP    $249C                     ;[1EC7] 
-    CALL  SUB_JUMP_TO_BASIC1        ;[1ECA] 
-    JP    JUMP_TO_BASIC             ;[1ECD] 
+    JP    EXEC_LINE_LOOP            ;[1EC7] 
+    CALL  SUB_JUMP_TO_CMDLINE1      ;[1ECA] 
+    JP    JUMP_TO_CMDLINE           ;[1ECD] 
 
 ;
 ; Generates next random number in RNDNO. 
@@ -4531,7 +4537,7 @@ BASIC_COM_WEND:
     CALL  NZ,ERR_WEND_NO_WHILE      ;[1FC9] 
     CALL  POP_HL_RSTACK             ;[1FCC] 
     POP   BC                        ;[1FCF] 
-    JP    EXEC_LINE                 ;[1FD0] 
+    JP    EXEC_BASIC                ;[1FD0] 
 
 ;
 ; WHILE.
@@ -4696,7 +4702,7 @@ BASIC_COM_NEW:
 BASIC_COM_INPUT:
     CP    $22                       ;[2094] 
     JR    NZ,$209D                  ;[2096] 
-    CALL  $2257                     ;[2098] 
+    CALL  PRINT_STRING              ;[2098] 
     INC   DE                        ;[209B] 
     INC   DE                        ;[209C] 
     PUSH  DE                        ;[209D] 
@@ -4884,7 +4890,7 @@ BASIC_COM_RESTORE:
     LD    A,(IX+$06)                ;[2197] 
     CP    C                         ;[219A] 
     RET   Z                         ;[219B] 
-    CALL  ADD_LEN_TO_IX             ;[219C] 
+    CALL  SKIP_TO_LINE_END          ;[219C] 
     JR    $2190                     ;[219F] 
 
 ;
@@ -4902,7 +4908,7 @@ SUB_WHILE:
     JR    Z,$21C0                   ;[21AF] 
     CP    C                         ;[21B1] 
     JR    Z,$21B9                   ;[21B2] 
-    CALL  ADD_LEN_TO_IX             ;[21B4] 
+    CALL  SKIP_TO_LINE_END          ;[21B4] 
     JR    $21A4                     ;[21B7] 
     EX    AF,AF'                    ;[21B9] 
     OR    A                         ;[21BA] 
@@ -5037,12 +5043,17 @@ BASIC_COM_LPRINT:
     CALL  SUB_LINK_ON               ;[224E] 
     CALL  BASIC_COM_PRINT           ;[2251] 
     JP    SUB_LINK_OFF              ;[2254] 
-    INC   DE                        ;[2257] Prints a string.
+
+;
+; Prints a string. Print char in DE and loop until " char found.
+;
+PRINT_STRING:
+    INC   DE                        ;[2257] 
     LD    A,(DE)                    ;[2258] 
-    CP    $22                       ;[2259] 
+    CP    $22                       ;[2259] Quote char
     RET   Z                         ;[225B] 
     RST   $08                       ;[225C] 
-    JR    $2257                     ;[225D] 
+    JR    PRINT_STRING              ;[225D] 
 
 ;
 ; SWAP.
@@ -5066,7 +5077,7 @@ BASIC_COM_CONT:
     LD    A,L                       ;[2278] 
     OR    H                         ;[2279] 
     CALL  Z,ERR_CANNOT_CONT         ;[227A] 
-    JP    EXEC_LINE                 ;[227D] 
+    JP    EXEC_BASIC                ;[227D] 
 
 ;
 ; RUN.
@@ -5082,7 +5093,7 @@ BASIC_COM_RUN:
     RST   $28                       ;[228E] Evaluate expression
     CALL  FINDLN                    ;[228F] 
     POP   BC                        ;[2292] 
-    JP    $24C5                     ;[2293] 
+    JP    RUN_BASIC_PROG            ;[2293] 
 
 ;
 ; GOSUB
@@ -5113,7 +5124,7 @@ BASIC_COM_GOTO:
     PUSH  DE                        ;[22C1] 
     CALL  STRING_CMP                ;[22C2] 
     JR    Z,$22CD                   ;[22C5] 
-    CALL  ADD_LEN_TO_IX             ;[22C7] 
+    CALL  SKIP_TO_LINE_END          ;[22C7] 
     POP   DE                        ;[22CA] 
     JR    NZ,$22AD                  ;[22CB] 
     POP   BC                        ;[22CD] 
@@ -5170,7 +5181,7 @@ BASIC_COM_LIST:
     IN    A,(C)                     ;[2321] 
     RLCA                            ;[2323] 
     JR    NC,$2319                  ;[2324] 
-    CALL  ADD_LEN_TO_IX             ;[2326] 
+    CALL  SKIP_TO_LINE_END          ;[2326] 
     POP   DE                        ;[2329] 
     PUSH  IX                        ;[232A] 
     POP   HL                        ;[232C] 
@@ -5178,7 +5189,7 @@ BASIC_COM_LIST:
     JR    C,$230A                   ;[2330] 
     LD    A,$1E                     ;[2332] 
     RST   $08                       ;[2334] 
-    JP    CONT_TO_BASIC             ;[2335] 
+    JP    TO_CMDLINE                ;[2335] 
 
 ;
 ; LLIST.
@@ -5203,7 +5214,7 @@ BASIC_COM_DEL:
     JR    Z,$2351                   ;[234B] 
     RST   $28                       ;[234D] 
     CALL  FINDLN                    ;[234E] 
-    CALL  ADD_LEN_TO_IX             ;[2351] 
+    CALL  SKIP_TO_LINE_END          ;[2351] 
     PUSH  IX                        ;[2354] 
     POP   BC                        ;[2356] 
     POP   HL                        ;[2357] 
@@ -5382,7 +5393,7 @@ BASIC_COM_IF:
     POP   BC                        ;[2435] 
     JP    $24A6                     ;[2436] 
     LD    IX,(SYSVAR_CURRLP)        ;[2439] 
-    CALL  ADD_LEN_TO_IX             ;[243D] 
+    CALL  SKIP_TO_LINE_END          ;[243D] 
     LD    A,(IX+$00)                ;[2440] 
     CP    $80                       ;[2443] 
     RET   Z                         ;[2445] 
@@ -5404,9 +5415,10 @@ BASIC_COM_TRAIL:
     SET   1,(HL)                    ;[245D] 
 
 ;
-; CODE, REM, DATA, LABEL, ELSE
+; CODE, REM, DATA, LABEL, ELSE 
+; (non-executable commands, just return)
 ;
-BASIC_COM_BASIC:
+BASIC_COM_NO_EXE:
     RET                             ;[245F] 
 
 ;
@@ -5458,26 +5470,27 @@ BASIC_COM_LINK:
     JR    $2496                     ;[2491] 
 
 ;
-; I believe it executes a line (TBC)
+; Executes BASIC program lines
 ;
-EXEC_LINE:
+EXEC_BASIC:
     LD    (SYSVAR_CURRLP),HL        ;[2493] 
     LD    A,$0F                     ;[2496] 
     RST   $08                       ;[2498] 
     PUSH  HL                        ;[2499] 
     POP   IX                        ;[249A] 
-    LD    A,(SYSVAR_EXFLAG)         ;[249C] 
+EXEC_LINE_LOOP:
+    LD    A,(SYSVAR_EXFLAG)         ;[249C] Trace/speed settings
     OR    A                         ;[249F] 
-    CALL  NZ,SYSVAR_DEBUG           ;[24A0] 
+    CALL  NZ,SYSVAR_DEBUG           ;[24A0] See DEBUG:
     CALL  SKIP_LNUM                 ;[24A3] 
     LD    A,(DE)                    ;[24A6] 
-    LD    BC,(SYSVAR_XETBL)         ;[24A7] 
-    CALL  SYSVAR_EXECSUB            ;[24AB] 
+    LD    BC,(SYSVAR_XETBL)         ;[24A7] Command execution table
+    CALL  SYSVAR_EXECSUB            ;[24AB] For future use?
     RLCA                            ;[24AE] 
-    LD    L,A                       ;[24AF] 
+    LD    L,A                       ;[24AF] Lookup command address in table
     LD    H,$00                     ;[24B0] 
     ADD   HL,BC                     ;[24B2] 
-    LD    BC,$24BE                  ;[24B3] 
+    LD    BC,EXEC_LINE_RETURN       ;[24B3] 
     PUSH  BC                        ;[24B6] 
     LD    A,(HL)                    ;[24B7] 
     INC   HL                        ;[24B8] 
@@ -5485,17 +5498,19 @@ EXEC_LINE:
     LD    L,A                       ;[24BA] 
     INC   DE                        ;[24BB] 
     LD    A,(DE)                    ;[24BC] 
-    JP    (HL)                      ;[24BD] 
+    JP    (HL)                      ;[24BD] Execute basic command.
+EXEC_LINE_RETURN:
     LD    IX,(SYSVAR_CURRLP)        ;[24BE] 
-    CALL  ADD_LEN_TO_IX             ;[24C2] IF.
+    CALL  SKIP_TO_LINE_END          ;[24C2] 
+RUN_BASIC_PROG:
     LD    (SYSVAR_CURRLP),IX        ;[24C5] 
     LD    A,(IX+$00)                ;[24C9] 
-    CP    $80                       ;[24CC] 
-    JR    Z,CONT_TO_BASIC           ;[24CE] 
+    CP    $80                       ;[24CC] $80 = End of program marker
+    JR    Z,TO_CMDLINE              ;[24CE] 
     LD    (SYSVAR_CONTLP),IX        ;[24D0] 
     CALL  ESC                       ;[24D4] 
     JP    Z,$1E42                   ;[24D7] 
-    JR    $249C                     ;[24DA] 
+    JR    EXEC_LINE_LOOP            ;[24DA] 
 
 ;
 ; Zero the "continue" line pointer. (cannot continue)
@@ -5503,8 +5518,8 @@ EXEC_LINE:
 ZERO_CONTLP:
     LD    HL,$0000                  ;[24DC] 
     LD    (SYSVAR_CONTLP),HL        ;[24DF] 
-CONT_TO_BASIC:
-    JP    JUMP_TO_BASIC             ;[24E2] 
+TO_CMDLINE:
+    JP    JUMP_TO_CMDLINE           ;[24E2] 
 
 ;
 ; SPEED and TRACE routines.
@@ -5590,7 +5605,7 @@ LINP_ANLYS:
 ;
 ; Add line length to IX.
 ;
-ADD_LEN_TO_IX:
+SKIP_TO_LINE_END:
     PUSH  DE                        ;[255E] 
     LD    E,(IX+$05)                ;[255F] 
     LD    D,$00                     ;[2562] 
@@ -5866,7 +5881,7 @@ VALIDATE_LET:
     CALL  PN                        ;[26B4] 
     LD    A,$0D                     ;[26B7] 
     RST   $08                       ;[26B9] 
-    JP    JUMP_TO_BASIC             ;[26BA] 
+    JP    JUMP_TO_CMDLINE           ;[26BA] 
 
 ;
 ; Validation routine for DPOKE, POKE, DOT, OUT, MOVE, DRAW.SOUND.
@@ -6107,45 +6122,50 @@ SUB_PRINT_KEYWORD:
     RET                             ;[27E4] 
 
 ;
-; Display coded line. Pointed to from 62B2.
+; Display BASIC line. (via SYSVAR_DBASLN)
 ;
 DBASLN:
     PUSH  IX                        ;[27E5] 
     POP   HL                        ;[27E7] 
     PUSH  HL                        ;[27E8] 
-    CALL  LNUM1                     ;[27E9] 
+    CALL  LNUM1                     ;[27E9] Line number
     CALL  PN                        ;[27EC] 
-    CALL  TEST_IS_LOOP_END          ;[27EF] 
+    CALL  TEST_IS_LOOP_END          ;[27EF] Handle loop indentation
     CALL  SUB_INDENT                ;[27F2] 
     CALL  SKIP_LNUM                 ;[27F5] 
-    LD    A,(DE)                    ;[27F8] 
+DBASLN1:
+    LD    A,(DE)                    ;[27F8] Line length
     PUSH  AF                        ;[27F9] 
     CALL  SUB_PRINT_KEYWORD         ;[27FA] 
     POP   AF                        ;[27FD] 
     CP    $3C                       ;[27FE] 
-    JR    Z,$27F8                   ;[2800] 
+    JR    Z,DBASLN1                 ;[2800] 
     CP    $33                       ;[2802] 
     JP    Z,PRINT_BAS_LINE          ;[2804] 
     DEC   DE                        ;[2807] 
+DBASLN2:
     INC   DE                        ;[2808] 
+DBASLN3:
     LD    A,(DE)                    ;[2809] 
     CP    $7B                       ;[280A] 
     RET   Z                         ;[280C] 
     CP    $0D                       ;[280D] 
     JR    Z,DO_INDENT               ;[280F] 
     CP    $7D                       ;[2811] 
-    JR    Z,$2824                   ;[2813] 
+    JR    Z,DBASLN4                 ;[2813] 
     CP    $80                       ;[2815] 
-    JR    NC,$282A                  ;[2817] 
+    JR    NC,DBASLN5                ;[2817] 
     RST   $08                       ;[2819] 
     CP    $22                       ;[281A] 
-    JR    NZ,$2808                  ;[281C] 
-    CALL  $2257                     ;[281E] 
+    JR    NZ,DBASLN2                ;[281C] 
+    CALL  PRINT_STRING              ;[281E] 
     RST   $08                       ;[2821] 
-    JR    $2808                     ;[2822] 
+    JR    DBASLN2                   ;[2822] 
+DBASLN4:
     INC   DE                        ;[2824] 
     CALL  SYSVAR_PP                 ;[2825] 
-    JR    $2808                     ;[2828] 
+    JR    DBASLN2                   ;[2828] 
+DBASLN5:
     CP    $DF                       ;[282A] 
     PUSH  AF                        ;[282C] 
     CALL  C,OUTPUT_SPACE            ;[282D] 
@@ -6156,8 +6176,8 @@ DBASLN:
     POP   AF                        ;[2838] 
     INC   DE                        ;[2839] 
     CP    $D7                       ;[283A] 
-    JR    Z,$27F8                   ;[283C] 
-    JR    $2809                     ;[283E] 
+    JR    Z,DBASLN1                 ;[283C] 
+    JR    DBASLN3                   ;[283E] 
 DO_INDENT:
     POP   IX                        ;[2840] 
     CALL  INDENT_IF_LOOP            ;[2842] 
@@ -6207,14 +6227,16 @@ TEST_IS_LOOP_END:
 SUB_INDENT:
     LD    A,(SYSVAR_SBC)            ;[2877] 
     OR    A                         ;[287A] 
-    RET   Z                         ;[287B] 
+    RET   Z                         ;[287B] No indent? Return.
     CP    $0A                       ;[287C] 
-    JR    C,$2882                   ;[287E] 
-    LD    A,$0A                     ;[2880] 
+    JR    C,SUB_INDENT1             ;[287E] 
+    LD    A,$0A                     ;[2880] Max 10 indents
+SUB_INDENT1:
     RLCA                            ;[2882] 
     LD    B,A                       ;[2883] 
+SUB_INDENT_LOOP:
     CALL  OUTPUT_SPACE              ;[2884] 
-    DJNZ  $2884                     ;[2887] 
+    DJNZ  SUB_INDENT_LOOP           ;[2887] 
     RET                             ;[2889] 
 
 ;
@@ -6624,7 +6646,7 @@ BASIC_COM_RENUM:
     POP   DE                        ;[2AE6] 
     CALL  WRA1_TO_DE                ;[2AE7] 
     POP   IX                        ;[2AEA] 
-    CALL  ADD_LEN_TO_IX             ;[2AEC] 
+    CALL  SKIP_TO_LINE_END          ;[2AEC] 
     JR    $2A89                     ;[2AEF] 
     LD    IX,(SYSVAR_SOB)           ;[2AF1] 
     LD    HL,SYSVAR_AUTOST          ;[2AF5] 
@@ -6640,7 +6662,7 @@ BASIC_COM_RENUM:
     CALL  LNUM2                     ;[2B0B] 
     CALL  AD                        ;[2B0E] 
     POP   IX                        ;[2B11] 
-    CALL  ADD_LEN_TO_IX             ;[2B13] 
+    CALL  SKIP_TO_LINE_END          ;[2B13] 
     JR    $2AFB                     ;[2B16] 
 
 ;
@@ -6678,7 +6700,7 @@ FNDLN_WRA1:
 
     POP   BC                        ;[2B42] 
     INC   BC                        ;[2B43] 
-    CALL  ADD_LEN_TO_IX             ;[2B44] 
+    CALL  SKIP_TO_LINE_END          ;[2B44] 
     JR    $2B26                     ;[2B47] 
     OR    A                         ;[2B49] 
     RET                             ;[2B4A] 
@@ -8990,11 +9012,11 @@ SUB_MULTIPLY:
     RET                             ;[38E7] 
 
 ;
-; 'J' Command.
+; 'J' Command. Exit monitor back to command line.
 ;
-JUMP_TO_BASIC:
+JUMP_TO_CMDLINE:
     LD    SP,(SYSVAR_STACK)         ;[38E8] 
-    JP    SUB_JUMP_TO_BASIC         ;[38EC] 
+    JP    SUB_JUMP_TO_CMDLINE       ;[38EC] 
 
 ;
 ; Data. Error messages.
@@ -9129,17 +9151,17 @@ ERROR:
     INC   A                         ;[3B4B] 
     LD    B,$AF                     ;[3B4C] Out of Memory
     INC   A                         ;[3B4E] 
-ERROR0:
-    CALL  SYSVAR_ERRAM              ;[3B4F] Unused??
-    LD    HL,(SYSVAR_ERRTBL)        ;[3B52] 
+DISP_ERROR_A:
+    CALL  SYSVAR_ERRAM              ;[3B4F] Unused. For future use.
+    LD    HL,(SYSVAR_ERRTBL)        ;[3B52] Table of error messages. (see DATA_ERROR_MSGS)
     LD    C,A                       ;[3B55] 
-ERROR_FIND:
-    LD    A,(HL)                    ;[3B56] 
+ERROR_PRINT:
+    LD    A,(HL)                    ;[3B56] Lookup error message. (terminated by zero)
     INC   HL                        ;[3B57] 
     OR    A                         ;[3B58] 
-    JR    NZ,ERROR_FIND             ;[3B59] 
+    JR    NZ,ERROR_PRINT            ;[3B59] Skip to next message (=zero) in tbl
     DEC   C                         ;[3B5B] 
-    JR    NZ,ERROR_FIND             ;[3B5C] 
+    JR    NZ,ERROR_PRINT            ;[3B5C] If C is zero, message found.
     CALL  PLINE                     ;[3B5E] 
     JP    BASIC                     ;[3B61] 
 
