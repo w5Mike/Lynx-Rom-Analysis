@@ -212,7 +212,7 @@ RST_8:
 ; Rom version identifier L014
 ;
 DATA_L014:
-    defb $20,$4C,$30,$31,$34        ;[000B]  .L014
+    DB $20,$4C,$30,$31,$34          ;[000B]  .L014
 
 ;
 ; Checks if the character at the address pointed to by DE is a space.
@@ -220,7 +220,7 @@ DATA_L014:
 ;
 RST_10:
     LD    A,(DE)                    ;[0010] 
-    CP    $20                       ;[0011] 
+    CP    ' '                       ;[0011] 
     RET   NZ                        ;[0013] 
     INC   DE                        ;[0014] 
     JR    RST_10                    ;[0015] 
@@ -235,8 +235,8 @@ RST_18:
 ;
 ; Sue Jansons - who wrote the User Manual
 ;
-DATA_SUSY:
-    defb $53,$75,$73,$79,$00        ;[001B]  Susy.
+SUSY:
+    DB    "Susy",$00                ;[001B] 
 
 ;
 ; Checks if the byte after RST is the same as A; if it is not, displays a syntax error. 
@@ -304,8 +304,8 @@ INIT_CRT1:
 ; Data for CRT controller.
 ;
 DATA_CRT:
-    defb $2F,$20,$26,$33,$4D,$02,$3F,$44    ;[0056]  /.&3M.?D
-    defb $00,$03,$03,$03,$00,$00,$07,$DF    ;[005E]  ........
+    DB $2F,$20,$26,$33,$4D,$02,$3F,$44      ;[0056]  /.&3M.?D
+    DB $00,$03,$03,$03,$00,$00,$07,$DF      ;[005E]  ........
 
 ;
 ; Non-maskable interrupt routine, pointer in RAM
@@ -362,33 +362,33 @@ KBD_TEST:
     RET   Z                         ;[0099] 
 
 ;
-; Character Output Routine
+; Character Output Routine (via SYSVAR_VIDEO)
 ;
 VIDEO:
     PUSH  HL                        ;[009A] 
     LD    HL,(SYSVAR_BPERL)         ;[009B] 32 bytes per line (usually)
     BIT   6,L                       ;[009E] Is double height?
     POP   HL                        ;[00A0] 
-    JP    Z,VIDEO2                  ;[00A1] If NOT double height chars.
+    JP    Z,VIDEO_GETPOS            ;[00A1] If NOT double height chars.
     PUSH  AF                        ;[00A4] 
-    CALL  VIDEO2                    ;[00A5] 
+    CALL  VIDEO_GETPOS              ;[00A5] 
     LD    A,$20                     ;[00A8] 
-    CALL  VIDEO1                    ;[00AA] 
+    CALL  VIDEO_WBANKS              ;[00AA] 
     POP   AF                        ;[00AD] 
     PUSH  AF                        ;[00AE] 
-    CALL  VIDEO2                    ;[00AF] 
+    CALL  VIDEO_GETPOS              ;[00AF] 
     XOR   A                         ;[00B2] 
-    CALL  VIDEO1                    ;[00B3] 
+    CALL  VIDEO_WBANKS              ;[00B3] 
     POP   AF                        ;[00B6] 
     RET                             ;[00B7] 
 
-VIDEO1:
+VIDEO_WBANKS:
     LD    (SYSVAR_BLUBNK),A         ;[00B8] &8000
     LD    (SYSVAR_REDBNK),A         ;[00BB] &C000
     LD    (SYSVAR_GRNBNK),A         ;[00BE] &C000
     RET                             ;[00C1] 
 
-VIDEO2:
+VIDEO_GETPOS:
     PUSH  AF                        ;[00C2] 
     PUSH  HL                        ;[00C3] 
     PUSH  DE                        ;[00C4] 
@@ -401,42 +401,46 @@ VIDEO2:
     RET                             ;[00CD] 
 
 ;
-; Gives address of bit map of character 
+; Takes character in A and gives the address (in HL) of the character bitmap, 
+; within the alphanumeric or graphic character bitmap tables.
+; (called from VIDEO_POS, and LETTER function)
 ;
 FONT:
     LD    HL,(SYSVAR_CHRTBL)        ;[00CE] 
     BIT   7,A                       ;[00D1] 
-    JR    Z,FONT1                   ;[00D3] < 128 ? Alpha chars
+    JR    Z,FONT_OFFSET             ;[00D3] < 128 ? Alpha chars
     LD    HL,(SYSVAR_GPHTBL)        ;[00D5] > 127 ? Graphic chars
-FONT1:
+FONT_OFFSET:
     AND   $7F                       ;[00D8] 
     PUSH  HL                        ;[00DA] 
-    LD    L,A                       ;[00DB] 
+    LD    L,A                       ;[00DB] Let HL=char no.
     LD    H,$00                     ;[00DC] 
-    ADD   HL,HL                     ;[00DE] 
-    LD    E,L                       ;[00DF] 
+    ADD   HL,HL                     ;[00DE] Shift left
+    LD    E,L                       ;[00DF] Let DE=HL
     LD    D,H                       ;[00E0] 
-    ADD   HL,HL                     ;[00E1] 
-    ADD   HL,HL                     ;[00E2] 
-    ADD   HL,DE                     ;[00E3] 
-    POP   DE                        ;[00E4] 
-    ADD   HL,DE                     ;[00E5] 
+    ADD   HL,HL                     ;[00E1] Shift left
+    ADD   HL,HL                     ;[00E2] Shift left
+    ADD   HL,DE                     ;[00E3] Let HL=HL+DE
+    POP   DE                        ;[00E4] Let DE = CHR/GPHTBL
+    ADD   HL,DE                     ;[00E5] Let HL = CHRTBL+HL (offset)
     RET                             ;[00E6] 
 
 ;
-; Locate location for character on screen
+; Get bitmap and physical address/location for a character on screen
+; (called from VIDEO-->VIDEO_GETPOS)
 ;
 VIDEO_POS:
     CALL  FONT                      ;[00E7] 
-    EX    DE,HL                     ;[00EA] 
+    EX    DE,HL                     ;[00EA] Let DE = font TBL offset
     LD    HL,(SYSVAR_CURSORY)       ;[00EB] 
     LD    H,$00                     ;[00EE] 
     LD    A,(SYSVAR_BPERL)          ;[00F0] 
     SRL   A                         ;[00F3] 
-VIDEO_POS5:
-    ADD   HL,HL                     ;[00F5] 
+VIDEO_YPOS:
+    ADD   HL,HL                     ;[00F5] Deduce Y-Pos and handle double-height.
     SRL   A                         ;[00F6] 
-    JR    NZ,VIDEO_POS5             ;[00F8] 
+    JR    NZ,VIDEO_YPOS             ;[00F8] 
+VIDEO_XPOS:
     LD    A,(SYSVAR_CURSORX)        ;[00FA] 
     RRCA                            ;[00FD] 
     RRCA                            ;[00FE] 
@@ -446,17 +450,17 @@ VIDEO_POS5:
     ADD   HL,BC                     ;[0104] 
     LD    A,(SYSVAR_CURSORX)        ;[0105] 
     AND   $03                       ;[0108] 
-    JR    Z,VIDEO_POS1              ;[010A] 
+    JR    Z,JUMP_XPOS1              ;[010A] Choose one of three xpos1/2/3 routines based on X pos.
     DEC   A                         ;[010C] 
-    JR    Z,VIDEO_POS2              ;[010D] 
+    JR    Z,JUMP_XPOS2              ;[010D] 
     DEC   A                         ;[010F] 
-    JR    Z,VIDEO_POS3              ;[0110] 
-    JR    VIDEO_POS4                ;[0112] 
-VIDEO_POS2:
+    JR    Z,CALL_XPOS3              ;[0110] 
+    JR    CALL_XPOS4                ;[0112] 
+JUMP_XPOS2:
     JP    VIDEO_XPOS2               ;[0114] 
-VIDEO_POS1:
+JUMP_XPOS1:
     JP    VIDEO_XPOS1               ;[0117] 
-VIDEO_POS4:
+CALL_XPOS4:
     PUSH  HL                        ;[011A] 
     PUSH  DE                        ;[011B] 
     CALL  VIDEO_XPOS4               ;[011C] 
@@ -464,7 +468,7 @@ VIDEO_POS4:
     POP   HL                        ;[0120] 
     INC   HL                        ;[0121] 
     JP    VIDEO_XPOS4B              ;[0122] 
-VIDEO_POS3:
+CALL_XPOS3:
     PUSH  HL                        ;[0125] 
     PUSH  DE                        ;[0126] 
     CALL  VIDEO_XPOS3               ;[0127] 
@@ -605,175 +609,174 @@ VIDEO_XPOS3A:
 ; Bytes to form the characters.
 ;
 DATA_CHARS:
-    defb $00,$00,$00,$00,$00,$00,$00,$00,$00,$00    ;[01D4] 
-    defb $00,$08,$08,$08,$08,$08,$00,$08,$00,$00    ;[01DE] 
-    defb $00,$0A,$0A,$00,$00,$00,$00,$00,$00,$00    ;[01E8] 
-    defb $00,$0A,$0A,$1F,$0A,$1F,$0A,$0A,$00,$00    ;[01F2] 
-    defb $00,$04,$0E,$14,$0E,$05,$15,$0E,$04,$00    ;[01FC] 
-    defb $00,$00,$18,$19,$02,$04,$08,$13,$03,$00    ;[0206] 
-    defb $00,$08,$14,$14,$08,$15,$12,$0D,$00,$00    ;[0210] 
-    defb $00,$0C,$04,$08,$00,$00,$00,$00,$00,$00    ;[021A] 
-    defb $00,$02,$04,$04,$04,$04,$04,$02,$00,$00    ;[0224] 
-    defb $00,$10,$08,$08,$08,$08,$08,$10,$00,$00    ;[022E] 
-    defb $00,$00,$00,$0A,$04,$1F,$04,$0A,$00,$00    ;[0238] 
-    defb $00,$00,$00,$04,$04,$1F,$04,$04,$00,$00    ;[0242] 
-    defb $00,$00,$00,$00,$00,$00,$18,$08,$10,$00    ;[024C] 
-    defb $00,$00,$00,$00,$00,$1F,$00,$00,$00,$00    ;[0256] 
-    defb $00,$00,$00,$00,$00,$00,$0C,$0C,$00,$00    ;[0260] 
-    defb $00,$00,$01,$02,$04,$08,$10,$00,$00,$00    ;[026A] 
-    defb $00,$0E,$11,$13,$15,$19,$11,$0E,$00,$00    ;[0274] 
-    defb $00,$04,$0C,$04,$04,$04,$04,$0E,$00,$00    ;[027E] 
-    defb $00,$0E,$11,$01,$0E,$10,$10,$1F,$00,$00    ;[0288] 
-    defb $00,$0E,$11,$01,$06,$01,$11,$0E,$00,$00    ;[0292] 
-    defb $00,$10,$10,$12,$12,$1F,$02,$02,$00,$00    ;[029C] 
-    defb $00,$1F,$10,$1E,$01,$01,$11,$0E,$00,$00    ;[02A6] 
-    defb $00,$06,$08,$10,$1E,$11,$11,$0E,$00,$00    ;[02B0] 
-    defb $00,$1F,$01,$02,$04,$08,$08,$08,$00,$00    ;[02BA] 
-    defb $00,$0E,$11,$11,$0E,$11,$11,$0E,$00,$00    ;[02C4] 
-    defb $00,$0E,$11,$11,$0F,$01,$02,$0C,$00,$00    ;[02CE] 
-    defb $00,$00,$00,$18,$18,$00,$18,$18,$00,$00    ;[02D8] 
-    defb $00,$00,$00,$18,$18,$00,$18,$08,$10,$00    ;[02E2] 
-    defb $00,$00,$00,$04,$08,$10,$08,$04,$00,$00    ;[02EC] 
-    defb $00,$00,$00,$00,$1E,$00,$1E,$00,$00,$00    ;[02F6] 
-    defb $00,$00,$00,$10,$08,$04,$08,$10,$00,$00    ;[0300] 
-    defb $00,$0E,$11,$01,$06,$04,$00,$04,$00,$00    ;[030A] 
-    defb $00,$0E,$13,$15,$15,$16,$10,$0E,$00,$00    ;[0314] 
-    defb $00,$04,$0A,$11,$11,$1F,$11,$11,$00,$00    ;[031E] 
-    defb $00,$1E,$11,$1E,$11,$11,$11,$1E,$00,$00    ;[0328] 
-    defb $00,$0E,$11,$10,$10,$10,$11,$0E,$00,$00    ;[0332] 
-    defb $00,$1C,$12,$11,$11,$11,$11,$1E,$00,$00    ;[033C] 
-    defb $00,$1F,$10,$1E,$10,$10,$10,$1F,$00,$00    ;[0346] 
-    defb $00,$1F,$10,$1E,$10,$10,$10,$10,$00,$00    ;[0350] 
-    defb $00,$0E,$11,$10,$17,$11,$11,$0F,$00,$00    ;[035A] 
-    defb $00,$11,$11,$1F,$11,$11,$11,$11,$00,$00    ;[0364] 
-    defb $00,$0E,$04,$04,$04,$04,$04,$0E,$00,$00    ;[036E] 
-    defb $00,$0F,$02,$02,$02,$02,$12,$0C,$00,$00    ;[0378] 
-    defb $00,$11,$12,$14,$18,$14,$12,$11,$00,$00    ;[0382] 
-    defb $00,$10,$10,$10,$10,$10,$10,$1F,$00,$00    ;[038C] 
-    defb $00,$11,$1B,$15,$11,$11,$11,$11,$00,$00    ;[0396] 
-    defb $00,$11,$19,$15,$13,$11,$11,$11,$00,$00    ;[03A0] 
-    defb $00,$0E,$11,$11,$11,$11,$11,$0E,$00,$00    ;[03AA] 
-    defb $00,$1E,$11,$11,$1E,$10,$10,$10,$00,$00    ;[03B4] 
-    defb $00,$0E,$11,$11,$11,$15,$12,$0D,$00,$00    ;[03BE] 
-    defb $00,$1E,$11,$11,$1E,$14,$12,$11,$00,$00    ;[03C8] 
-    defb $00,$0E,$11,$10,$0E,$01,$11,$0E,$00,$00    ;[03D2] 
-    defb $00,$1F,$04,$04,$04,$04,$04,$04,$00,$00    ;[03DC] 
-    defb $00,$11,$11,$11,$11,$11,$13,$0D,$00,$00    ;[03E6] 
-    defb $00,$11,$11,$11,$11,$11,$0A,$04,$00,$00    ;[03F0] 
-    defb $00,$11,$11,$11,$11,$15,$1B,$11,$00,$00    ;[03FA] 
-    defb $00,$11,$11,$0A,$04,$0A,$11,$11,$00,$00    ;[0404] 
-    defb $00,$11,$11,$0A,$04,$04,$04,$04,$00,$00    ;[040E] 
-    defb $00,$1F,$01,$02,$04,$08,$10,$1F,$00,$00    ;[0418] 
-    defb $00,$0E,$08,$08,$08,$08,$08,$0E,$00,$00    ;[0422] 
-    defb $00,$00,$10,$08,$04,$02,$01,$00,$00,$00    ;[042C] 
-    defb $00,$1C,$04,$04,$04,$04,$04,$1C,$00,$00    ;[0436] 
-    defb $00,$03,$04,$09,$0A,$0A,$09,$04,$03,$00    ;[0440] 
-    defb $00,$00,$00,$00,$00,$00,$00,$00,$00,$3F    ;[044A] 
-    defb $00,$06,$09,$08,$1E,$08,$08,$0F,$00,$00    ;[0454] 
-    defb $00,$00,$00,$0D,$13,$11,$11,$0F,$00,$00    ;[045E] 
-    defb $00,$10,$10,$16,$19,$11,$11,$1E,$00,$00    ;[0468] 
-    defb $00,$00,$00,$0E,$10,$10,$10,$0E,$00,$00    ;[0472] 
-    defb $00,$01,$01,$0D,$13,$11,$11,$0F,$00,$00    ;[047C] 
-    defb $00,$00,$00,$0E,$11,$1F,$10,$0E,$00,$00    ;[0486] 
-    defb $00,$06,$09,$08,$1E,$08,$08,$08,$00,$00    ;[0490] 
-    defb $00,$00,$00,$0D,$13,$11,$11,$0F,$01,$0E    ;[049A] 
-    defb $00,$10,$10,$16,$19,$11,$11,$11,$00,$00    ;[04A4] 
-    defb $00,$00,$04,$00,$04,$04,$04,$04,$00,$00    ;[04AE] 
-    defb $00,$00,$02,$00,$02,$02,$02,$02,$12,$0C    ;[04B8] 
-    defb $00,$10,$10,$12,$14,$1C,$12,$11,$00,$00    ;[04C2] 
-    defb $00,$08,$08,$08,$08,$08,$08,$06,$00,$00    ;[04CC] 
-    defb $00,$00,$00,$1A,$15,$15,$15,$15,$00,$00    ;[04D6] 
-    defb $00,$00,$00,$16,$19,$11,$11,$11,$00,$00    ;[04E0] 
-    defb $00,$00,$00,$0E,$11,$11,$11,$0E,$00,$00    ;[04EA] 
-    defb $00,$00,$00,$16,$19,$11,$11,$1E,$10,$10    ;[04F4] 
-    defb $00,$00,$00,$0D,$13,$11,$11,$0F,$01,$01    ;[04FE] 
-    defb $00,$00,$00,$16,$19,$10,$10,$10,$00,$00    ;[0508] 
-    defb $00,$00,$00,$0E,$10,$0E,$01,$0E,$00,$00    ;[0512] 
-    defb $00,$00,$08,$1F,$08,$08,$09,$06,$00,$00    ;[051C] 
-    defb $00,$00,$00,$11,$11,$11,$13,$0D,$00,$00    ;[0526] 
-    defb $00,$00,$00,$11,$11,$11,$0A,$04,$00,$00    ;[0530] 
-    defb $00,$00,$00,$11,$11,$15,$1B,$11,$00,$00    ;[053A] 
-    defb $00,$00,$00,$11,$0A,$04,$0A,$11,$00,$00    ;[0544] 
-    defb $00,$00,$00,$11,$11,$11,$11,$0F,$01,$0E    ;[054E] 
-    defb $00,$00,$00,$1F,$02,$04,$08,$1F,$00,$00    ;[0558] 
-    defb $00,$00,$00,$04,$02,$1F,$02,$04,$00,$00    ;[0562] 
-    defb $00,$00,$00,$04,$08,$1F,$08,$04,$00,$00    ;[056C] 
-    defb $00,$00,$00,$04,$0E,$15,$04,$04,$00,$00    ;[0576] 
-    defb $00,$00,$00,$04,$04,$15,$0E,$04,$00,$00    ;[0580] 
-    defb $00,$30,$08,$24,$04,$04,$24,$08,$30,$00    ;[058A] 
-    defb $00,$00,$00,$00,$00,$00,$00,$00,$00,$00    ;[0594] 
-    defb $38,$38,$38,$38,$38,$00,$00,$00,$00,$00    ;[059E] 
-    defb $07,$07,$07,$07,$07,$00,$00,$00,$00,$00    ;[05A8] 
-    defb $3F,$3F,$3F,$3F,$3F,$00,$00,$00,$00,$00    ;[05B2] 
-    defb $00,$00,$00,$00,$00,$38,$38,$38,$38,$38    ;[05BC] 
-    defb $38,$38,$38,$38,$38,$38,$38,$38,$38,$38    ;[05C6] 
-    defb $07,$07,$07,$07,$07,$38,$38,$38,$38,$38    ;[05D0] 
-    defb $3F,$3F,$3F,$3F,$3F,$38,$38,$38,$38,$38    ;[05DA] 
-    defb $00,$00,$00,$00,$00,$07,$07,$07,$07,$07    ;[05E4] 
-    defb $38,$38,$38,$38,$38,$07,$07,$07,$07,$07    ;[05EE] 
-    defb $07,$07,$07,$07,$07,$07,$07,$07,$07,$07    ;[05F8] 
-    defb $3F,$3F,$3F,$3F,$3F,$07,$07,$07,$07,$07    ;[0602] 
-    defb $00,$00,$00,$00,$00,$3F,$3F,$3F,$3F,$3F    ;[060C] 
-    defb $38,$38,$38,$38,$38,$3F,$3F,$3F,$3F,$3F    ;[0616] 
-    defb $07,$07,$07,$07,$07,$3F,$3F,$3F,$3F,$3F    ;[0620] 
-    defb $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F    ;[062A] 
-    defb $2A,$2A,$2A,$2A,$2A,$2A,$2A,$2A,$2A,$2A    ;[0634] 
-    defb $3F,$00,$3F,$00,$3F,$00,$3F,$00,$3F,$00    ;[063E] 
-    defb $2A,$15,$2A,$15,$2A,$15,$2A,$15,$2A,$15    ;[0648] 
-    defb $1E,$08,$08,$08,$08,$08,$08,$1F,$00,$00    ;[0652] 
-    defb $3B,$11,$0A,$04,$04,$24,$24,$2E,$00,$00    ;[065C] 
-    defb $38,$0C,$0A,$09,$08,$08,$08,$1C,$00,$00    ;[0666] 
-    defb $3F,$12,$11,$10,$30,$11,$12,$17,$00,$00    ;[0670] 
-    defb $1C,$08,$10,$20,$20,$10,$08,$1C,$00,$00    ;[067A] 
-    defb $03,$1B,$18,$00,$37,$37,$07,$07,$00,$00    ;[0684] 
-    defb $00,$00,$18,$18,$00,$00,$00,$00,$00,$00    ;[068E] 
+    DB $00,$00,$00,$00,$00,$00,$00,$00,$00,$00      ;[01D4] 
+    DB $00,$08,$08,$08,$08,$08,$00,$08,$00,$00      ;[01DE] 
+    DB $00,$0A,$0A,$00,$00,$00,$00,$00,$00,$00      ;[01E8] 
+    DB $00,$0A,$0A,$1F,$0A,$1F,$0A,$0A,$00,$00      ;[01F2] 
+    DB $00,$04,$0E,$14,$0E,$05,$15,$0E,$04,$00      ;[01FC] 
+    DB $00,$00,$18,$19,$02,$04,$08,$13,$03,$00      ;[0206] 
+    DB $00,$08,$14,$14,$08,$15,$12,$0D,$00,$00      ;[0210] 
+    DB $00,$0C,$04,$08,$00,$00,$00,$00,$00,$00      ;[021A] 
+    DB $00,$02,$04,$04,$04,$04,$04,$02,$00,$00      ;[0224] 
+    DB $00,$10,$08,$08,$08,$08,$08,$10,$00,$00      ;[022E] 
+    DB $00,$00,$00,$0A,$04,$1F,$04,$0A,$00,$00      ;[0238] 
+    DB $00,$00,$00,$04,$04,$1F,$04,$04,$00,$00      ;[0242] 
+    DB $00,$00,$00,$00,$00,$00,$18,$08,$10,$00      ;[024C] 
+    DB $00,$00,$00,$00,$00,$1F,$00,$00,$00,$00      ;[0256] 
+    DB $00,$00,$00,$00,$00,$00,$0C,$0C,$00,$00      ;[0260] 
+    DB $00,$00,$01,$02,$04,$08,$10,$00,$00,$00      ;[026A] 
+    DB $00,$0E,$11,$13,$15,$19,$11,$0E,$00,$00      ;[0274] 
+    DB $00,$04,$0C,$04,$04,$04,$04,$0E,$00,$00      ;[027E] 
+    DB $00,$0E,$11,$01,$0E,$10,$10,$1F,$00,$00      ;[0288] 
+    DB $00,$0E,$11,$01,$06,$01,$11,$0E,$00,$00      ;[0292] 
+    DB $00,$10,$10,$12,$12,$1F,$02,$02,$00,$00      ;[029C] 
+    DB $00,$1F,$10,$1E,$01,$01,$11,$0E,$00,$00      ;[02A6] 
+    DB $00,$06,$08,$10,$1E,$11,$11,$0E,$00,$00      ;[02B0] 
+    DB $00,$1F,$01,$02,$04,$08,$08,$08,$00,$00      ;[02BA] 
+    DB $00,$0E,$11,$11,$0E,$11,$11,$0E,$00,$00      ;[02C4] 
+    DB $00,$0E,$11,$11,$0F,$01,$02,$0C,$00,$00      ;[02CE] 
+    DB $00,$00,$00,$18,$18,$00,$18,$18,$00,$00      ;[02D8] 
+    DB $00,$00,$00,$18,$18,$00,$18,$08,$10,$00      ;[02E2] 
+    DB $00,$00,$00,$04,$08,$10,$08,$04,$00,$00      ;[02EC] 
+    DB $00,$00,$00,$00,$1E,$00,$1E,$00,$00,$00      ;[02F6] 
+    DB $00,$00,$00,$10,$08,$04,$08,$10,$00,$00      ;[0300] 
+    DB $00,$0E,$11,$01,$06,$04,$00,$04,$00,$00      ;[030A] 
+    DB $00,$0E,$13,$15,$15,$16,$10,$0E,$00,$00      ;[0314] 
+    DB $00,$04,$0A,$11,$11,$1F,$11,$11,$00,$00      ;[031E] 
+    DB $00,$1E,$11,$1E,$11,$11,$11,$1E,$00,$00      ;[0328] 
+    DB $00,$0E,$11,$10,$10,$10,$11,$0E,$00,$00      ;[0332] 
+    DB $00,$1C,$12,$11,$11,$11,$11,$1E,$00,$00      ;[033C] 
+    DB $00,$1F,$10,$1E,$10,$10,$10,$1F,$00,$00      ;[0346] 
+    DB $00,$1F,$10,$1E,$10,$10,$10,$10,$00,$00      ;[0350] 
+    DB $00,$0E,$11,$10,$17,$11,$11,$0F,$00,$00      ;[035A] 
+    DB $00,$11,$11,$1F,$11,$11,$11,$11,$00,$00      ;[0364] 
+    DB $00,$0E,$04,$04,$04,$04,$04,$0E,$00,$00      ;[036E] 
+    DB $00,$0F,$02,$02,$02,$02,$12,$0C,$00,$00      ;[0378] 
+    DB $00,$11,$12,$14,$18,$14,$12,$11,$00,$00      ;[0382] 
+    DB $00,$10,$10,$10,$10,$10,$10,$1F,$00,$00      ;[038C] 
+    DB $00,$11,$1B,$15,$11,$11,$11,$11,$00,$00      ;[0396] 
+    DB $00,$11,$19,$15,$13,$11,$11,$11,$00,$00      ;[03A0] 
+    DB $00,$0E,$11,$11,$11,$11,$11,$0E,$00,$00      ;[03AA] 
+    DB $00,$1E,$11,$11,$1E,$10,$10,$10,$00,$00      ;[03B4] 
+    DB $00,$0E,$11,$11,$11,$15,$12,$0D,$00,$00      ;[03BE] 
+    DB $00,$1E,$11,$11,$1E,$14,$12,$11,$00,$00      ;[03C8] 
+    DB $00,$0E,$11,$10,$0E,$01,$11,$0E,$00,$00      ;[03D2] 
+    DB $00,$1F,$04,$04,$04,$04,$04,$04,$00,$00      ;[03DC] 
+    DB $00,$11,$11,$11,$11,$11,$13,$0D,$00,$00      ;[03E6] 
+    DB $00,$11,$11,$11,$11,$11,$0A,$04,$00,$00      ;[03F0] 
+    DB $00,$11,$11,$11,$11,$15,$1B,$11,$00,$00      ;[03FA] 
+    DB $00,$11,$11,$0A,$04,$0A,$11,$11,$00,$00      ;[0404] 
+    DB $00,$11,$11,$0A,$04,$04,$04,$04,$00,$00      ;[040E] 
+    DB $00,$1F,$01,$02,$04,$08,$10,$1F,$00,$00      ;[0418] 
+    DB $00,$0E,$08,$08,$08,$08,$08,$0E,$00,$00      ;[0422] 
+    DB $00,$00,$10,$08,$04,$02,$01,$00,$00,$00      ;[042C] 
+    DB $00,$1C,$04,$04,$04,$04,$04,$1C,$00,$00      ;[0436] 
+    DB $00,$03,$04,$09,$0A,$0A,$09,$04,$03,$00      ;[0440] 
+    DB $00,$00,$00,$00,$00,$00,$00,$00,$00,$3F      ;[044A] 
+    DB $00,$06,$09,$08,$1E,$08,$08,$0F,$00,$00      ;[0454] 
+    DB $00,$00,$00,$0D,$13,$11,$11,$0F,$00,$00      ;[045E] 
+    DB $00,$10,$10,$16,$19,$11,$11,$1E,$00,$00      ;[0468] 
+    DB $00,$00,$00,$0E,$10,$10,$10,$0E,$00,$00      ;[0472] 
+    DB $00,$01,$01,$0D,$13,$11,$11,$0F,$00,$00      ;[047C] 
+    DB $00,$00,$00,$0E,$11,$1F,$10,$0E,$00,$00      ;[0486] 
+    DB $00,$06,$09,$08,$1E,$08,$08,$08,$00,$00      ;[0490] 
+    DB $00,$00,$00,$0D,$13,$11,$11,$0F,$01,$0E      ;[049A] 
+    DB $00,$10,$10,$16,$19,$11,$11,$11,$00,$00      ;[04A4] 
+    DB $00,$00,$04,$00,$04,$04,$04,$04,$00,$00      ;[04AE] 
+    DB $00,$00,$02,$00,$02,$02,$02,$02,$12,$0C      ;[04B8] 
+    DB $00,$10,$10,$12,$14,$1C,$12,$11,$00,$00      ;[04C2] 
+    DB $00,$08,$08,$08,$08,$08,$08,$06,$00,$00      ;[04CC] 
+    DB $00,$00,$00,$1A,$15,$15,$15,$15,$00,$00      ;[04D6] 
+    DB $00,$00,$00,$16,$19,$11,$11,$11,$00,$00      ;[04E0] 
+    DB $00,$00,$00,$0E,$11,$11,$11,$0E,$00,$00      ;[04EA] 
+    DB $00,$00,$00,$16,$19,$11,$11,$1E,$10,$10      ;[04F4] 
+    DB $00,$00,$00,$0D,$13,$11,$11,$0F,$01,$01      ;[04FE] 
+    DB $00,$00,$00,$16,$19,$10,$10,$10,$00,$00      ;[0508] 
+    DB $00,$00,$00,$0E,$10,$0E,$01,$0E,$00,$00      ;[0512] 
+    DB $00,$00,$08,$1F,$08,$08,$09,$06,$00,$00      ;[051C] 
+    DB $00,$00,$00,$11,$11,$11,$13,$0D,$00,$00      ;[0526] 
+    DB $00,$00,$00,$11,$11,$11,$0A,$04,$00,$00      ;[0530] 
+    DB $00,$00,$00,$11,$11,$15,$1B,$11,$00,$00      ;[053A] 
+    DB $00,$00,$00,$11,$0A,$04,$0A,$11,$00,$00      ;[0544] 
+    DB $00,$00,$00,$11,$11,$11,$11,$0F,$01,$0E      ;[054E] 
+    DB $00,$00,$00,$1F,$02,$04,$08,$1F,$00,$00      ;[0558] 
+    DB $00,$00,$00,$04,$02,$1F,$02,$04,$00,$00      ;[0562] 
+    DB $00,$00,$00,$04,$08,$1F,$08,$04,$00,$00      ;[056C] 
+    DB $00,$00,$00,$04,$0E,$15,$04,$04,$00,$00      ;[0576] 
+    DB $00,$00,$00,$04,$04,$15,$0E,$04,$00,$00      ;[0580] 
+    DB $00,$30,$08,$24,$04,$04,$24,$08,$30,$00      ;[058A] 
+    DB $00,$00,$00,$00,$00,$00,$00,$00,$00,$00      ;[0594] 
+    DB $38,$38,$38,$38,$38,$00,$00,$00,$00,$00      ;[059E] 
+    DB $07,$07,$07,$07,$07,$00,$00,$00,$00,$00      ;[05A8] 
+    DB $3F,$3F,$3F,$3F,$3F,$00,$00,$00,$00,$00      ;[05B2] 
+    DB $00,$00,$00,$00,$00,$38,$38,$38,$38,$38      ;[05BC] 
+    DB $38,$38,$38,$38,$38,$38,$38,$38,$38,$38      ;[05C6] 
+    DB $07,$07,$07,$07,$07,$38,$38,$38,$38,$38      ;[05D0] 
+    DB $3F,$3F,$3F,$3F,$3F,$38,$38,$38,$38,$38      ;[05DA] 
+    DB $00,$00,$00,$00,$00,$07,$07,$07,$07,$07      ;[05E4] 
+    DB $38,$38,$38,$38,$38,$07,$07,$07,$07,$07      ;[05EE] 
+    DB $07,$07,$07,$07,$07,$07,$07,$07,$07,$07      ;[05F8] 
+    DB $3F,$3F,$3F,$3F,$3F,$07,$07,$07,$07,$07      ;[0602] 
+    DB $00,$00,$00,$00,$00,$3F,$3F,$3F,$3F,$3F      ;[060C] 
+    DB $38,$38,$38,$38,$38,$3F,$3F,$3F,$3F,$3F      ;[0616] 
+    DB $07,$07,$07,$07,$07,$3F,$3F,$3F,$3F,$3F      ;[0620] 
+    DB $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F      ;[062A] 
+    DB $2A,$2A,$2A,$2A,$2A,$2A,$2A,$2A,$2A,$2A      ;[0634] 
+    DB $3F,$00,$3F,$00,$3F,$00,$3F,$00,$3F,$00      ;[063E] 
+    DB $2A,$15,$2A,$15,$2A,$15,$2A,$15,$2A,$15      ;[0648] 
+    DB $1E,$08,$08,$08,$08,$08,$08,$1F,$00,$00      ;[0652] 
+    DB $3B,$11,$0A,$04,$04,$24,$24,$2E,$00,$00      ;[065C] 
+    DB $38,$0C,$0A,$09,$08,$08,$08,$1C,$00,$00      ;[0666] 
+    DB $3F,$12,$11,$10,$30,$11,$12,$17,$00,$00      ;[0670] 
+    DB $1C,$08,$10,$20,$20,$10,$08,$1C,$00,$00      ;[067A] 
+    DB $03,$1B,$18,$00,$37,$37,$07,$07,$00,$00      ;[0684] 
+    DB $00,$00,$18,$18,$00,$00,$00,$00,$00,$00      ;[068E] 
 
 ;
-; Output routine.
+; Set ink and paper. VDU 1/2 with argument in A.
 ;
-PRINTD1:
+SETINK:
     LD    (SYSVAR_INKST),A          ;[0698] 
-PRINTD2:
+INKPAPER_EXIT:
     LD    (HL),$00                  ;[069B] 
-    JR    PRINTD_END                ;[069D] 
-PRINTD3:
-    LD    (SYSVAR_PAPST),A          ;[069F] 
-    JR    PRINTD2                   ;[06A2] 
+    JR    SCREEN_END                ;[069D] 
 
 ;
-; Display Driver
+; Set paper colour.
 ;
-PRINTD:
+SETPAPER:
+    LD    (SYSVAR_PAPST),A          ;[069F] 
+    JR    INKPAPER_EXIT             ;[06A2] 
+
+;
+; Display Driver <D$SCRN>
+;
+SCREEN:
     PUSH  AF                        ;[06A4] 
     PUSH  HL                        ;[06A5] 
     PUSH  DE                        ;[06A6] 
     PUSH  BC                        ;[06A7] 
     LD    HL,SYSVAR_LASTDSP         ;[06A8] 
     DEC   (HL)                      ;[06AB] 
-    JR    Z,PRINTD1                 ;[06AC] 
+    JR    Z,SETINK                  ;[06AC] 
     DEC   (HL)                      ;[06AE] 
-    JR    Z,PRINTD3                 ;[06AF] 
+    JR    Z,SETPAPER                ;[06AF] 
     LD    (HL),A                    ;[06B1] 
     CP    $20                       ;[06B2] 
     JR    C,OUTB_OR_VDU             ;[06B4] 
     CALL  SYSVAR_VIDEO              ;[06B6] 
-    CALL  CURSOR_RIGHT              ;[06B9] 
+    CALL  ADV_CURSOR                ;[06B9] 
     LD    (SYSVAR_CURSORX),DE       ;[06BC] 
-PRINTD4:
+SCREEN2:
     LD    A,(SYSVAR_CURSTAT)        ;[06C0] 
     OR    A                         ;[06C3] 
     LD    A,$5F                     ;[06C4] 
     CALL  NZ,SYSVAR_VIDEO           ;[06C6] 
-PRINTD_END:
+SCREEN_END:
     POP   BC                        ;[06C9] 
     POP   DE                        ;[06CA] 
     POP   HL                        ;[06CB] 
     POP   AF                        ;[06CC] 
-
-;
-; VDU 1 Changes INK to specified colour; VDU 2 Changes PAPER to specified colour
-;
-VDU1_VDU2:
     RET                             ;[06CD] 
 
 ;
@@ -783,11 +786,11 @@ OUTB_OR_VDU:
     PUSH  AF                        ;[06CE] 
     LD    A,(SYSVAR_CURSTAT)        ;[06CF] 
     OR    A                         ;[06D2] 
-    LD    A,$20                     ;[06D3] 
+    LD    A,' '                     ;[06D3] 
     CALL  NZ,SYSVAR_VIDEO           ;[06D5] Outputs character in A to current cursor position.
     POP   AF                        ;[06D8] 
-    LD    HL,PRINTD4                ;[06D9] 
-    PUSH  HL                        ;[06DC] 
+    LD    HL,SCREEN2                ;[06D9] 
+    PUSH  HL                        ;[06DC] Return address.
     LD    HL,DATA_VDU_ROUTINES      ;[06DD] 
     RLCA                            ;[06E0] 
     LD    E,A                       ;[06E1] 
@@ -803,14 +806,14 @@ OUTB_OR_VDU:
 ; List of ROM addresses for the VDU routines. (VDU1-31)
 ;
 DATA_VDU_ROUTINES:
-    defb $CD,$06,$CD,$06,$CD,$06,$CD,$06    ;[06EA]  ........
-    defb $62,$07,$0C,$08,$87,$07,$2D,$09    ;[06F2]  b.....-.
-    defb $20,$08,$A2,$07,$7E,$07,$CD,$06    ;[06FA]  ....~...
-    defb $C5,$0D,$7B,$07,$28,$08,$2E,$08    ;[0702]  ..{.(...
-    defb $68,$07,$CD,$06,$3C,$07,$6F,$07    ;[070A]  h...<.o.
-    defb $34,$07,$36,$07,$DE,$07,$65,$07    ;[0712]  4.6...e.
-    defb $2A,$07,$30,$07,$CD,$06,$CD,$06    ;[071A]  *.0.....
-    defb $10,$08,$8B,$07,$C1,$07,$7B,$07    ;[0722]  ......{.
+    DB $CD,$06,$CD,$06,$CD,$06,$CD,$06      ;[06EA]  ........
+    DB $62,$07,$0C,$08,$87,$07,$2D,$09      ;[06F2]  b.....-.
+    DB $20,$08,$A2,$07,$7E,$07,$CD,$06      ;[06FA]  ....~...
+    DB $C5,$0D,$7B,$07,$28,$08,$2E,$08      ;[0702]  ..{.(...
+    DB $68,$07,$CD,$06,$3C,$07,$6F,$07      ;[070A]  h...<.o.
+    DB $34,$07,$36,$07,$DE,$07,$65,$07      ;[0712]  4.6...e.
+    DB $2A,$07,$30,$07,$CD,$06,$CD,$06      ;[071A]  *.0.....
+    DB $10,$08,$8B,$07,$C1,$07,$7B,$07      ;[0722]  ......{.
 
 ;
 ; Turns double height characters on
@@ -850,7 +853,7 @@ VDU_18:
 ;
 ; Move cursor over 1 character (to the right)
 ;
-CURSOR_RIGHT:
+ADV_CURSOR:
     LD    HL,(SYSVAR_WINDST)        ;[0746] 
     LD    DE,(SYSVAR_CURSORX)       ;[0749] 
     LD    A,E                       ;[074D] 
@@ -859,12 +862,12 @@ CURSOR_RIGHT:
     CP    H                         ;[0751] 
     RET   C                         ;[0752] 
     LD    E,L                       ;[0753] 
-CURSOR_RIGHT1:
+ADV_CURSOR1:
     LD    HL,(SYSVAR_WINDST+$02)    ;[0754] Window height.
     LD    A,D                       ;[0757] 
     CALL  SYSVAR_SLFRAM             ;[0758] Unused.
     ADD   A,$0A                     ;[075B] Add 10 pixels
-CURSOR_RIGHT2:
+ADV_CURSOR2:
     LD    D,A                       ;[075D] 
     CP    H                         ;[075E] 
     RET   C                         ;[075F] 
@@ -872,29 +875,29 @@ CURSOR_RIGHT2:
     RET                             ;[0761] 
 
 ;
-; Clears screen and homes cursor
+; Clears screen and homes cursor (VDU 4)
 ;
-VDU_4:
+SCREEN_CLEAR:
     CALL  CLS                       ;[0762] 
 
 ;
-; Homes cursor (takes cursor inside of window)
+; Homes cursor (takes cursor inside of window) (VDU 23)
 ;
-VDU_23:
-    CALL  HOME_LEFT                 ;[0765] 
+SCREEN_HOME:
+    CALL  SCREEN_CR                 ;[0765] 
 
 ;
-; Moves cursor to top of screen
+; Moves cursor to top of screen (VDU 16)
 ;
-VDU_16:
+SCREEN_TOP:
     LD    A,(SYSVAR_WINDST+$02)     ;[0768] 
     LD    (SYSVAR_CURSORY),A        ;[076B] 
     RET                             ;[076E] 
 
 ;
-; Carriage return, linefeed, if cursor is not at beginning of line
+; Carriage return, linefeed, if cursor is not at beginning of line (VDU 19)
 ;
-VDU_19:
+SCREEN_BEGIN:
     LD    HL,(SYSVAR_WINDST)        ;[076F] 
     LD    A,(SYSVAR_CURSORX)        ;[0772] 
     CP    L                         ;[0775] 
@@ -904,69 +907,69 @@ VDU_19:
     RET                             ;[077A] 
 
 ;
-; Carriage return, linefeed, clears to end of line
+; Carriage return, linefeed, clears to end of line (VDU 13/31)
 ;
-VDU_13_31:
-    CALL  HOME_LEFT                 ;[077B] 
+SCREEN_CRLF:
+    CALL  SCREEN_CR                 ;[077B] 
 
 ;
-; Line feed (moves cursor down 10 pixel lines)
+; Line feed (moves cursor down 10 pixel lines) (VDU 10)
 ;
-VDU_10:
+SCREEN_LF:
     LD    DE,(SYSVAR_CURSORX)       ;[077E] 
-    CALL  CURSOR_RIGHT1             ;[0782] 
+    CALL  ADV_CURSOR1               ;[0782] 
     JR    SAVE_CURSORX              ;[0785] 
 
 ;
-; Moves cursor down one pixel
+; Moves cursor down one pixel (VDU 6)
 ;
-VDU_6:
+SCREEN_DOWN_ONE:
     LD    C,$01                     ;[0787] 
-    JR    VDU_29A                   ;[0789] 
+    JR    SCREEN_HALF_LF2           ;[0789] 
 
 ;
-; Moves cursor down 3 pixels
+; Moves cursor down 3 pixels (VDU_29)
 ;
-VDU_29:
+SCREEN_HALF_LF:
     LD    C,$03                     ;[078B] 
-VDU_29A:
+SCREEN_HALF_LF2:
     LD    DE,(SYSVAR_CURSORX)       ;[078D] 
     LD    HL,(SYSVAR_WINDST+$02)    ;[0791] 
     LD    A,D                       ;[0794] 
     ADD   A,C                       ;[0795] 
-    CALL  CURSOR_RIGHT2             ;[0796] 
+    CALL  ADV_CURSOR2               ;[0796] 
     JR    SAVE_CURSORX              ;[0799] 
 
 ;
 ; Move cursor to the leftmost column of the WINDOW.
 ;
-HOME_LEFT:
+SCREEN_CR:
     LD    A,(SYSVAR_WINDST)         ;[079B] 
     LD    (SYSVAR_CURSORX),A        ;[079E] 
     RET                             ;[07A1] 
 
 ;
-; Tabs cursor to next field
+; Tabs cursor to next field (VDU_9)
 ;
-VDU_9:
+SCREEN_TAB:
     LD    A,(SYSVAR_CURSORX)        ;[07A2] 
     INC   A                         ;[07A5] 
     LD    HL,$07BB                  ;[07A6] 
-VDU_9_LOOP1:
+SCREEN_TAB1:
     INC   HL                        ;[07A9] 
     CP    (HL)                      ;[07AA] 
-    JR    NC,VDU_9_LOOP1            ;[07AB] 
+    JR    NC,SCREEN_TAB1            ;[07AB] 
     LD    H,(HL)                    ;[07AD] 
     INC   H                         ;[07AE] 
-    JR    Z,VDU_13_31               ;[07AF] 
+    JR    Z,SCREEN_CRLF             ;[07AF] 
     DEC   H                         ;[07B1] 
-VDU_9_LOOP2:
-    LD    A,$20                     ;[07B2] Print spaces
+SCREEN_TAB12:
+    LD    A,' '                     ;[07B2] Print spaces
     RST   $08                       ;[07B4] 
     LD    A,(SYSVAR_CURSORX)        ;[07B5] 
     CP    H                         ;[07B8] 
     RET   NC                        ;[07B9] 
-    JR    VDU_9_LOOP2               ;[07BA] 
+    JR    SCREEN_TAB12              ;[07BA] 
     DEC   DE                        ;[07BC] 
     INC   SP                        ;[07BD] 
     LD    C,E                       ;[07BE] 
@@ -1069,18 +1072,18 @@ VDU_8:
     JP    SYSVAR_VIDEO              ;[0825] 
 
 ;
-; Turns cursor on
+; Turns cursor on (VDU_14)
 ;
-VDU_14:
+SCREEN_CURS_ON:
     LD    A,$01                     ;[0828] 
 GET_CURSTAT:
     LD    (SYSVAR_CURSTAT),A        ;[082A] 
     RET                             ;[082D] 
 
 ;
-; Turns cursor off
+; Turns cursor off (VDU_15)
 ;
-VDU_15:
+SCREEN_CURS_OFF:
     XOR   A                         ;[082E] 
     JR    GET_CURSTAT               ;[082F] 
 
@@ -1104,8 +1107,8 @@ BASIC_COM_WINDOW1:
     RET                             ;[0843] 
 
 ;
-; A routine to decide which bits need to be set. Used in the output of characters
-; to the screen.
+; A routine to decide which bits need to be set. Used in the output of chars.
+; (called from OUTB)
 ;
 OUTB_BIT_SET:
     EXX                             ;[0844] 
@@ -1134,8 +1137,8 @@ OUTB_BIT_SET2:
     RET                             ;[085D] 
 
 ;
-; via OUTB - outputs byte with data in A, mask in C and relative displacement 
-; from top left in HL. Uses colour selected by INK and PAPER.
+; Outputs byte with data in A, mask in C and relative displacement from top left 
+; in HL. Uses colour selected by INK and PAPER. (via SYSVAR_OUTB)
 ;
 OUTB:
     EXX                             ;[085E] 
@@ -1537,27 +1540,27 @@ KEYRPT_WAIT:
 ; Keyboard data table.
 ;
 DATA_KEYBOARD:
-    defb $31,$2A,$2A,$00,$0B,$0A,$33,$34    ;[0A76]  1**...34
-    defb $45,$58,$44,$43,$32,$51,$57,$5A    ;[0A7E]  EXDC2QWZ
-    defb $53,$41,$35,$52,$54,$56,$47,$46    ;[0A86]  SA5RTVGF
-    defb $36,$59,$48,$20,$4E,$42,$37,$38    ;[0A8E]  6YH.NB78
-    defb $55,$4D,$2A,$4A,$39,$49,$4F,$2C    ;[0A96]  UM*J9IO,
-    defb $2A,$4B,$30,$50,$4C,$2E,$2A,$3B    ;[0A9E]  *K0PL.*;
-    defb $2D,$40,$5B,$2F,$2A,$3A,$08,$5D    ;[0AA6]  -@[/*:.]
-    defb $16,$0D,$2A,$0C,$03,$00,$00,$00    ;[0AAE]  ..*.....
-    defb $00,$00,$1C,$1D,$05,$18,$04,$03    ;[0AB6]  ........
-    defb $1B,$11,$17,$1A,$13,$01,$1E,$12    ;[0ABE]  ........
-    defb $14,$16,$07,$06,$1F,$19,$08,$00    ;[0AC6]  ........
-    defb $0E,$02,$00,$00,$15,$0D,$00,$0A    ;[0ACE]  ........
-    defb $00,$09,$0F,$00,$00,$0B,$00,$10    ;[0AD6]  ........
-    defb $0C,$21,$2A,$2A,$00,$0B,$0A,$23    ;[0ADE]  .!**...#
-    defb $24,$65,$78,$64,$63,$22,$71,$77    ;[0AE6]  $exdc"qw
-    defb $7A,$73,$61,$25,$72,$74,$76,$67    ;[0AEE]  zsa%rtvg
-    defb $66,$26,$79,$68,$20,$6E,$62,$27    ;[0AF6]  f&yh.nb'
-    defb $28,$75,$6D,$3F,$6A,$29,$69,$6F    ;[0AFE]  (um?j)io
-    defb $3C,$3F,$6B,$5F,$70,$6C,$3E,$3F    ;[0B06]  <?k_pl>?
-    defb $2B,$3D,$60,$5E,$3F,$2A,$2A,$08    ;[0B0E]  +=`^?**.
-    defb $7F,$16,$0D,$2A,$0C                ;[0B16]  ...*.
+    DB $31,$2A,$2A,$00,$0B,$0A,$33,$34      ;[0A76]  1**...34
+    DB $45,$58,$44,$43,$32,$51,$57,$5A      ;[0A7E]  EXDC2QWZ
+    DB $53,$41,$35,$52,$54,$56,$47,$46      ;[0A86]  SA5RTVGF
+    DB $36,$59,$48,$20,$4E,$42,$37,$38      ;[0A8E]  6YH.NB78
+    DB $55,$4D,$2A,$4A,$39,$49,$4F,$2C      ;[0A96]  UM*J9IO,
+    DB $2A,$4B,$30,$50,$4C,$2E,$2A,$3B      ;[0A9E]  *K0PL.*;
+    DB $2D,$40,$5B,$2F,$2A,$3A,$08,$5D      ;[0AA6]  -@[/*:.]
+    DB $16,$0D,$2A,$0C,$03,$00,$00,$00      ;[0AAE]  ..*.....
+    DB $00,$00,$1C,$1D,$05,$18,$04,$03      ;[0AB6]  ........
+    DB $1B,$11,$17,$1A,$13,$01,$1E,$12      ;[0ABE]  ........
+    DB $14,$16,$07,$06,$1F,$19,$08,$00      ;[0AC6]  ........
+    DB $0E,$02,$00,$00,$15,$0D,$00,$0A      ;[0ACE]  ........
+    DB $00,$09,$0F,$00,$00,$0B,$00,$10      ;[0AD6]  ........
+    DB $0C,$21,$2A,$2A,$00,$0B,$0A,$23      ;[0ADE]  .!**...#
+    DB $24,$65,$78,$64,$63,$22,$71,$77      ;[0AE6]  $exdc"qw
+    DB $7A,$73,$61,$25,$72,$74,$76,$67      ;[0AEE]  zsa%rtvg
+    DB $66,$26,$79,$68,$20,$6E,$62,$27      ;[0AF6]  f&yh.nb'
+    DB $28,$75,$6D,$3F,$6A,$29,$69,$6F      ;[0AFE]  (um?j)io
+    DB $3C,$3F,$6B,$5F,$70,$6C,$3E,$3F      ;[0B06]  <?k_pl>?
+    DB $2B,$3D,$60,$5E,$3F,$2A,$2A,$08      ;[0B0E]  +=`^?**.
+    DB $7F,$16,$0D,$2A,$0C                  ;[0B16]  ...*.
 
 ;
 ; Find [ESC] shorthand in a list. (Called from SYSVAR_/KEYB)
@@ -1927,18 +1930,18 @@ MOTOFF_DELAY:
 ; Table used to generate wave. Pointed to by 62A1
 ;
 DATA_CASTBL:
-    defb $1D,$1B,$18,$16,$14,$12,$10,$0E    ;[0D09]  ........
-    defb $0C,$0A,$09,$07,$06,$05,$04,$03    ;[0D11]  ........
-    defb $02,$02,$02,$02,$02,$02,$02,$03    ;[0D19]  ........
-    defb $04,$05,$06,$07,$09,$0A,$0C,$0E    ;[0D21]  ........
-    defb $10,$12,$14,$16,$18,$1B,$1D,$20    ;[0D29]  ........
-    defb $22,$24,$27,$29,$2B,$2D,$2F,$31    ;[0D31]  "$')+-/1
-    defb $33,$35,$36,$38,$39,$3A,$3B,$3C    ;[0D39]  35689:;<
-    defb $3D,$3D,$3D,$3E,$3D,$3D,$3D,$3C    ;[0D41]  ===>===<
-    defb $3B,$3A,$39,$38,$36,$35,$33,$31    ;[0D49]  ;:986531
-    defb $2F,$2D,$2B,$29,$27,$24,$22,$20    ;[0D51]  /-+)'$".
-    defb $00,$00,$00,$00,$00,$00,$00,$00    ;[0D59]  ........
-    defb $00,$00,$00,$00,$00,$00            ;[0D61]  ......
+    DB $1D,$1B,$18,$16,$14,$12,$10,$0E      ;[0D09]  ........
+    DB $0C,$0A,$09,$07,$06,$05,$04,$03      ;[0D11]  ........
+    DB $02,$02,$02,$02,$02,$02,$02,$03      ;[0D19]  ........
+    DB $04,$05,$06,$07,$09,$0A,$0C,$0E      ;[0D21]  ........
+    DB $10,$12,$14,$16,$18,$1B,$1D,$20      ;[0D29]  ........
+    DB $22,$24,$27,$29,$2B,$2D,$2F,$31      ;[0D31]  "$')+-/1
+    DB $33,$35,$36,$38,$39,$3A,$3B,$3C      ;[0D39]  35689:;<
+    DB $3D,$3D,$3D,$3E,$3D,$3D,$3D,$3C      ;[0D41]  ===>===<
+    DB $3B,$3A,$39,$38,$36,$35,$33,$31      ;[0D49]  ;:986531
+    DB $2F,$2D,$2B,$29,$27,$24,$22,$20      ;[0D51]  /-+)'$".
+    DB $00,$00,$00,$00,$00,$00,$00,$00      ;[0D59]  ........
+    DB $00,$00,$00,$00,$00,$00              ;[0D61]  ......
 
 ;
 ; Write byte to tape.
@@ -2006,15 +2009,15 @@ BASIC_COM_TAPE1:
 ; Six 32 bit timing values, used by the TAPE command.
 ;
 DATA_TAPE:
-    defb $50,$01,$04,$03,$38,$01,$01,$04    ;[0DAD]  P...8...
-    defb $2C,$02,$04,$05,$23,$02,$02,$06    ;[0DB5]  ,...#...
-    defb $1B,$02,$01,$07,$14,$03,$02,$08    ;[0DBD]  ........
+    DB $50,$01,$04,$03,$38,$01,$01,$04      ;[0DAD]  P...8...
+    DB $2C,$02,$04,$05,$23,$02,$02,$06      ;[0DB5]  ,...#...
+    DB $1B,$02,$01,$07,$14,$03,$02,$08      ;[0DBD]  ........
 
 ;
 ; Moves cursor one character block to the right.
 ;
 VDU_12:
-    CALL  CURSOR_RIGHT              ;[0DC5] 
+    CALL  ADV_CURSOR                ;[0DC5] 
     JP    SAVE_CURSORX              ;[0DC8] 
 
 ;
@@ -2052,7 +2055,7 @@ SUB_TEST_END:
 ; Overwrite off, CR/LF,  greater than symbol >
 ;
 DATA_PROMPT:
-    defb $14,$13,$3E,$00            ;[0DEF]  ..>.
+    DB $14,$13,$3E,$00              ;[0DEF]  ..>.
 
 ;
 ; Test for [Esc] key. Stop BASIC if necessary.
@@ -2168,7 +2171,7 @@ BASIC_FN_INF:
 ; Data for INF.
 ;
 DATA_INF:
-    defb $FF,$99,$99,$99,$99        ;[0E6B]  .....
+    DB $FF,$99,$99,$99,$99          ;[0E6B]  .....
 
 ;
 ; Load BC and HL with the integers in WRA1 and WRA2. 
@@ -2909,8 +2912,8 @@ SUB_LINP_EDITB1:
 ; Data. 'Line number?'
 ;
 DATA_LINE_NUMBER:
-    defb $4C,$69,$6E,$65,$20,$6E,$75,$6D    ;[11B9]  Line.num
-    defb $62,$65,$72,$3F,$20,$00            ;[11C1]  ber?..
+    DB $4C,$69,$6E,$65,$20,$6E,$75,$6D      ;[11B9]  Line.num
+    DB $62,$65,$72,$3F,$20,$00              ;[11C1]  ber?..
 
 LINP6:
     DEC   C                         ;[11C7] 
@@ -2941,183 +2944,183 @@ LINP_CR:
 ; Non-command token table
 ;
 DATA_TTBL:
-    defb $CD,$45,$4D,$D0,$49,$CB,$45,$59    ;[11E1]  .EM.I.EY
-    defb $4E,$D2,$4E,$44,$C8,$4C,$CC,$45    ;[11E9]  N.ND.L.E
-    defb $4E,$28,$D6,$41,$4C,$28,$C1,$53    ;[11F1]  N(.AL(.S
-    defb $43,$28,$C8,$49,$4D,$45,$4D,$C7    ;[11F9]  C(.IMEM.
-    defb $45,$54,$4E,$C9,$4E,$4B,$D0,$41    ;[1201]  ETN.NK.A
-    defb $50,$45,$52,$D0,$4F,$53,$D6,$50    ;[1209]  PER.OS.P
-    defb $4F,$53,$D4,$52,$55,$45,$C6,$41    ;[1211]  OS.RUE.A
-    defb $4C,$53,$45,$C9,$4E,$46,$C2,$4C    ;[1219]  LSE.NF.L
-    defb $41,$43,$4B,$C2,$4C,$55,$45,$D2    ;[1221]  ACK.LUE.
-    defb $45,$44,$CD,$41,$47,$45,$4E,$54    ;[1229]  ED.AGENT
-    defb $41,$C7,$52,$45,$45,$4E,$C3,$59    ;[1231]  A.REEN.Y
-    defb $41,$4E,$D9,$45,$4C,$4C,$4F,$57    ;[1239]  AN.ELLOW
-    defb $D7,$48,$49,$54,$45,$C1,$4C,$50    ;[1241]  .HITE.LP
-    defb $48,$41,$C7,$52,$41,$50,$48,$49    ;[1249]  HA.RAPHI
-    defb $43,$D3,$49,$4E,$C3,$4F,$53,$D4    ;[1251]  C.IN.OS.
-    defb $41,$4E,$C5,$58,$50,$CC,$4F,$47    ;[1259]  AN.XP.OG
-    defb $C1,$4E,$54,$49,$4C,$4F,$47,$CC    ;[1261]  .NTILOG.
-    defb $4E,$D3,$47,$4E,$C1,$42,$53,$C9    ;[1269]  N.GN.BS.
-    defb $4E,$54,$C6,$52,$41,$43,$D3,$51    ;[1271]  NT.RAC.Q
-    defb $52,$D0,$45,$45,$4B,$C4,$50,$45    ;[1279]  R.EEK.PE
-    defb $45,$4B,$C9,$4E,$50,$C6,$41,$43    ;[1281]  EK.NP.AC
-    defb $54,$C1,$52,$43,$54,$41,$4E,$C1    ;[1289]  T.RCTAN.
-    defb $52,$43,$43,$4F,$53,$C1,$52,$43    ;[1291]  RCCOS.RC
-    defb $53,$49,$4E,$CC,$43,$54,$4E,$C2    ;[1299]  SIN.CTN.
-    defb $49,$4E,$C4,$45,$47,$D2,$41,$44    ;[12A1]  IN.EG.AD
-    defb $D2,$41,$4E,$44,$CC,$49,$47,$48    ;[12A9]  .AND.IGH
-    defb $54,$50,$45,$4E,$CA,$4F,$59,$53    ;[12B1]  TPEN.OYS
-    defb $54,$4B,$D5,$53,$45,$52,$30,$D5    ;[12B9]  TK.SER0.
-    defb $53,$45,$52,$31,$D5,$53,$45,$52    ;[12C1]  SER1.SER
-    defb $32,$D5,$53,$45,$52,$33,$CC,$45    ;[12C9]  2.SER3.E
-    defb $54,$54,$45,$52,$80,$80,$80,$80    ;[12D1]  TTER....
-    defb $80,$A8,$CE,$4F,$54,$AD,$80,$80    ;[12D9]  ...OT...
-    defb $80,$AA,$2A,$AA,$AF,$AB,$AD,$BE    ;[12E1]  ..*.....
-    defb $3D,$BC,$3D,$BC,$3E,$BE,$BC,$BD    ;[12E9]  =.=.>...
-    defb $CF,$52,$C1,$4E,$44,$C2,$4E,$4F    ;[12F1]  .R.ND.NO
-    defb $52,$C2,$4E,$58,$4F,$52,$C2,$4E    ;[12F9]  R.NXOR.N
-    defb $41,$4E,$44,$C4,$49,$56,$CD,$4F    ;[1301]  AND.IV.O
-    defb $44,$D4,$48,$45,$4E,$CC,$41,$42    ;[1309]  D.HEN.AB
-    defb $45,$4C,$C0,$CF,$4E,$CF,$46,$46    ;[1311]  EL..N.FF
-    defb $D3,$54,$45,$50,$D4,$4F,$D4,$41    ;[1319]  .TEP.O.A
-    defb $42,$C3,$48,$52,$24,$28,$CC,$45    ;[1321]  B.HR$(.E
-    defb $46,$54,$24,$28,$D2,$49,$47,$48    ;[1329]  FT$(.IGH
-    defb $54,$24,$28,$CD,$49,$44,$24,$28    ;[1331]  T$(.ID$(
-    defb $D5,$50,$43,$24,$28,$CB,$45,$59    ;[1339]  .PC$(.EY
-    defb $24,$C7,$45,$54,$24,$D3,$54,$52    ;[1341]  $.ET$.TR
-    defb $24,$28,$80,$80                    ;[1349]  $(..
+    DB $CD,$45,$4D,$D0,$49,$CB,$45,$59      ;[11E1]  .EM.I.EY
+    DB $4E,$D2,$4E,$44,$C8,$4C,$CC,$45      ;[11E9]  N.ND.L.E
+    DB $4E,$28,$D6,$41,$4C,$28,$C1,$53      ;[11F1]  N(.AL(.S
+    DB $43,$28,$C8,$49,$4D,$45,$4D,$C7      ;[11F9]  C(.IMEM.
+    DB $45,$54,$4E,$C9,$4E,$4B,$D0,$41      ;[1201]  ETN.NK.A
+    DB $50,$45,$52,$D0,$4F,$53,$D6,$50      ;[1209]  PER.OS.P
+    DB $4F,$53,$D4,$52,$55,$45,$C6,$41      ;[1211]  OS.RUE.A
+    DB $4C,$53,$45,$C9,$4E,$46,$C2,$4C      ;[1219]  LSE.NF.L
+    DB $41,$43,$4B,$C2,$4C,$55,$45,$D2      ;[1221]  ACK.LUE.
+    DB $45,$44,$CD,$41,$47,$45,$4E,$54      ;[1229]  ED.AGENT
+    DB $41,$C7,$52,$45,$45,$4E,$C3,$59      ;[1231]  A.REEN.Y
+    DB $41,$4E,$D9,$45,$4C,$4C,$4F,$57      ;[1239]  AN.ELLOW
+    DB $D7,$48,$49,$54,$45,$C1,$4C,$50      ;[1241]  .HITE.LP
+    DB $48,$41,$C7,$52,$41,$50,$48,$49      ;[1249]  HA.RAPHI
+    DB $43,$D3,$49,$4E,$C3,$4F,$53,$D4      ;[1251]  C.IN.OS.
+    DB $41,$4E,$C5,$58,$50,$CC,$4F,$47      ;[1259]  AN.XP.OG
+    DB $C1,$4E,$54,$49,$4C,$4F,$47,$CC      ;[1261]  .NTILOG.
+    DB $4E,$D3,$47,$4E,$C1,$42,$53,$C9      ;[1269]  N.GN.BS.
+    DB $4E,$54,$C6,$52,$41,$43,$D3,$51      ;[1271]  NT.RAC.Q
+    DB $52,$D0,$45,$45,$4B,$C4,$50,$45      ;[1279]  R.EEK.PE
+    DB $45,$4B,$C9,$4E,$50,$C6,$41,$43      ;[1281]  EK.NP.AC
+    DB $54,$C1,$52,$43,$54,$41,$4E,$C1      ;[1289]  T.RCTAN.
+    DB $52,$43,$43,$4F,$53,$C1,$52,$43      ;[1291]  RCCOS.RC
+    DB $53,$49,$4E,$CC,$43,$54,$4E,$C2      ;[1299]  SIN.CTN.
+    DB $49,$4E,$C4,$45,$47,$D2,$41,$44      ;[12A1]  IN.EG.AD
+    DB $D2,$41,$4E,$44,$CC,$49,$47,$48      ;[12A9]  .AND.IGH
+    DB $54,$50,$45,$4E,$CA,$4F,$59,$53      ;[12B1]  TPEN.OYS
+    DB $54,$4B,$D5,$53,$45,$52,$30,$D5      ;[12B9]  TK.SER0.
+    DB $53,$45,$52,$31,$D5,$53,$45,$52      ;[12C1]  SER1.SER
+    DB $32,$D5,$53,$45,$52,$33,$CC,$45      ;[12C9]  2.SER3.E
+    DB $54,$54,$45,$52,$80,$80,$80,$80      ;[12D1]  TTER....
+    DB $80,$A8,$CE,$4F,$54,$AD,$80,$80      ;[12D9]  ...OT...
+    DB $80,$AA,$2A,$AA,$AF,$AB,$AD,$BE      ;[12E1]  ..*.....
+    DB $3D,$BC,$3D,$BC,$3E,$BE,$BC,$BD      ;[12E9]  =.=.>...
+    DB $CF,$52,$C1,$4E,$44,$C2,$4E,$4F      ;[12F1]  .R.ND.NO
+    DB $52,$C2,$4E,$58,$4F,$52,$C2,$4E      ;[12F9]  R.NXOR.N
+    DB $41,$4E,$44,$C4,$49,$56,$CD,$4F      ;[1301]  AND.IV.O
+    DB $44,$D4,$48,$45,$4E,$CC,$41,$42      ;[1309]  D.HEN.AB
+    DB $45,$4C,$C0,$CF,$4E,$CF,$46,$46      ;[1311]  EL..N.FF
+    DB $D3,$54,$45,$50,$D4,$4F,$D4,$41      ;[1319]  .TEP.O.A
+    DB $42,$C3,$48,$52,$24,$28,$CC,$45      ;[1321]  B.HR$(.E
+    DB $46,$54,$24,$28,$D2,$49,$47,$48      ;[1329]  FT$(.IGH
+    DB $54,$24,$28,$CD,$49,$44,$24,$28      ;[1331]  T$(.ID$(
+    DB $D5,$50,$43,$24,$28,$CB,$45,$59      ;[1339]  .PC$(.EY
+    DB $24,$C7,$45,$54,$24,$D3,$54,$52      ;[1341]  $.ET$.TR
+    DB $24,$28,$80,$80                      ;[1349]  $(..
 
 ;
 ; Set to 80. Is it used ?
 ;
 DATA_BLANK:
-    defb $80,$80,$80,$80,$80,$80,$80,$80    ;[134D]  ........
-    defb $80,$80,$80,$80,$80,$80,$80,$80    ;[1355]  ........
-    defb $80,$80,$80,$80,$80,$80,$80,$80    ;[135D]  ........
-    defb $80,$80,$80                        ;[1365]  ...
+    DB $80,$80,$80,$80,$80,$80,$80,$80      ;[134D]  ........
+    DB $80,$80,$80,$80,$80,$80,$80,$80      ;[1355]  ........
+    DB $80,$80,$80,$80,$80,$80,$80,$80      ;[135D]  ........
+    DB $80,$80,$80                          ;[1365]  ...
 
 ;
 ; Function evaluation table.
 ;
 DATA_FTBL:
-    defb $69,$1E,$0C,$36,$26,$20,$57,$1E    ;[1368]  i..6&.W.
-    defb $24,$33,$14,$2D,$0E,$2D,$26,$2D    ;[1370]  $3.-.-&-
-    defb $1D,$33,$1E,$20,$44,$0E,$4C,$0E    ;[1378]  .3..D.L.
-    defb $51,$0E,$56,$0E,$BF,$35,$AE,$35    ;[1380]  Q.V..5.5
-    defb $65,$0E,$CD,$0E,$CA,$0E,$C7,$0E    ;[1388]  e.......
-    defb $C4,$0E,$C1,$0E,$BE,$0E,$BB,$0E    ;[1390]  ........
-    defb $B8,$0E,$60,$0E,$5B,$0E,$23,$32    ;[1398]  ..`.[.#2
-    defb $1A,$32,$90,$31,$84,$31,$E4,$30    ;[13A0]  .2.1.1.0
-    defb $AB,$31,$4C,$2F,$3A,$34,$34,$34    ;[13A8]  .1L/:444
-    defb $56,$34,$75,$34,$52,$30,$3F,$33    ;[13B0]  V4u4R0?3
-    defb $36,$33,$29,$33,$10,$30,$A5,$2F    ;[13B8]  63)3.0./
-    defb $85,$2F,$58,$2F,$9D,$1F,$D9,$28    ;[13C0]  ./X/...(
-    defb $45,$33,$4E,$33,$9F,$0E,$76,$62    ;[13C8]  E3N3..vb
-    defb $79,$62,$7C,$62,$7F,$62,$82,$62    ;[13D0]  yb|b.b.b
-    defb $85,$62,$09,$0E,$32,$3B,$32,$3B    ;[13D8]  .b..2;2;
-    defb $32,$3B,$32,$3B,$32,$3B,$00,$00    ;[13E0]  2;2;2;..
-    defb $A5,$32,$11,$33,$07,$33,$04,$33    ;[13E8]  .2.3.3.3
-    defb $D8,$1D,$9A,$30,$C8,$36,$B0,$37    ;[13F0]  ...0.6.7
-    defb $6D,$36,$6A,$36,$DA,$32,$D0,$32    ;[13F8]  m6j6.2.2
-    defb $BD,$32,$C2,$32,$D5,$32,$AF,$32    ;[1400]  .2.2.2.2
-    defb $DF,$32,$F6,$32,$7F,$0E,$8B,$0E    ;[1408]  .2.2....
-    defb $95,$0E,$3F,$0E,$18,$0E            ;[1410]  ..?...
+    DB $69,$1E,$0C,$36,$26,$20,$57,$1E      ;[1368]  i..6&.W.
+    DB $24,$33,$14,$2D,$0E,$2D,$26,$2D      ;[1370]  $3.-.-&-
+    DB $1D,$33,$1E,$20,$44,$0E,$4C,$0E      ;[1378]  .3..D.L.
+    DB $51,$0E,$56,$0E,$BF,$35,$AE,$35      ;[1380]  Q.V..5.5
+    DB $65,$0E,$CD,$0E,$CA,$0E,$C7,$0E      ;[1388]  e.......
+    DB $C4,$0E,$C1,$0E,$BE,$0E,$BB,$0E      ;[1390]  ........
+    DB $B8,$0E,$60,$0E,$5B,$0E,$23,$32      ;[1398]  ..`.[.#2
+    DB $1A,$32,$90,$31,$84,$31,$E4,$30      ;[13A0]  .2.1.1.0
+    DB $AB,$31,$4C,$2F,$3A,$34,$34,$34      ;[13A8]  .1L/:444
+    DB $56,$34,$75,$34,$52,$30,$3F,$33      ;[13B0]  V4u4R0?3
+    DB $36,$33,$29,$33,$10,$30,$A5,$2F      ;[13B8]  63)3.0./
+    DB $85,$2F,$58,$2F,$9D,$1F,$D9,$28      ;[13C0]  ./X/...(
+    DB $45,$33,$4E,$33,$9F,$0E,$76,$62      ;[13C8]  E3N3..vb
+    DB $79,$62,$7C,$62,$7F,$62,$82,$62      ;[13D0]  yb|b.b.b
+    DB $85,$62,$09,$0E,$32,$3B,$32,$3B      ;[13D8]  .b..2;2;
+    DB $32,$3B,$32,$3B,$32,$3B,$00,$00      ;[13E0]  2;2;2;..
+    DB $A5,$32,$11,$33,$07,$33,$04,$33      ;[13E8]  .2.3.3.3
+    DB $D8,$1D,$9A,$30,$C8,$36,$B0,$37      ;[13F0]  ...0.6.7
+    DB $6D,$36,$6A,$36,$DA,$32,$D0,$32      ;[13F8]  m6j6.2.2
+    DB $BD,$32,$C2,$32,$D5,$32,$AF,$32      ;[1400]  .2.2.2.2
+    DB $DF,$32,$F6,$32,$7F,$0E,$8B,$0E      ;[1408]  .2.2....
+    DB $95,$0E,$3F,$0E,$18,$0E              ;[1410]  ..?...
 
 ;
 ; Command token table.
 ;
 DATA_XTTBL:
-    defb $4B,$CC,$45,$54,$D6,$44,$55,$C4    ;[1416]  K.ET.DU.
-    defb $45,$46,$50,$52,$4F,$43,$D0,$52    ;[141E]  EFPROC.R
-    defb $4F,$43,$C5,$4E,$44,$50,$52,$4F    ;[1426]  OC.NDPRO
-    defb $43,$CE,$45,$58,$54,$C9,$4E,$4B    ;[142E]  C.EXT.NK
-    defb $D0,$41,$50,$45,$52,$D2,$41,$4E    ;[1436]  .APER.AN
-    defb $44,$4F,$4D,$D6,$45,$52,$49,$46    ;[143E]  DOM.ERIF
-    defb $59,$C4,$50,$4F,$4B,$45,$C4,$4F    ;[1446]  Y.POKE.O
-    defb $54,$D0,$4F,$4B,$45,$C5,$4E,$44    ;[144E]  T.OKE.ND
-    defb $D3,$54,$4F,$50,$C6,$4F,$52,$C7    ;[1456]  .TOP.OR.
-    defb $4F,$54,$4F,$C7,$4F,$53,$55,$42    ;[145E]  OTO.OSUB
-    defb $D2,$45,$54,$55,$52,$4E,$C3,$4C    ;[1466]  .ETURN.L
-    defb $53,$D2,$55,$4E,$C3,$4F,$4E,$54    ;[146E]  S.UN.ONT
-    defb $CF,$55,$54,$D2,$45,$4D,$D2,$45    ;[1476]  .UT.EM.E
-    defb $41,$44,$C4,$41,$54,$41,$CE,$45    ;[147E]  AD.ATA.E
-    defb $57,$C4,$45,$4C,$C1,$55,$54,$4F    ;[1486]  W.EL.UTO
-    defb $D0,$52,$49,$4E,$54,$CC,$4F,$41    ;[148E]  .RINT.OA
-    defb $44,$D3,$41,$56,$45,$D2,$45,$53    ;[1496]  D.AVE.ES
-    defb $54,$4F,$52,$45,$D0,$4C,$4F,$54    ;[149E]  TORE.LOT
-    defb $CD,$4F,$56,$45,$C4,$52,$41,$57    ;[14A6]  .OVE.RAW
-    defb $C3,$41,$4C,$4C,$C9,$4E,$50,$55    ;[14AE]  .ALL.NPU
-    defb $54,$C4,$49,$4D,$C9,$46,$CC,$49    ;[14B6]  T.IM.F.I
-    defb $53,$54,$D7,$49,$4E,$44,$4F,$57    ;[14BE]  ST.INDOW
-    defb $D0,$41,$55,$53,$45,$D2,$4F,$55    ;[14C6]  .AUSE.OU
-    defb $4E,$44,$D4,$52,$41,$49,$4C,$CC    ;[14CE]  ND.RAIL.
-    defb $50,$52,$49,$4E,$54,$CC,$4C,$49    ;[14D6]  PRINT.LI
-    defb $53,$54,$CC,$41,$42,$45,$4C,$C2    ;[14DE]  ST.ABEL.
-    defb $45,$45,$50,$D3,$4F,$55,$4E,$44    ;[14E6]  EEP.OUND
-    defb $C1,$50,$50,$45,$4E,$44,$C3,$4F    ;[14EE]  .PPEND.O
-    defb $44,$45,$CC,$49,$4E,$4B,$D3,$57    ;[14F6]  DE.INK.W
-    defb $41,$50,$D7,$48,$49,$4C,$45,$D7    ;[14FE]  AP.HILE.
-    defb $45,$4E,$44,$D2,$45,$50,$45,$41    ;[1506]  END.EPEA
-    defb $54,$D5,$4E,$54,$49,$4C,$C0,$40    ;[150E]  T.NTIL.@
-    defb $40,$40,$40,$BF,$C5,$4C,$53,$45    ;[1516]  @@@..LSE
-    defb $D2,$45,$53,$45,$52,$56,$45,$CD    ;[151E]  .ESERVE.
-    defb $4F,$4E,$D2,$45,$4E,$55,$4D,$D8    ;[1526]  ON.ENUM.
-    defb $52,$4F,$4D,$C5,$58,$54,$C3,$46    ;[152E]  ROM.XT.F
-    defb $52,$C3,$43,$48,$41,$52,$D4,$52    ;[1536]  R.CHAR.R
-    defb $41,$43,$45,$D3,$50,$45,$45,$44    ;[153E]  ACE.PEED
-    defb $D0,$52,$4F,$54,$45,$43,$54,$C5    ;[1546]  .ROTECT.
-    defb $52,$52,$4F,$52,$D4,$41,$50,$45    ;[154E]  RROR.APE
-    defb $CD,$4C,$4F,$41,$44,$D4,$45,$58    ;[1556]  .LOAD.EX
-    defb $54,$80                            ;[155E]  T.
+    DB $4B,$CC,$45,$54,$D6,$44,$55,$C4      ;[1416]  K.ET.DU.
+    DB $45,$46,$50,$52,$4F,$43,$D0,$52      ;[141E]  EFPROC.R
+    DB $4F,$43,$C5,$4E,$44,$50,$52,$4F      ;[1426]  OC.NDPRO
+    DB $43,$CE,$45,$58,$54,$C9,$4E,$4B      ;[142E]  C.EXT.NK
+    DB $D0,$41,$50,$45,$52,$D2,$41,$4E      ;[1436]  .APER.AN
+    DB $44,$4F,$4D,$D6,$45,$52,$49,$46      ;[143E]  DOM.ERIF
+    DB $59,$C4,$50,$4F,$4B,$45,$C4,$4F      ;[1446]  Y.POKE.O
+    DB $54,$D0,$4F,$4B,$45,$C5,$4E,$44      ;[144E]  T.OKE.ND
+    DB $D3,$54,$4F,$50,$C6,$4F,$52,$C7      ;[1456]  .TOP.OR.
+    DB $4F,$54,$4F,$C7,$4F,$53,$55,$42      ;[145E]  OTO.OSUB
+    DB $D2,$45,$54,$55,$52,$4E,$C3,$4C      ;[1466]  .ETURN.L
+    DB $53,$D2,$55,$4E,$C3,$4F,$4E,$54      ;[146E]  S.UN.ONT
+    DB $CF,$55,$54,$D2,$45,$4D,$D2,$45      ;[1476]  .UT.EM.E
+    DB $41,$44,$C4,$41,$54,$41,$CE,$45      ;[147E]  AD.ATA.E
+    DB $57,$C4,$45,$4C,$C1,$55,$54,$4F      ;[1486]  W.EL.UTO
+    DB $D0,$52,$49,$4E,$54,$CC,$4F,$41      ;[148E]  .RINT.OA
+    DB $44,$D3,$41,$56,$45,$D2,$45,$53      ;[1496]  D.AVE.ES
+    DB $54,$4F,$52,$45,$D0,$4C,$4F,$54      ;[149E]  TORE.LOT
+    DB $CD,$4F,$56,$45,$C4,$52,$41,$57      ;[14A6]  .OVE.RAW
+    DB $C3,$41,$4C,$4C,$C9,$4E,$50,$55      ;[14AE]  .ALL.NPU
+    DB $54,$C4,$49,$4D,$C9,$46,$CC,$49      ;[14B6]  T.IM.F.I
+    DB $53,$54,$D7,$49,$4E,$44,$4F,$57      ;[14BE]  ST.INDOW
+    DB $D0,$41,$55,$53,$45,$D2,$4F,$55      ;[14C6]  .AUSE.OU
+    DB $4E,$44,$D4,$52,$41,$49,$4C,$CC      ;[14CE]  ND.RAIL.
+    DB $50,$52,$49,$4E,$54,$CC,$4C,$49      ;[14D6]  PRINT.LI
+    DB $53,$54,$CC,$41,$42,$45,$4C,$C2      ;[14DE]  ST.ABEL.
+    DB $45,$45,$50,$D3,$4F,$55,$4E,$44      ;[14E6]  EEP.OUND
+    DB $C1,$50,$50,$45,$4E,$44,$C3,$4F      ;[14EE]  .PPEND.O
+    DB $44,$45,$CC,$49,$4E,$4B,$D3,$57      ;[14F6]  DE.INK.W
+    DB $41,$50,$D7,$48,$49,$4C,$45,$D7      ;[14FE]  AP.HILE.
+    DB $45,$4E,$44,$D2,$45,$50,$45,$41      ;[1506]  END.EPEA
+    DB $54,$D5,$4E,$54,$49,$4C,$C0,$40      ;[150E]  T.NTIL.@
+    DB $40,$40,$40,$BF,$C5,$4C,$53,$45      ;[1516]  @@@..LSE
+    DB $D2,$45,$53,$45,$52,$56,$45,$CD      ;[151E]  .ESERVE.
+    DB $4F,$4E,$D2,$45,$4E,$55,$4D,$D8      ;[1526]  ON.ENUM.
+    DB $52,$4F,$4D,$C5,$58,$54,$C3,$46      ;[152E]  ROM.XT.F
+    DB $52,$C3,$43,$48,$41,$52,$D4,$52      ;[1536]  R.CHAR.R
+    DB $41,$43,$45,$D3,$50,$45,$45,$44      ;[153E]  ACE.PEED
+    DB $D0,$52,$4F,$54,$45,$43,$54,$C5      ;[1546]  .ROTECT.
+    DB $52,$52,$4F,$52,$D4,$41,$50,$45      ;[154E]  RROR.APE
+    DB $CD,$4C,$4F,$41,$44,$D4,$45,$58      ;[1556]  .LOAD.EX
+    DB $54,$80                              ;[155E]  T.
 
 ;
 ; Input syntax checking table. Validation routine addresses for BASIC words.
 ;
 DATA_XITBL:
-    defb $7C,$26,$D4,$0E,$6F,$29,$5D,$29    ;[1560]  |&..o)])
-    defb $DB,$26,$D8,$26,$07,$27,$07,$27    ;[1568]  .&.&.'.'
-    defb $DB,$26,$16,$26,$BD,$26,$BD,$26    ;[1570]  .&.&.&.&
-    defb $BD,$26,$DB,$26,$DB,$26,$DF,$26    ;[1578]  .&.&.&.&
-    defb $C3,$26,$C3,$26,$DB,$26,$DB,$26    ;[1580]  .&.&.&.&
-    defb $5D,$26,$DB,$26,$BD,$26,$3C,$27    ;[1588]  ]&.&.&<'
-    defb $39,$26,$3C,$27,$DB,$26,$68,$26    ;[1590]  9&<'.&h&
-    defb $64,$26,$11,$2A,$16,$26,$1D,$26    ;[1598]  d&.*.&.&
-    defb $5D,$26,$F4,$0E,$BD,$26,$BD,$26    ;[15A0]  ]&...&.&
-    defb $68,$26,$2C,$26,$66,$2E,$FD,$26    ;[15A8]  h&,&f..&
-    defb $64,$26,$F0,$0E,$07,$27,$06,$26    ;[15B0]  d&...'.&
-    defb $06,$26,$11,$2A,$64,$26,$3C,$27    ;[15B8]  .&.*d&<'
-    defb $F4,$0E,$BD,$26,$16,$26,$25,$0F    ;[15C0]  ...&.&%.
-    defb $06,$26,$45,$27,$07,$27,$DB,$26    ;[15C8]  .&E'.'.&
-    defb $DB,$26,$07,$27,$F4,$0E,$04,$0F    ;[15D0]  .&.'....
-    defb $A9,$27,$07,$27,$DB,$26,$64,$26    ;[15D8]  .'.'.&d&
-    defb $DB,$26,$21,$62,$07,$27,$07,$27    ;[15E0]  .&!b.'.'
-    defb $06,$26,$07,$27,$07,$27,$07,$27    ;[15E8]  .&.'.'.'
-    defb $07,$27,$16,$26,$DB,$26            ;[15F0]  .'.&.&
+    DB $7C,$26,$D4,$0E,$6F,$29,$5D,$29      ;[1560]  |&..o)])
+    DB $DB,$26,$D8,$26,$07,$27,$07,$27      ;[1568]  .&.&.'.'
+    DB $DB,$26,$16,$26,$BD,$26,$BD,$26      ;[1570]  .&.&.&.&
+    DB $BD,$26,$DB,$26,$DB,$26,$DF,$26      ;[1578]  .&.&.&.&
+    DB $C3,$26,$C3,$26,$DB,$26,$DB,$26      ;[1580]  .&.&.&.&
+    DB $5D,$26,$DB,$26,$BD,$26,$3C,$27      ;[1588]  ]&.&.&<'
+    DB $39,$26,$3C,$27,$DB,$26,$68,$26      ;[1590]  9&<'.&h&
+    DB $64,$26,$11,$2A,$16,$26,$1D,$26      ;[1598]  d&.*.&.&
+    DB $5D,$26,$F4,$0E,$BD,$26,$BD,$26      ;[15A0]  ]&...&.&
+    DB $68,$26,$2C,$26,$66,$2E,$FD,$26      ;[15A8]  h&,&f..&
+    DB $64,$26,$F0,$0E,$07,$27,$06,$26      ;[15B0]  d&...'.&
+    DB $06,$26,$11,$2A,$64,$26,$3C,$27      ;[15B8]  .&.*d&<'
+    DB $F4,$0E,$BD,$26,$16,$26,$25,$0F      ;[15C0]  ...&.&%.
+    DB $06,$26,$45,$27,$07,$27,$DB,$26      ;[15C8]  .&E'.'.&
+    DB $DB,$26,$07,$27,$F4,$0E,$04,$0F      ;[15D0]  .&.'....
+    DB $A9,$27,$07,$27,$DB,$26,$64,$26      ;[15D8]  .'.'.&d&
+    DB $DB,$26,$21,$62,$07,$27,$07,$27      ;[15E0]  .&!b.'.'
+    DB $06,$26,$07,$27,$07,$27,$07,$27      ;[15E8]  .&.'.'.'
+    DB $07,$27,$16,$26,$DB,$26              ;[15F0]  .'.&.&
 
 ;
 ; Command execution table. Execution routine addresses for BASIC words.
 ;
 DATA_XETBL:
-    defb $48,$21,$E3,$0E,$4A,$3B,$04,$29    ;[15F6]  H!..J;.)
-    defb $88,$29,$DB,$23,$4B,$0F,$50,$0F    ;[15FE]  .).#K.P.
-    defb $A8,$1F,$5A,$0C,$8C,$23,$93,$0F    ;[1606]  ..Z..#..
-    defb $85,$23,$BE,$1F,$2F,$1E,$97,$23    ;[160E]  .#../..#
-    defb $A2,$22,$96,$22,$74,$20,$B1,$1F    ;[1616]  ."."t...
-    defb $80,$22,$6D,$22,$7D,$23,$5F,$24    ;[161E]  ."m"}#_$
-    defb $C5,$21,$5F,$24,$83,$20,$3F,$23    ;[1626]  .!_$..?#
-    defb $8A,$28,$A9,$29,$8F,$0C,$CB,$0B    ;[162E]  .(.)....
-    defb $7D,$21,$A5,$0F,$55,$0F,$5F,$0F    ;[1636]  }!..U._.
-    defb $5F,$20,$94,$20,$CB,$2D,$2C,$24    ;[163E]  _....-,$
-    defb $E9,$22,$31,$08,$22,$21,$73,$24    ;[1646]  ."1."!s$
-    defb $55,$24,$4E,$22,$38,$23,$5F,$24    ;[164E]  U$N"8#_$
-    defb $3D,$09,$81,$09,$87,$0C,$5F,$24    ;[1656]  =....._$
-    defb $7E,$24,$5F,$22,$D3,$1F,$C4,$1F    ;[165E]  ~$_"....
-    defb $13,$20,$FA,$1F,$32,$3B,$32,$3B    ;[1666]  ....2;2;
-    defb $5F,$24,$4E,$2A,$64,$3B,$7E,$2A    ;[166E]  _$N*d;~*
-    defb $00,$E0,$24,$62,$AE,$0E,$B3,$0E    ;[1676]  ..$b....
-    defb $6E,$24,$60,$24,$2D,$21,$05,$0E    ;[167E]  n$`$-!..
-    defb $92,$0D,$62,$3F,$32,$21            ;[1686]  ..b?2!
+    DB $48,$21,$E3,$0E,$4A,$3B,$04,$29      ;[15F6]  H!..J;.)
+    DB $88,$29,$DB,$23,$4B,$0F,$50,$0F      ;[15FE]  .).#K.P.
+    DB $A8,$1F,$5A,$0C,$8C,$23,$93,$0F      ;[1606]  ..Z..#..
+    DB $85,$23,$BE,$1F,$2F,$1E,$97,$23      ;[160E]  .#../..#
+    DB $A2,$22,$96,$22,$74,$20,$B1,$1F      ;[1616]  ."."t...
+    DB $80,$22,$6D,$22,$7D,$23,$5F,$24      ;[161E]  ."m"}#_$
+    DB $C5,$21,$5F,$24,$83,$20,$3F,$23      ;[1626]  .!_$..?#
+    DB $8A,$28,$A9,$29,$8F,$0C,$CB,$0B      ;[162E]  .(.)....
+    DB $7D,$21,$A5,$0F,$55,$0F,$5F,$0F      ;[1636]  }!..U._.
+    DB $5F,$20,$94,$20,$CB,$2D,$2C,$24      ;[163E]  _....-,$
+    DB $E9,$22,$31,$08,$22,$21,$73,$24      ;[1646]  ."1."!s$
+    DB $55,$24,$4E,$22,$38,$23,$5F,$24      ;[164E]  U$N"8#_$
+    DB $3D,$09,$81,$09,$87,$0C,$5F,$24      ;[1656]  =....._$
+    DB $7E,$24,$5F,$22,$D3,$1F,$C4,$1F      ;[165E]  ~$_"....
+    DB $13,$20,$FA,$1F,$32,$3B,$32,$3B      ;[1666]  ....2;2;
+    DB $5F,$24,$4E,$2A,$64,$3B,$7E,$2A      ;[166E]  _$N*d;~*
+    DB $00,$E0,$24,$62,$AE,$0E,$B3,$0E      ;[1676]  ..$b....
+    DB $6E,$24,$60,$24,$2D,$21,$05,$0E      ;[167E]  n$`$-!..
+    DB $92,$0D,$62,$3F,$32,$21              ;[1686]  ..b?2!
 
 ;
 ; Lynx initialisation (called after INIT CRT)
@@ -3151,19 +3154,19 @@ START:
     NOP                             ;[16BB] 
 LOGO_OUTPUT:
     CALL  PLINE                     ;[16BC] 
-START_LOOP:
+MAIN_LOOP:
     CALL  MAIN                      ;[16BF] 
-    JR    START_LOOP                ;[16C2] 
+    JR    MAIN_LOOP                 ;[16C2] 
 
 ;
-; MAIN - called repeatedly from START loop.
+; MAIN - called from MAIN_LOOP.
 ;
 MAIN:
     LD    HL,DATA_PROMPT            ;[16C4] 
     CALL  PLINE                     ;[16C7] Display prompt
     LD    A,(SYSVAR_AUTOFL)         ;[16CA] Auto line numbering?
     OR    A                         ;[16CD] 
-    JR    Z,USER_INPUT              ;[16CE] 
+    JR    Z,USER_INPUT              ;[16CE] Get user input.
     LD    HL,SYSVAR_AUTOST          ;[16D0] Auto increment
     CALL  LNUM1                     ;[16D3] -> WRA1
     CALL  FNDLN_WRA1                ;[16D6] Find line with number in WRA1
@@ -3175,12 +3178,8 @@ PRINT_LNUM:
     CALL  PN                        ;[16E0] Print number in WRA1
     POP   AF                        ;[16E3] 
     RST   $08                       ;[16E4] 
-
-;
-; Handle user input at the prompt
-;
 USER_INPUT:
-    CALL  SYSVAR_LINP               ;[16E5] 
+    CALL  SYSVAR_LINP               ;[16E5] Handle user input at the prompt
     JR    NZ,DO_AUTONUM             ;[16E8] 
     LD    HL,SYSVAR_AUTOFL          ;[16EA] 
     LD    (HL),$00                  ;[16ED] 
@@ -3208,46 +3207,46 @@ DO_AUTONUM:
 ; Data used in initialisation.
 ;
 DATA_INIT:
-    defb $00,$FF,$01,$00,$00,$00,$00,$00    ;[1715]  ........
-    defb $05,$36,$4C,$69,$4D,$69,$4D,$69    ;[171D]  .6LiMiMi
-    defb $07,$63,$A4,$06,$5F,$24,$5B,$0B    ;[1725]  .c.._$[.
-    defb $01,$00,$01,$00,$00,$07,$66,$07    ;[172D]  ......f.
-    defb $66,$07,$67,$10,$68,$E4,$68,$68    ;[1735]  f.g.h.hh
-    defb $13,$E1,$11,$16,$14,$60,$15,$F6    ;[173D]  .....`..
-    defb $15,$4E,$69,$C3,$3C,$27,$C3,$32    ;[1745]  .Ni.<'.2
-    defb $3B,$C9,$00,$00,$C9,$00,$00,$01    ;[174D]  ;.......
-    defb $00,$18,$35,$00,$00,$00,$08,$00    ;[1755]  ..5.....
-    defb $00,$00,$00,$00,$1C,$30,$15,$1B    ;[175D]  .....0..
-    defb $19,$02,$10,$11,$25,$2F,$3E,$28    ;[1765]  ....%/>(
-    defb $12,$05,$04,$03,$17,$38,$0E,$44    ;[176D]  .....8.D
-    defb $39,$09,$36,$37,$14,$20,$03,$05    ;[1775]  9.67....
-    defb $03,$7B,$05,$F5,$00,$07,$00,$00    ;[177D]  .{......
-    defb $02,$20,$EF,$00,$C3,$BE,$0F,$00    ;[1785]  ........
-    defb $00,$00,$00,$00,$00,$00,$C3,$5E    ;[178D]  .......^
-    defb $08,$94,$00,$D4,$01,$20,$00,$00    ;[1795]  ........
-    defb $C3,$32,$3B,$C3,$32,$3B,$C3,$32    ;[179D]  .2;.2;.2
-    defb $3B,$C3,$32,$3B,$C3,$32,$3B,$C3    ;[17A5]  ;.2;.2;.
-    defb $32,$3B,$C9,$00,$00,$C9,$00,$00    ;[17AD]  2;......
-    defb $00,$80,$00,$C0,$00,$C0,$C3,$32    ;[17B5]  .......2
-    defb $3B,$C3,$32,$3B,$EF,$38,$50,$01    ;[17BD]  ;.2;.8P.
-    defb $04,$03,$28,$09,$0D,$C3,$D4,$0C    ;[17C5]  ..(.....
-    defb $C3,$67,$0D,$C3,$D7,$18,$C3,$BE    ;[17CD]  .g......
-    defb $19,$C3,$A9,$33,$C3,$E5,$27,$C3    ;[17D5]  ...3..'.
-    defb $E5,$24,$C3,$9A,$00,$C3,$E2,$10    ;[17DD]  .$......
-    defb $C3,$5C,$2D,$00                    ;[17E5]  .\-.
+    DB $00,$FF,$01,$00,$00,$00,$00,$00      ;[1715]  ........
+    DB $05,$36,$4C,$69,$4D,$69,$4D,$69      ;[171D]  .6LiMiMi
+    DB $07,$63,$A4,$06,$5F,$24,$5B,$0B      ;[1725]  .c.._$[.
+    DB $01,$00,$01,$00,$00,$07,$66,$07      ;[172D]  ......f.
+    DB $66,$07,$67,$10,$68,$E4,$68,$68      ;[1735]  f.g.h.hh
+    DB $13,$E1,$11,$16,$14,$60,$15,$F6      ;[173D]  .....`..
+    DB $15,$4E,$69,$C3,$3C,$27,$C3,$32      ;[1745]  .Ni.<'.2
+    DB $3B,$C9,$00,$00,$C9,$00,$00,$01      ;[174D]  ;.......
+    DB $00,$18,$35,$00,$00,$00,$08,$00      ;[1755]  ..5.....
+    DB $00,$00,$00,$00,$1C,$30,$15,$1B      ;[175D]  .....0..
+    DB $19,$02,$10,$11,$25,$2F,$3E,$28      ;[1765]  ....%/>(
+    DB $12,$05,$04,$03,$17,$38,$0E,$44      ;[176D]  .....8.D
+    DB $39,$09,$36,$37,$14,$20,$03,$05      ;[1775]  9.67....
+    DB $03,$7B,$05,$F5,$00,$07,$00,$00      ;[177D]  .{......
+    DB $02,$20,$EF,$00,$C3,$BE,$0F,$00      ;[1785]  ........
+    DB $00,$00,$00,$00,$00,$00,$C3,$5E      ;[178D]  .......^
+    DB $08,$94,$00,$D4,$01,$20,$00,$00      ;[1795]  ........
+    DB $C3,$32,$3B,$C3,$32,$3B,$C3,$32      ;[179D]  .2;.2;.2
+    DB $3B,$C3,$32,$3B,$C3,$32,$3B,$C3      ;[17A5]  ;.2;.2;.
+    DB $32,$3B,$C9,$00,$00,$C9,$00,$00      ;[17AD]  2;......
+    DB $00,$80,$00,$C0,$00,$C0,$C3,$32      ;[17B5]  .......2
+    DB $3B,$C3,$32,$3B,$EF,$38,$50,$01      ;[17BD]  ;.2;.8P.
+    DB $04,$03,$28,$09,$0D,$C3,$D4,$0C      ;[17C5]  ..(.....
+    DB $C3,$67,$0D,$C3,$D7,$18,$C3,$BE      ;[17CD]  .g......
+    DB $19,$C3,$A9,$33,$C3,$E5,$27,$C3      ;[17D5]  ...3..'.
+    DB $E5,$24,$C3,$9A,$00,$C3,$E2,$10      ;[17DD]  .$......
+    DB $C3,$5C,$2D,$00                      ;[17E5]  .\-.
 
 ;
 ; BEEP,BEEP
 ;
 DATA_2BEEPS:
-    defb $04,$07,$04,$07            ;[17E9]  ....
+    DB $04,$07,$04,$07              ;[17E9]  ....
 
 ;
 ; Data used to display the 'LYNX LOGO' at power on.
 ;
 DATA_LYNX_LOGO:
-    defb $04,$07,$18,$F3,$F4,$F5,$F6,$F7    ;[17ED]  ........
-    defb $F8,$F9,$19,$0A,$0A,$0D,$00        ;[17F5]  .......
+    DB $04,$07,$18,$F3,$F4,$F5,$F6,$F7      ;[17ED]  ........
+    DB $F8,$F9,$19,$0A,$0A,$0D,$00          ;[17F5]  .......
 
 ;
 ; BASIC line analysis routine.
@@ -4245,8 +4244,8 @@ BASIC_COM_STOP1:
 ; Data 'Stopped' message.
 ;
 DATA_STOPPED:
-    defb $0D,$53,$74,$6F,$70,$70,$65,$64    ;[1E4E]  .Stopped
-    defb $00                                ;[1E56]  .
+    DB $0D,$53,$74,$6F,$70,$70,$65,$64      ;[1E4E]  .Stopped
+    DB $00                                  ;[1E56]  .
 
 ;
 ; RND.
@@ -4297,8 +4296,8 @@ SUB_JUMP_TO_CMDLINE2:
 ; String 'in line'. Used to display msg "Stopped in line [nnnn]", etc.
 ;
 DATA_IN_LINE:
-    defb $20,$69,$6E,$20,$6C,$69,$6E,$65    ;[1E9F]  .in.line
-    defb $20,$00                            ;[1EA7]  ..
+    DB $20,$69,$6E,$20,$6C,$69,$6E,$65      ;[1E9F]  .in.line
+    DB $20,$00                              ;[1EA7]  ..
 
 ;
 ; Main process loop for BASIC
@@ -4373,8 +4372,8 @@ READY_MSG:
 ; Data 'Ready!'.
 ;
 DATA_READY_MSG:
-    defb $52,$65,$61,$64,$79,$21,$0D,$1E    ;[1F13]  Ready!..
-    defb $00                                ;[1F1B]  .
+    DB $52,$65,$61,$64,$79,$21,$0D,$1E      ;[1F13]  Ready!..
+    DB $00                                  ;[1F1B]  .
 
 ;
 ; Test for a full return stack
@@ -6230,7 +6229,7 @@ SUB_INDENT:
     RET   Z                         ;[287B] No indent? Return.
     CP    $0A                       ;[287C] 
     JR    C,SUB_INDENT1             ;[287E] 
-    LD    A,$0A                     ;[2880] Max 10 indents
+    LD    A,$0A                     ;[2880] Max 10 indents.
 SUB_INDENT1:
     RLCA                            ;[2882] 
     LD    B,A                       ;[2883] 
@@ -6281,8 +6280,8 @@ BASIC_COM_AUTO:
 ; Data for AUTO. The numbers 100 and 10.
 ;
 DATA_AUTO:
-    defb $C2,$10,$00,$00,$00,$C1,$10,$00    ;[28CF]  ........
-    defb $00,$00                            ;[28D7]  ..
+    DB $C2,$10,$00,$00,$00,$C1,$10,$00      ;[28CF]  ........
+    DB $00,$00                              ;[28D7]  ..
 
 ;
 ; BIN.
@@ -7537,11 +7536,11 @@ SUB_ARCTAN:
 ; Data for ARCTAN
 ;
 DATA_ARCTAN:
-    defb $06,$BD,$68,$12,$41,$10,$3E,$33    ;[2FEC]  ..h.A.>3
-    defb $60,$62,$69,$BE,$79,$62,$63,$18    ;[2FF4]  `bi.ybc.
-    defb $3F,$13,$23,$35,$10,$BF,$19,$80    ;[2FFC]  ?.#5....
-    defb $78,$69,$3F,$33,$31,$73,$76,$BF    ;[3004]  xi?31sv.
-    defb $99,$99,$96,$11                    ;[300C]  ....
+    DB $06,$BD,$68,$12,$41,$10,$3E,$33      ;[2FEC]  ..h.A.>3
+    DB $60,$62,$69,$BE,$79,$62,$63,$18      ;[2FF4]  `bi.ybc.
+    DB $3F,$13,$23,$35,$10,$BF,$19,$80      ;[2FFC]  ?.#5....
+    DB $78,$69,$3F,$33,$31,$73,$76,$BF      ;[3004]  xi?31sv.
+    DB $99,$99,$96,$11                      ;[300C]  ....
 
 ;
 ; FACT.
@@ -7725,10 +7724,10 @@ BASIC_FN_LOG:
 ; Data for LOG routine.
 ;
 DATA_LOG:
-    defb $04,$BF,$19,$13,$37,$71,$BE,$94    ;[316A]  ....7q..
-    defb $37,$64,$76,$BF,$17,$75,$22,$07    ;[3172]  7dv..u".
-    defb $BF,$28,$93,$35,$52,$BF,$86,$85    ;[317A]  .(.5R...
-    defb $91,$72                            ;[3182]  .r
+    DB $04,$BF,$19,$13,$37,$71,$BE,$94      ;[316A]  ....7q..
+    DB $37,$64,$76,$BF,$17,$75,$22,$07      ;[3172]  7dv..u".
+    DB $BF,$28,$93,$35,$52,$BF,$86,$85      ;[317A]  .(.5R...
+    DB $91,$72                              ;[3182]  .r
 
 ;
 ; EXP.
@@ -7798,11 +7797,11 @@ BASIC_FN_ANTILOG:
 ; Data for ANTILOG
 ;
 DATA_ANTILOG:
-    defb $06,$BD,$56,$54,$90,$20,$BE,$13    ;[31F6]  ..VT....
-    defb $42,$09,$40,$BE,$75,$46,$75,$47    ;[31FE]  B.@.uFuG
-    defb $BF,$25,$36,$03,$32,$BF,$66,$28    ;[3206]  .%6.2.f(
-    defb $43,$15,$C0,$11,$51,$28,$76,$C0    ;[320E]  C...Q(v.
-    defb $10,$00,$00,$00                    ;[3216]  ....
+    DB $06,$BD,$56,$54,$90,$20,$BE,$13      ;[31F6]  ..VT....
+    DB $42,$09,$40,$BE,$75,$46,$75,$47      ;[31FE]  B.@.uFuG
+    DB $BF,$25,$36,$03,$32,$BF,$66,$28      ;[3206]  .%6.2.f(
+    DB $43,$15,$C0,$11,$51,$28,$76,$C0      ;[320E]  C...Q(v.
+    DB $10,$00,$00,$00                      ;[3216]  ....
 
 ;
 ; COS.
@@ -7857,10 +7856,10 @@ BASIC_FN_SIN:
 ; Data for SIN and COS
 ;
 DATA_SINCOS:
-    defb $04,$BC,$15,$14,$84,$19,$3D,$46    ;[328B]  ......=F
-    defb $73,$76,$56,$BE,$79,$68,$96,$79    ;[3293]  svV.yh.y
-    defb $3F,$64,$59,$63,$71,$C0,$15,$70    ;[329B]  ?dYcq..p
-    defb $79,$63                            ;[32A3]  yc
+    DB $04,$BC,$15,$14,$84,$19,$3D,$46      ;[328B]  ......=F
+    DB $73,$76,$56,$BE,$79,$68,$96,$79      ;[3293]  svV.yh.y
+    DB $3F,$64,$59,$63,$71,$C0,$15,$70      ;[329B]  ?dYcq..p
+    DB $79,$63                              ;[32A3]  yc
 
 ;
 ; NOT.
@@ -8339,7 +8338,7 @@ ZWRA1:
 ;
 ; Data. Used to to 'Clear to end of line'
 ;
-    defb $0D,$1E,$00                ;[3518]  ...
+    DB $0D,$1E,$00                  ;[3518]  ...
 
 ;
 ; Display character in A (PutChar)
@@ -8512,20 +8511,20 @@ LONE:
 ; 14 predefined five-byte floating-point numbers, used for various things.
 ; (1, 2, 3, 4, 65536, 6.28319, 1.5708, 0.785398, 2.50663, 0.434294, 3.16228, 0.5, -0.5, 0)
 ;
-FLOAT1:        defb $C0,$10,$00,$00,$00        ;[35C4] 
-FLOAT2:        defb $C0,$20,$00,$00,$00        ;[35C9] 
-FLOAT3:        defb $C0,$30,$00,$00,$00        ;[35CE] 
-FLOAT4:        defb $C0,$40,$00,$00,$00        ;[35D3] 
-FLOAT_16B:     defb $C4,$65,$53,$60,$00        ;[35D8] 
-FLOAT_TAU:     defb $C0,$62,$83,$18,$53        ;[35DD] 
-FLOAT_RDEG:    defb $C0,$15,$70,$79,$63        ;[35E2] 
-FLOAT_DRAD:    defb $BF,$78,$53,$98,$16        ;[35E7] 
-FLOAT_RTAU:    defb $C0,$25,$06,$62,$83        ;[35EC] 
-FLOAT_LOGE:    defb $BF,$43,$42,$94,$48        ;[35F1] 
-FLOAT_RT10:    defb $C0,$31,$62,$27,$76        ;[35F6] 
-FLOAT_05:      defb $BF,$50,$00,$00,$00        ;[35FB] 
-FLOAT_M05:     defb $3F,$50,$00,$00,$00        ;[3600] 
-FLOAT_ZERO:    defb $80,$00,$00,$00,$00        ;[3605] 
+FLOAT1:        DB $C0,$10,$00,$00,$00          ;[35C4] 
+FLOAT2:        DB $C0,$20,$00,$00,$00          ;[35C9] 
+FLOAT3:        DB $C0,$30,$00,$00,$00          ;[35CE] 
+FLOAT4:        DB $C0,$40,$00,$00,$00          ;[35D3] 
+FLOAT_16B:     DB $C4,$65,$53,$60,$00          ;[35D8] 
+FLOAT_TAU:     DB $C0,$62,$83,$18,$53          ;[35DD] 
+FLOAT_RDEG:    DB $C0,$15,$70,$79,$63          ;[35E2] 
+FLOAT_DRAD:    DB $BF,$78,$53,$98,$16          ;[35E7] 
+FLOAT_RTAU:    DB $C0,$25,$06,$62,$83          ;[35EC] 
+FLOAT_LOGE:    DB $BF,$43,$42,$94,$48          ;[35F1] 
+FLOAT_RT10:    DB $C0,$31,$62,$27,$76          ;[35F6] 
+FLOAT_05:      DB $BF,$50,$00,$00,$00          ;[35FB] 
+FLOAT_M05:     DB $3F,$50,$00,$00,$00          ;[3600] 
+FLOAT_ZERO:    DB $80,$00,$00,$00,$00          ;[3605] 
 ;
 ; I don't think these bytes are used.
 ;
@@ -8543,7 +8542,7 @@ BASIC_FN_PI:
 ; Data for Pi.
 ;
 DATA_PI:
-    defb $C0,$31,$41,$59,$27        ;[3611]  .1AY'
+    DB $C0,$31,$41,$59,$27          ;[3611]  .1AY'
 
     LD    A,(SYSVAR_WRA1)           ;[3616] Numeric manipulation routines.
     ADD   A,C                       ;[3619] 
@@ -9022,72 +9021,72 @@ JUMP_TO_CMDLINE:
 ; Data. Error messages.
 ;
 DATA_ERROR_MSGS:
-    defb $00,$4F,$75,$74,$20,$6F,$66,$20    ;[38EF]  .Out.of.
-    defb $4D,$65,$6D,$6F,$72,$79,$00,$57    ;[38F7]  Memory.W
-    defb $72,$6F,$6E,$67,$20,$4D,$6F,$64    ;[38FF]  rong.Mod
-    defb $65,$00,$53,$74,$72,$69,$6E,$67    ;[3907]  e.String
-    defb $20,$65,$72,$72,$6F,$72,$00,$4D    ;[390F]  .error.M
-    defb $69,$73,$73,$69,$6E,$67,$20,$62    ;[3917]  issing.b
-    defb $72,$61,$63,$6B,$65,$74,$00,$44    ;[391F]  racket.D
-    defb $69,$76,$69,$64,$65,$20,$62,$79    ;[3927]  ivide.by
-    defb $20,$7A,$65,$72,$6F,$20,$65,$72    ;[392F]  .zero.er
-    defb $72,$6F,$72,$00,$4F,$76,$65,$72    ;[3937]  ror.Over
-    defb $66,$6C,$6F,$77,$20,$65,$72,$72    ;[393F]  flow.err
-    defb $6F,$72,$00,$53,$79,$6E,$74,$61    ;[3947]  or.Synta
-    defb $78,$20,$65,$72,$72,$6F,$72,$00    ;[394F]  x.error.
-    defb $53,$6F,$6D,$65,$74,$68,$69,$6E    ;[3957]  Somethin
-    defb $67,$20,$6D,$69,$73,$73,$69,$6E    ;[395F]  g.missin
-    defb $67,$00,$46,$75,$6E,$63,$74,$69    ;[3967]  g.Functi
-    defb $6F,$6E,$20,$61,$72,$67,$75,$6D    ;[396F]  on.argum
-    defb $65,$6E,$74,$20,$65,$72,$72,$6F    ;[3977]  ent.erro
-    defb $72,$00,$4E,$4F,$54,$20,$59,$45    ;[397F]  r.NOT.YE
-    defb $54,$20,$49,$4D,$50,$4C,$45,$4D    ;[3987]  T.IMPLEM
-    defb $45,$4E,$54,$45,$44,$00,$52,$65    ;[398F]  ENTED.Re
-    defb $64,$69,$6D,$65,$6E,$73,$69,$6F    ;[3997]  dimensio
-    defb $6E,$65,$64,$20,$61,$72,$72,$61    ;[399F]  ned.arra
-    defb $79,$00,$4C,$69,$6E,$65,$2C,$20    ;[39A7]  y.Line,.
-    defb $4C,$41,$42,$45,$4C,$20,$6F,$72    ;[39AF]  LABEL.or
-    defb $20,$50,$52,$4F,$43,$20,$6E,$6F    ;[39B7]  .PROC.no
-    defb $74,$20,$66,$6F,$75,$6E,$64,$00    ;[39BF]  t.found.
-    defb $4E,$75,$6D,$62,$65,$72,$20,$6F    ;[39C7]  Number.o
-    defb $75,$74,$20,$6F,$66,$20,$72,$61    ;[39CF]  ut.of.ra
-    defb $6E,$67,$65,$00,$53,$75,$62,$73    ;[39D7]  nge.Subs
-    defb $63,$72,$69,$70,$74,$20,$6F,$75    ;[39DF]  cript.ou
-    defb $74,$20,$6F,$66,$20,$72,$61,$6E    ;[39E7]  t.of.ran
-    defb $67,$65,$00,$54,$79,$70,$65,$20    ;[39EF]  ge.Type.
-    defb $6D,$69,$73,$6D,$61,$74,$63,$68    ;[39F7]  mismatch
-    defb $00,$4C,$69,$6E,$65,$20,$74,$6F    ;[39FF]  .Line.to
-    defb $6F,$20,$6C,$6F,$6E,$67,$00,$43    ;[3A07]  o.long.C
-    defb $61,$6E,$6E,$6F,$74,$20,$63,$6F    ;[3A0F]  annot.co
-    defb $6E,$74,$69,$6E,$75,$65,$00,$4F    ;[3A17]  ntinue.O
-    defb $75,$74,$20,$6F,$66,$20,$44,$61    ;[3A1F]  ut.of.Da
-    defb $74,$61,$00,$52,$45,$54,$55,$52    ;[3A27]  ta.RETUR
-    defb $4E,$20,$77,$69,$74,$68,$6F,$75    ;[3A2F]  N.withou
-    defb $74,$20,$47,$4F,$53,$55,$42,$00    ;[3A37]  t.GOSUB.
-    defb $4E,$45,$58,$54,$20,$77,$69,$74    ;[3A3F]  NEXT.wit
-    defb $68,$6F,$75,$74,$20,$46,$4F,$52    ;[3A47]  hout.FOR
-    defb $00,$55,$6E,$64,$65,$66,$69,$6E    ;[3A4F]  .Undefin
-    defb $65,$64,$20,$76,$61,$72,$69,$61    ;[3A57]  ed.varia
-    defb $62,$6C,$65,$00,$55,$4E,$54,$49    ;[3A5F]  ble.UNTI
-    defb $4C,$20,$77,$69,$74,$68,$6F,$75    ;[3A67]  L.withou
-    defb $74,$20,$52,$45,$50,$45,$41,$54    ;[3A6F]  t.REPEAT
-    defb $00,$57,$45,$4E,$44,$20,$77,$69    ;[3A77]  .WEND.wi
-    defb $74,$68,$6F,$75,$74,$20,$57,$48    ;[3A7F]  thout.WH
-    defb $49,$4C,$45,$00,$57,$48,$49,$4C    ;[3A87]  ILE.WHIL
-    defb $45,$20,$77,$69,$74,$68,$6F,$75    ;[3A8F]  E.withou
-    defb $74,$20,$57,$45,$4E,$44,$00,$52    ;[3A97]  t.WEND.R
-    defb $65,$74,$75,$72,$6E,$20,$73,$74    ;[3A9F]  eturn.st
-    defb $61,$63,$6B,$20,$66,$75,$6C,$6C    ;[3AA7]  ack.full
-    defb $00,$52,$45,$50,$45,$41,$54,$20    ;[3AAF]  .REPEAT.
-    defb $77,$69,$74,$68,$6F,$75,$74,$20    ;[3AB7]  without.
-    defb $55,$4E,$54,$49,$4C,$00,$47,$4F    ;[3ABF]  UNTIL.GO
-    defb $53,$55,$42,$20,$77,$69,$74,$68    ;[3AC7]  SUB.with
-    defb $6F,$75,$74,$20,$52,$45,$54,$55    ;[3ACF]  out.RETU
-    defb $52,$4E,$00,$45,$4E,$44,$50,$52    ;[3AD7]  RN.ENDPR
-    defb $4F,$43,$20,$77,$69,$74,$68,$6F    ;[3ADF]  OC.witho
-    defb $75,$74,$20,$50,$52,$4F,$43,$00    ;[3AE7]  ut.PROC.
-    defb $0D,$42,$61,$64,$20,$54,$61,$70    ;[3AEF]  .Bad.Tap
-    defb $65,$00                            ;[3AF7]  e.
+    DB $00,$4F,$75,$74,$20,$6F,$66,$20      ;[38EF]  .Out.of.
+    DB $4D,$65,$6D,$6F,$72,$79,$00,$57      ;[38F7]  Memory.W
+    DB $72,$6F,$6E,$67,$20,$4D,$6F,$64      ;[38FF]  rong.Mod
+    DB $65,$00,$53,$74,$72,$69,$6E,$67      ;[3907]  e.String
+    DB $20,$65,$72,$72,$6F,$72,$00,$4D      ;[390F]  .error.M
+    DB $69,$73,$73,$69,$6E,$67,$20,$62      ;[3917]  issing.b
+    DB $72,$61,$63,$6B,$65,$74,$00,$44      ;[391F]  racket.D
+    DB $69,$76,$69,$64,$65,$20,$62,$79      ;[3927]  ivide.by
+    DB $20,$7A,$65,$72,$6F,$20,$65,$72      ;[392F]  .zero.er
+    DB $72,$6F,$72,$00,$4F,$76,$65,$72      ;[3937]  ror.Over
+    DB $66,$6C,$6F,$77,$20,$65,$72,$72      ;[393F]  flow.err
+    DB $6F,$72,$00,$53,$79,$6E,$74,$61      ;[3947]  or.Synta
+    DB $78,$20,$65,$72,$72,$6F,$72,$00      ;[394F]  x.error.
+    DB $53,$6F,$6D,$65,$74,$68,$69,$6E      ;[3957]  Somethin
+    DB $67,$20,$6D,$69,$73,$73,$69,$6E      ;[395F]  g.missin
+    DB $67,$00,$46,$75,$6E,$63,$74,$69      ;[3967]  g.Functi
+    DB $6F,$6E,$20,$61,$72,$67,$75,$6D      ;[396F]  on.argum
+    DB $65,$6E,$74,$20,$65,$72,$72,$6F      ;[3977]  ent.erro
+    DB $72,$00,$4E,$4F,$54,$20,$59,$45      ;[397F]  r.NOT.YE
+    DB $54,$20,$49,$4D,$50,$4C,$45,$4D      ;[3987]  T.IMPLEM
+    DB $45,$4E,$54,$45,$44,$00,$52,$65      ;[398F]  ENTED.Re
+    DB $64,$69,$6D,$65,$6E,$73,$69,$6F      ;[3997]  dimensio
+    DB $6E,$65,$64,$20,$61,$72,$72,$61      ;[399F]  ned.arra
+    DB $79,$00,$4C,$69,$6E,$65,$2C,$20      ;[39A7]  y.Line,.
+    DB $4C,$41,$42,$45,$4C,$20,$6F,$72      ;[39AF]  LABEL.or
+    DB $20,$50,$52,$4F,$43,$20,$6E,$6F      ;[39B7]  .PROC.no
+    DB $74,$20,$66,$6F,$75,$6E,$64,$00      ;[39BF]  t.found.
+    DB $4E,$75,$6D,$62,$65,$72,$20,$6F      ;[39C7]  Number.o
+    DB $75,$74,$20,$6F,$66,$20,$72,$61      ;[39CF]  ut.of.ra
+    DB $6E,$67,$65,$00,$53,$75,$62,$73      ;[39D7]  nge.Subs
+    DB $63,$72,$69,$70,$74,$20,$6F,$75      ;[39DF]  cript.ou
+    DB $74,$20,$6F,$66,$20,$72,$61,$6E      ;[39E7]  t.of.ran
+    DB $67,$65,$00,$54,$79,$70,$65,$20      ;[39EF]  ge.Type.
+    DB $6D,$69,$73,$6D,$61,$74,$63,$68      ;[39F7]  mismatch
+    DB $00,$4C,$69,$6E,$65,$20,$74,$6F      ;[39FF]  .Line.to
+    DB $6F,$20,$6C,$6F,$6E,$67,$00,$43      ;[3A07]  o.long.C
+    DB $61,$6E,$6E,$6F,$74,$20,$63,$6F      ;[3A0F]  annot.co
+    DB $6E,$74,$69,$6E,$75,$65,$00,$4F      ;[3A17]  ntinue.O
+    DB $75,$74,$20,$6F,$66,$20,$44,$61      ;[3A1F]  ut.of.Da
+    DB $74,$61,$00,$52,$45,$54,$55,$52      ;[3A27]  ta.RETUR
+    DB $4E,$20,$77,$69,$74,$68,$6F,$75      ;[3A2F]  N.withou
+    DB $74,$20,$47,$4F,$53,$55,$42,$00      ;[3A37]  t.GOSUB.
+    DB $4E,$45,$58,$54,$20,$77,$69,$74      ;[3A3F]  NEXT.wit
+    DB $68,$6F,$75,$74,$20,$46,$4F,$52      ;[3A47]  hout.FOR
+    DB $00,$55,$6E,$64,$65,$66,$69,$6E      ;[3A4F]  .Undefin
+    DB $65,$64,$20,$76,$61,$72,$69,$61      ;[3A57]  ed.varia
+    DB $62,$6C,$65,$00,$55,$4E,$54,$49      ;[3A5F]  ble.UNTI
+    DB $4C,$20,$77,$69,$74,$68,$6F,$75      ;[3A67]  L.withou
+    DB $74,$20,$52,$45,$50,$45,$41,$54      ;[3A6F]  t.REPEAT
+    DB $00,$57,$45,$4E,$44,$20,$77,$69      ;[3A77]  .WEND.wi
+    DB $74,$68,$6F,$75,$74,$20,$57,$48      ;[3A7F]  thout.WH
+    DB $49,$4C,$45,$00,$57,$48,$49,$4C      ;[3A87]  ILE.WHIL
+    DB $45,$20,$77,$69,$74,$68,$6F,$75      ;[3A8F]  E.withou
+    DB $74,$20,$57,$45,$4E,$44,$00,$52      ;[3A97]  t.WEND.R
+    DB $65,$74,$75,$72,$6E,$20,$73,$74      ;[3A9F]  eturn.st
+    DB $61,$63,$6B,$20,$66,$75,$6C,$6C      ;[3AA7]  ack.full
+    DB $00,$52,$45,$50,$45,$41,$54,$20      ;[3AAF]  .REPEAT.
+    DB $77,$69,$74,$68,$6F,$75,$74,$20      ;[3AB7]  without.
+    DB $55,$4E,$54,$49,$4C,$00,$47,$4F      ;[3ABF]  UNTIL.GO
+    DB $53,$55,$42,$20,$77,$69,$74,$68      ;[3AC7]  SUB.with
+    DB $6F,$75,$74,$20,$52,$45,$54,$55      ;[3ACF]  out.RETU
+    DB $52,$4E,$00,$45,$4E,$44,$50,$52      ;[3AD7]  RN.ENDPR
+    DB $4F,$43,$20,$77,$69,$74,$68,$6F      ;[3ADF]  OC.witho
+    DB $75,$74,$20,$50,$52,$4F,$43,$00      ;[3AE7]  ut.PROC.
+    DB $0D,$42,$61,$64,$20,$54,$61,$70      ;[3AEF]  .Bad.Tap
+    DB $65,$00                              ;[3AF7]  e.
 
 ;
 ; Error message selection code. (also BAD_TAPE jump)
@@ -9230,7 +9229,7 @@ BASIC_COM_MON:
 ;
 ; Data ?????'. Monitor error message.
 ;
-    defb $3F,$3F,$3F,$3F,$0D,$1E,$00;[3BC8]  ????...
+    DB $3F,$3F,$3F,$3F,$0D,$1E,$00  ;[3BC8]  ????...
 
     ADC   A,E                       ;[3BCF] Two byte addresses for the monitor commands A-Z
     DEC   A                         ;[3BD0] 
@@ -9441,11 +9440,11 @@ MONITOR_Z:
 ; Data for Z command - The register names.
 ;
 DATA_MONITOR:
-    defb $41,$46,$20,$48,$4C,$20,$44,$45    ;[3CE8]  AF.HL.DE
-    defb $20,$42,$43,$20,$41,$46,$27,$48    ;[3CF0]  .BC.AF'H
-    defb $4C,$27,$44,$45,$27,$42,$43,$27    ;[3CF8]  L'DE'BC'
-    defb $49,$58,$20,$49,$59,$20,$53,$50    ;[3D00]  IX.IY.SP
-    defb $20,$50,$43,$20                    ;[3D08]  .PC.
+    DB $41,$46,$20,$48,$4C,$20,$44,$45      ;[3CE8]  AF.HL.DE
+    DB $20,$42,$43,$20,$41,$46,$27,$48      ;[3CF0]  .BC.AF'H
+    DB $4C,$27,$44,$45,$27,$42,$43,$27      ;[3CF8]  L'DE'BC'
+    DB $49,$58,$20,$49,$59,$20,$53,$50      ;[3D00]  IX.IY.SP
+    DB $20,$50,$43,$20                      ;[3D08]  .PC.
 
 ;
 ; Display HL.
@@ -9597,7 +9596,7 @@ MONITOR_A:
 ; Data '??' used in A comand.
 ;
 DATA_MONITOR_A:
-    defb $3F,$3F,$00                ;[3DC9]  ??.
+    DB $3F,$3F,$00                  ;[3DC9]  ??.
 
     CALL  SUB_ARGUMENT_3            ;[3DCC] ???? Doesn't seem to be used!!!!
     LD    A,L                       ;[3DCF] 
@@ -9819,8 +9818,8 @@ SUB_FLAGS:
 ; Data. Flags.
 ;
 DATA_FLAGS:
-    defb $53,$5A,$31,$48,$31,$50,$4E,$43    ;[3ECB]  SZ1H1PNC
-    defb $00                                ;[3ED3]  .
+    DB $53,$5A,$31,$48,$31,$50,$4E,$43      ;[3ECB]  SZ1H1PNC
+    DB $00                                  ;[3ED3]  .
 
 ;
 ; Monitor E command.
