@@ -6,16 +6,17 @@
 ;*
 ;*   Reconstructed from lynx eprom memory images and supplemented with
 ;*   information from Lynx User Magazine Issue 1 (Camputers, June 1983, 
-;*   pages 16-18) and Nilug News (Issue 6) by R.B.Poate
+;*   pages 16-18), Nilug News (Issue 6) by R.B.Poate, and Camputers
+;*   Lynx "Mark II" source code (dated: 1-Apr-1984).
 ;*
-;*   Disassembly, collation and formatting by: Mike Panter 10/10/2021
+;*   Disassembly, collation and formatting by: Mike Panter 06/11/2021.
 ;*
-;*   Additional credits to: Russell Davis  (online archive of materials)
-;*                          Pete Todd      (knowledge, insight and Pale)
+;*   Additional credit to: Russell Davis  (online archive of materials)
+;*                         Pete Todd      (knowledge, insight and Pale)
 ;*
 ;*   WARNING: May contain inaccuracies - use at own risk.
 ;*
-;*   Feel free to distribute. Please include attribution.
+;*   Free to distribute. Please include attribution.
 ;*
 ;********************** LABELS/SYMBOLS/PREFIXES ************************
 ;*
@@ -69,129 +70,173 @@ ERR_OUT_OF_MEM          EQU $3B4D    ; Out of Memory
 ;
 ; Lynx Constants
 ;
-INP_BUFFER EQU $6000    ; Reference to edit buffer at $6000 (constant, not variable)
-EXT_ROM    EQU $4000    ; External ROM address (constant)
+EXT_ROM         EQU $4000       ; External ROM address (constant)
+KBEEP_LEN       EQU 180         ; length of beep
+KBEEP_WAV       EQU 456         ; wavelength of beep
+MAXLEN          EQU 240         ; Maximum length of input buffer
 
 ;
-; Lynx System Variables (RAM Addresses)
+; Lynx System Variables (the RAM layout/addresses, prior to the start of Basic)
+; (taken from Camputers Lynx Mark II source code - RAM/E02 1-Apr-84)
 ;
-SYSVAR_STACK    EQU $61EE    ; Stores address of Basic stack pointer (STACK) + 2 HIMEM. 
-SYSVAR_RNDNO    EQU $61F0    ; 31 bit random number seed. 
-SYSVAR_HLSTORE  EQU $61F4    ; Used to store HL after a CALL. 
-SYSVAR_CURRLP   EQU $61F6    ; Pointer to first byte of line Basic is currently executing. 
-SYSVAR_DATAP    EQU $61F8    ; Pointer used by READ, DATA, points to end of last entry read. 
-SYSVAR_SOB      EQU $61FA    ; Points to start of Basic. 
-SYSVAR_EOB      EQU $61FC    ; Points to end of Basic. 
-SYSVAR_POLBUF   EQU $61FE    ; Pointer to buffer used for conversion to internal language. 
-SYSVAR_PRINTD   EQU $6200    ; Address of display driver. 
-SYSVAR_LPRNTD   EQU $6202    ; Address of printer driver. 
-SYSVAR_KEYB     EQU $6204    ; Address of keyboard driver. 
-SYSVAR_OTYPE    EQU $6206    ; Current output type and LINK status.
-SYSVAR_LASTDSP  EQU $6207    ; Last character output to screen (used for VDU VDU 2,n). 
-SYSVAR_VTYPE    EQU $6208    ; Current variable type. 
-SYSVAR_CONTLP   EQU $6209    ; Pointer to CONTinue line. 0 if cannot continue. 
-SYSVAR_RSTACK   EQU $620B    ; Pointer to return stack. 
-SYSVAR_RSP      EQU $620D    ; Return stack pointer. 
-SYSVAR_VTBL     EQU $620F    ; Pointer to variables A-Z, a-z. 
-SYSVAR_ATBL     EQU $6211    ; Pointer to array variables A-Z, a-z.
-SYSVAR_STBL     EQU $6213    ; Pointer to string variables. 
-SYSVAR_FTBL     EQU $6215    ; Pointer to function evaluation table.
-SYSVAR_TTBL     EQU $6217    ; Pointer to non-command token table.
-SYSVAR_XTTBL    EQU $6219    ; Pointer to command token table.
-SYSVAR_XITBL    EQU $621B    ; Pointer to Input syntax checking table. 
-SYSVAR_XETBL    EQU $621D    ; Pointer to command execution table.
-SYSVAR_TOV      EQU $621F    ; Top of variables (strings and arrays).
-SYSVAR_IEXT     EQU $6221    ; Jump to EXT syntax checking. 
-SYSVAR_EEXT     EQU $6224    ; Jump to EXT execution. 
-SYSVAR_INPLSUB  EQU $6227    ; RAM call from line input routine.
-SYSVAR_EXECSUB  EQU $622A    ; Called before execution of every line. 
-SYSVAR_ZFLAG    EQU $622D    ; Number flag gives TRAIL and ROUND status.
-SYSVAR_AUTOFL   EQU $622E    ; Auto line numbering on/off flag.
-SYSVAR_CRST     EQU $622F    ; Pointer to message used to generate CR (0DH) in display driver.
-SYSVAR_KSMS     EQU $6231    ; Single key entry. 
-SYSVAR_RPTDLY   EQU $6233    ; Repeat delay on keyboard. 
-SYSVAR_LASTK    EQU $6235    ; Last character from keyboard. 
-SYSVAR_STATUS   EQU $6236    ; Used by keyboard driver. 
-SYSVAR_RPT      EQU $6237    ; Length of time between key repeats. 
-SYSVAR_SHLKT    EQU $6239    ; Used by shift lock. 
-SYSVAR_KTBL     EQU $623A    ; 26 bytes storing tokens for shorthand. Only command tokens allowed. In order A-Z. 
-SYSVAR_CURSORX  EQU $6254    ; X component of cursor (0-126). 
-SYSVAR_CURSORY  EQU $6255    ; Y component of cursor (0-247). 
-SYSVAR_WINDST   EQU $6256    ; Window size. 
-SYSVAR_CURSTAT  EQU $625A    ; Cursor on/off. 
-SYSVAR_INKST    EQU $625B    ; Stores ink colour. 
-SYSVAR_PAPST    EQU $625C    ; Stores paper colour. 
-SYSVAR_FLASH    EQU $625D    ; Cursor flash rate. 
-SYSVAR_INPCUR   EQU $625F    ; Cursor characters. 
-SYSVAR_EXFLAG   EQU $6261    ; TRACE, SPEED on/off store. 
-SYSVAR_GLINE    EQU $6262    ; Jump to line draw routine. 
-SYSVAR_GOLDX    EQU $6265    ; Graphic cursor position X. 
-SYSVAR_GOLDY    EQU $6267    ; Y co-ordinate of graphics cursor. 
-SYSVAR_GNEWX    EQU $6268    ; Stores new X co-ordinate before LINE draw. 
-SYSVAR_GNEWY    EQU $626A    ; Stores new Y co-ordinate before LINE draw. 
-SYSVAR_PROTST   EQU $626B    ; Protect store. 
-SYSVAR_OUTB     EQU $626C    ; Jump to routine which outputs byte with data in A, mask in C and relative displacement from top left in HL. Uses colour selected by INK and PAPER.
-SYSVAR_CHRTBL   EQU $626F    ; Pointer used to generate characters 32-127. 
-SYSVAR_GPHTBL   EQU $6271    ; Pointer used to generate characters 128-255. 
-SYSVAR_BPERL    EQU $6273    ; Bytes per line: 20H normally, 40H in double height mode. 
-SYSVAR_MASK     EQU $6275    ; Mask used by display driver: change with VDU 20/21. 
-SYSVAR_FLIGHT   EQU $6276    ; Jump to lightpen function. 
-SYSVAR_FJOY     EQU $6279    ; Jump to joystick function. 
-SYSVAR_FUSER0   EQU $627C    ; Jump to USER0 function. 
-SYSVAR_FUSER1   EQU $627F    ; Jump to USER1 function. 
-SYSVAR_FUSER2   EQU $6282    ; Jump to USER2 function. 
-SYSVAR_FUSER3   EQU $6285    ; Jump to USER3 function. 
-SYSVAR_ERRAM    EQU $6288    ; Called during error. 
-SYSVAR_SLFRAM   EQU $628B    ; Called when line feed occurs. 
-SYSVAR_BLUBNK   EQU $628E    ; Pointer to BLUE bank. 
-SYSVAR_REDBNK   EQU $6290    ; Pointer to RED bank. 
-SYSVAR_GRNBNK   EQU $6292    ; Pointer to GREEN bank. 
-SYSVAR_NMIRAM   EQU $6294    ; Jump here on NMI. Jump  to 3B32H (not implemented)
-SYSVAR_RSTRAM   EQU $6297    ; Jumps here on RST 38H. 
-SYSVAR_ERRTBL   EQU $629A    ; Pointer to error messages. 
-SYSVAR_CASLEV   EQU $629C    ; Cassette input threshold level. 
-SYSVAR_COARSE   EQU $629D    ; Coarse adjustment on cassette speed. 
-SYSVAR_FINE     EQU $629E    ; Fine adjustment on cassette speed. 
-SYSVAR_SYNCLEN  EQU $629F    ; Length of sync. 
-SYSVAR_PLYLEV   EQU $62A0    ; Voltage reference for comparator. Used by LOAD instruction. 
-SYSVAR_CASTBL   EQU $62A1    ; Pointer to table used to generate wave. (SOUND?)
-SYSVAR_RBIT     EQU $62A3    ; Jump to read bit routine. 
-SYSVAR_WBYTE    EQU $62A6    ; Jump to write byte routine (to tape).
-SYSVAR_PP       EQU $62A9    ; Jump to print a polish expression. 
-SYSVAR_NTP      EQU $62AC    ; Jump to normal to internal language conversion routine. 
-SYSVAR_EE       EQU $62AF    ; Jump to evaluate expression. 
-SYSVAR_DBASLN   EQU $62B2    ; Jump to display basic line. 
-SYSVAR_DEBUG    EQU $62B5    ; Jump to SPEED and TRACE routines. 
-SYSVAR_VIDEO    EQU $62B8    ; Jump to routine which outputs character in A to current cursor position. 
-SYSVAR_LINP     EQU $62BB    ; Jump to line input routine. 
-SYSVAR_VRPTS    EQU $62BE    ; Jump to string variable pointer routine. 
-SYSVAR_SPEEDST  EQU $62C1    ; Used by SPEED. 
-SYSVAR_STORE    EQU $62C2    ; General purpose store. 
-SYSVAR_OLDESC   EQU $62C4    ; ESC key roll over. 
-SYSVAR_OLDKEY   EQU $62C5    ; Rest of keyboard roll over. 
-SYSVAR_WRA4     EQU $62CF    ; WORKING REGISTER AREA 4 
-SYSVAR_WRA3     EQU $62D4    ; WORKING REGISTER AREA 3 
-SYSVAR_WRAE     EQU $62DD    ; WORKING REGISTER AREA 2 EXTENDED. 
-SYSVAR_WRA2     EQU $62E0    ; WORKING REGISTER AREA 2 
-SYSVAR_WRA1     EQU $62E5    ; WORKING REGISTER AREA I 
-SYSVAR_SYNL     EQU $62EA    ; .
-SYSVAR_SYNP     EQU $62EB    ; .
-SYSVAR_SYNC     EQU $62EC    ; .
-SYSVAR_NPM      EQU $62ED    ; All used by NTP. 
-SYSVAR_SBC      EQU $62EE    ; Space before command on line listing (used for indentation). 
-SYSVAR_PROCST   EQU $62EF    ; Pointer to first DEFPROC. 
-SYSVAR_EDST     EQU $62F1    ; EDIT buffer driver. 
-SYSVAR_AUTOST   EQU $62F3    ; Auto line number, increment. 
-SYSVAR_PRTBUF   EQU $62FD    ; Used during printing number. 
-SYSVAR_POLBUFS  EQU $6307    ; Internal language buffer. 
-SYSVAR_STRBUF   EQU $6407    ; String calculation buffer. 
-SYSVAR_CSTACK   EQU $6507    ; Calculator stack. 
-SYSVAR_RSTACKS  EQU $6607    ; Return stack. 
-SYSVAR_VTBLS    EQU $6707    ; (53*5) Variable table. 
-SYSVAR_ATBLS    EQU $6810    ; (53*4) Array table. 
-SYSVAR_STBLS    EQU $68E4    ; String table. 
-SYSVAR_DFTMRK   EQU $694C    ; Carriage return used in READ, DATA. 
-SYSVAR_SOBS     EQU $694D    ; START OF BASIC PROGRAM.
+INPBUF	        EQU	$6000               ;[=$6000] Input buffer
+MONSTACK	    EQU	INPBUF+MAXLEN+20	;[=$6104] Monitor stack
+TRAPREGS	    EQU	MONSTACK+150	    ;[=$619A] Registers: AF,HL,DE,BC,AF',HL',DE',BC',IX,IY
+TRAPSP	        EQU	TRAPREGS+20	        ;[=$61AE] SP
+TRAPPC	        EQU	TRAPSP+2	        ;[=$61B0] PC
+GOPC	        EQU	TRAPPC+2	        ;[=$61B2] 
+BRKPST	        EQU	GOPC+3	            ;[=$61B5] 
+MONST	        EQU	BRKPST+3	        ;[=$61B8] Store used in M,L,W etc
+MONSP	        EQU	MONST+2	            ;[=$61BA] SP Store
+LXFLAG	        EQU	MONSP+2	            ;[=$61BC] CTRL chars on printer
+NLFLAG	        EQU	LXFLAG+4	        ;[=$61C0] Whether char causes new line
+BUFSIZ	        EQU	NLFLAG+1	        ;[=$61C1] Printer buffer size
+BUFCT	        EQU	BUFSIZ+1	        ;[=$61C2] # of chars in buffer
+BUFDLY	        EQU	BUFCT+1	            ;[=$61C3] *** OLD SPRINT ROUTINE ONLY ***
+PRTDLY	        EQU	BUFDLY+1	        ;[=$61C4] 
+FFDLY	        EQU	PRTDLY+1	        ;[=$61C5] 
+NXFRPG	        EQU	FFDLY+1	            ;[=$61C6] Next free page
+KFILE	        EQU	NXFRPG+1	        ;[=$61C7] Current data store
+KNXFIL	        EQU	KFILE+1	            ;[=$61C8] Next one in chain
+KFSTPG	        EQU	KNXFIL+1	        ;[=$61C9] First page
+KWRPTR	        EQU	KFSTPG+1	        ;[=$61CA] Write pointer
+KRDPTR	        EQU	KWRPTR+2	        ;[=$61CC] Read pointer
+KFILEN	        EQU	KRDPTR+2	        ;[=$61CE] Length of store
+ERRVR	        EQU	KFILEN+2	        ;[=$61D0] Addr of error variable
+EXECSP	        EQU	ERRVR+2	            ;[=$61D2] Save SP on EXEC
+LPOFFS	        EQU	EXECSP+2	        ;[=$61D4] Lightpen offset
+QTFLG	        EQU	LPOFFS+1	        ;[=$61D5] For PP
+BRKRAM	        EQU	QTFLG+1	            ;[=$61D6] <BREAK> key routine
+CLSRAM	        EQU	BRKRAM+3            ;[=$61D9] 
+CELRAM	        EQU	CLSRAM+3            ;[=$61DC] Clear to end of line
+AGBNK	        EQU	CELRAM+3            ;[=$61DF] 
+MODST	        EQU	AGBNK+2	            ;[=$61E1] High/low res mode
+CURINC	        EQU	MODST+1	            ;[=$61E2] Inc of CURSRX per char
+INTFLG	        EQU	CURINC+1	        ;[=$61E3] Whether allow EI
+PORT80	        EQU	INTFLG+1	        ;[=$61E4] Preserve status of port 80
+PORT82	        EQU	PORT80+1	        ;[=$61E5] 
+EXTRAM	        EQU	PORT82+1	        ;[=$61E6] 4 addresses for EXT
+
+;
+; Lynx system variables as listed in "Lynx User" 1 magazine (June 1983):
+;
+SYSVAR_STACK	EQU	EXTRAM+8	        ;[=$61EE] Stores address of Basic stack pointer (STACK) + 2 HIMEM.
+SYSVAR_RNDNO	EQU	SYSVAR_STACK+2	    ;[=$61F0] 31 bit random number seed.
+SYSVAR_HLSTORE	EQU	SYSVAR_RNDNO+4	    ;[=$61F4] Used to store HL after a CALL.
+SYSVAR_CURRLP	EQU	SYSVAR_HLSTORE+2	;[=$61F6] Pointer to first byte of line Basic is currently executing.
+SYSVAR_DATAP	EQU	SYSVAR_CURRLP+2	    ;[=$61F8] Pointer used by READ, DATA, points to end of last entry read.
+SYSVAR_SOB	    EQU	SYSVAR_DATAP+2	    ;[=$61FA] Points to start of Basic.
+SYSVAR_EOB	    EQU	SYSVAR_SOB+2	    ;[=$61FC] Points to end of Basic.
+SYSVAR_POLBUF	EQU	SYSVAR_EOB+2	    ;[=$61FE] Pointer to buffer used for conversion to internal language.
+SYSVAR_PRINTD	EQU	SYSVAR_POLBUF+2	    ;[=$6200] Address of display driver.
+SYSVAR_LPRNTD	EQU	SYSVAR_PRINTD+2	    ;[=$6202] Address of printer driver.
+SYSVAR_KEYB	    EQU	SYSVAR_LPRNTD+2	    ;[=$6204] Address of keyboard driver.
+SYSVAR_OTYPE	EQU	SYSVAR_KEYB+2	    ;[=$6206] Current output type and LINK status.
+SYSVAR_LASTDSP	EQU	SYSVAR_OTYPE+1	    ;[=$6207] Last character output to screen (used for VDU VDU 2,n).
+SYSVAR_VTYPE	EQU	SYSVAR_LASTDSP+1	;[=$6208] Current variable type.
+SYSVAR_CONTLP	EQU	SYSVAR_VTYPE+1	    ;[=$6209] Pointer to CONTinue line. 0 if cannot continue.
+SYSVAR_RSTACK	EQU	SYSVAR_CONTLP+2	    ;[=$620B] Pointer to return stack.
+SYSVAR_RSP	    EQU	SYSVAR_RSTACK+2	    ;[=$620D] Return stack pointer.
+SYSVAR_VTBL	    EQU	SYSVAR_RSP+2	    ;[=$620F] Pointer to variables A-Z, a-z.
+SYSVAR_ATBL	    EQU	SYSVAR_VTBL+2	    ;[=$6211] Pointer to array variables A-Z, a-z.
+SYSVAR_STBL	    EQU	SYSVAR_ATBL+2	    ;[=$6213] Pointer to string variables.
+SYSVAR_FTBL	    EQU	SYSVAR_STBL+2	    ;[=$6215] Pointer to function evaluation table.
+SYSVAR_TTBL	    EQU	SYSVAR_FTBL+2	    ;[=$6217] Pointer to non-command token table.
+SYSVAR_XTTBL	EQU	SYSVAR_TTBL+2	    ;[=$6219] Pointer to command token table.
+SYSVAR_XITBL	EQU	SYSVAR_XTTBL+2	    ;[=$621B] Pointer to Input syntax checking table.
+SYSVAR_XETBL	EQU	SYSVAR_XITBL+2	    ;[=$621D] Pointer to command execution table.
+SYSVAR_TOV	    EQU	SYSVAR_XETBL+2	    ;[=$621F] Top of variables (strings and arrays).
+SYSVAR_IEXT	    EQU	SYSVAR_TOV+2	    ;[=$6221] Jump to EXT syntax checking.
+SYSVAR_EEXT	    EQU	SYSVAR_IEXT+3	    ;[=$6224] Jump to EXT execution.
+SYSVAR_INPLSUB	EQU	SYSVAR_EEXT+3	    ;[=$6227] RAM call from line input routine.
+SYSVAR_EXECSUB	EQU	SYSVAR_INPLSUB+3	;[=$622A] Called before execution of every line.
+SYSVAR_ZFLAG	EQU	SYSVAR_EXECSUB+3	;[=$622D] Number flag gives TRAIL and ROUND status.
+SYSVAR_AUTOFL	EQU	SYSVAR_ZFLAG+1	    ;[=$622E] Auto line numbering on/off flag.
+SYSVAR_CRST	    EQU	SYSVAR_AUTOFL+1	    ;[=$622F] Pointer to message used to generate CR (0DH) in display driver.
+SYSVAR_KSMS	    EQU	SYSVAR_CRST+2	    ;[=$6231] Single key entry.
+SYSVAR_RPTDLY	EQU	SYSVAR_KSMS+2	    ;[=$6233] Repeat delay on keyboard.
+SYSVAR_LASTK	EQU	SYSVAR_RPTDLY+2	    ;[=$6235] Last character from keyboard.
+SYSVAR_STATUS	EQU	SYSVAR_LASTK+1	    ;[=$6236] Used by keyboard driver.
+SYSVAR_RPT	    EQU	SYSVAR_STATUS+1	    ;[=$6237] Length of time between key repeats.
+SYSVAR_SHLKT	EQU	SYSVAR_RPT+2	    ;[=$6239] Used by shift lock.
+SYSVAR_KTBL	    EQU	SYSVAR_SHLKT+1	    ;[=$623A] 26 bytes storing tokens for shorthand. Only command tokens allowed. In order A-Z.
+SYSVAR_CURSORX	EQU	SYSVAR_KTBL+26	    ;[=$6254] X component of cursor (0-126).
+SYSVAR_CURSORY	EQU	SYSVAR_CURSORX+1	;[=$6255] Y component of cursor (0-247).
+SYSVAR_WINDST	EQU	SYSVAR_CURSORY+1	;[=$6256] Window size.
+SYSVAR_CURSTAT	EQU	SYSVAR_WINDST+4	    ;[=$625A] Cursor on/off.
+SYSVAR_INKST	EQU	SYSVAR_CURSTAT+1	;[=$625B] Stores ink colour.
+SYSVAR_PAPST	EQU	SYSVAR_INKST+1	    ;[=$625C] Stores paper colour.
+SYSVAR_FLASH	EQU	SYSVAR_PAPST+1	    ;[=$625D] Cursor flash rate.
+SYSVAR_INPCUR	EQU	SYSVAR_FLASH+2	    ;[=$625F] Cursor characters.
+SYSVAR_EXFLAG	EQU	SYSVAR_INPCUR+2	    ;[=$6261] TRACE, SPEED on/off store.
+SYSVAR_GLINE	EQU	SYSVAR_EXFLAG+1	    ;[=$6262] Jump to line draw routine.
+SYSVAR_GOLDX	EQU	SYSVAR_GLINE+3	    ;[=$6265] Graphic cursor position X.
+SYSVAR_GOLDY	EQU	SYSVAR_GOLDX+2	    ;[=$6267] Y co-ordinate of graphics cursor.
+SYSVAR_GNEWX	EQU	SYSVAR_GOLDY+1	    ;[=$6268] Stores new X co-ordinate before LINE draw.
+SYSVAR_GNEWY	EQU	SYSVAR_GNEWX+2	    ;[=$626A] Stores new Y co-ordinate before LINE draw.
+SYSVAR_PROTST	EQU	SYSVAR_GNEWY+1	    ;[=$626B] Protect store.
+SYSVAR_OUTB	    EQU	SYSVAR_PROTST+1	    ;[=$626C] Jump to routine which outputs byte with data in A, mask in C and relative displacement from top left in HL. Uses colour selected by INK and PAPER.
+SYSVAR_CHRTBL	EQU	SYSVAR_OUTB+3	    ;[=$626F] Pointer used to generate characters 32-127.
+SYSVAR_GPHTBL	EQU	SYSVAR_CHRTBL+2	    ;[=$6271] Pointer used to generate characters 128-255.
+SYSVAR_BPERL	EQU	SYSVAR_GPHTBL+2	    ;[=$6273] Bytes per line: 20H normally, 40H in double height mode.
+SYSVAR_MASK	    EQU	SYSVAR_BPERL+2	    ;[=$6275] Mask used by display driver: change with VDU 20/21.
+SYSVAR_FLIGHT	EQU	SYSVAR_MASK+1	    ;[=$6276] Jump to lightpen function.
+SYSVAR_FJOY	    EQU	SYSVAR_FLIGHT+3	    ;[=$6279] Jump to joystick function.
+SYSVAR_FUSER0	EQU	SYSVAR_FJOY+3	    ;[=$627C] Jump to USER0 function.
+SYSVAR_FUSER1	EQU	SYSVAR_FUSER0+3	    ;[=$627F] Jump to USER1 function.
+SYSVAR_FUSER2	EQU	SYSVAR_FUSER1+3	    ;[=$6282] Jump to USER2 function.
+SYSVAR_FUSER3	EQU	SYSVAR_FUSER2+3	    ;[=$6285] Jump to USER3 function.
+SYSVAR_ERRAM	EQU	SYSVAR_FUSER3+3	    ;[=$6288] Called during error.
+SYSVAR_SLFRAM	EQU	SYSVAR_ERRAM+3	    ;[=$628B] Called when line feed occurs.
+SYSVAR_BLUBNK	EQU	SYSVAR_SLFRAM+3	    ;[=$628E] Pointer to BLUE bank.
+SYSVAR_REDBNK	EQU	SYSVAR_BLUBNK+2	    ;[=$6290] Pointer to RED bank.
+SYSVAR_GRNBNK	EQU	SYSVAR_REDBNK+2	    ;[=$6292] Pointer to GREEN bank.
+SYSVAR_NMIRAM	EQU	SYSVAR_GRNBNK+2	    ;[=$6294] Jump here on NMI. Jump  to 3B32H (not implemented)
+SYSVAR_RSTRAM	EQU	SYSVAR_NMIRAM+3	    ;[=$6297] Jumps here on RST 38H.
+SYSVAR_ERRTBL	EQU	SYSVAR_RSTRAM+3	    ;[=$629A] Pointer to error messages.
+SYSVAR_CASLEV	EQU	SYSVAR_ERRTBL+2	    ;[=$629C] Cassette input threshold level.
+SYSVAR_COARSE	EQU	SYSVAR_CASLEV+1	    ;[=$629D] Coarse adjustment on cassette speed.
+SYSVAR_FINE	    EQU	SYSVAR_COARSE+1	    ;[=$629E] Fine adjustment on cassette speed.
+SYSVAR_SYNCLEN	EQU	SYSVAR_FINE+1	    ;[=$629F] Length of sync.
+SYSVAR_PLYLEV	EQU	SYSVAR_SYNCLEN+1	;[=$62A0] Voltage reference for comparator. Used by LOAD instruction.
+SYSVAR_CASTBL	EQU	SYSVAR_PLYLEV+1	    ;[=$62A1] Pointer to table used to generate wave. (SOUND?)
+SYSVAR_RBIT	    EQU	SYSVAR_CASTBL+2	    ;[=$62A3] Jump to read bit routine.
+SYSVAR_WBYTE	EQU	SYSVAR_RBIT+3	    ;[=$62A6] Jump to write byte routine (to tape).
+SYSVAR_PP	    EQU	SYSVAR_WBYTE+3	    ;[=$62A9] Jump to print a polish expression.
+SYSVAR_NTP	    EQU	SYSVAR_PP+3	        ;[=$62AC] Jump to normal to internal language conversion routine.
+SYSVAR_EE	    EQU	SYSVAR_NTP+3	    ;[=$62AF] Jump to evaluate expression.
+SYSVAR_DBASLN	EQU	SYSVAR_EE+3	        ;[=$62B2] Jump to display basic line.
+SYSVAR_DEBUG	EQU	SYSVAR_DBASLN+3	    ;[=$62B5] Jump to SPEED and TRACE routines.
+SYSVAR_VIDEO	EQU	SYSVAR_DEBUG+3	    ;[=$62B8] Jump to routine which outputs character in A to current cursor position.
+SYSVAR_LINP	    EQU	SYSVAR_VIDEO+3	    ;[=$62BB] Jump to line input routine.
+SYSVAR_VRPTS	EQU	SYSVAR_LINP+3	    ;[=$62BE] Jump to string variable pointer routine.
+SYSVAR_SPEEDST	EQU	SYSVAR_VRPTS+3	    ;[=$62C1] Used by SPEED.
+SYSVAR_STORE	EQU	SYSVAR_SPEEDST+1	;[=$62C2] General purpose store.
+SYSVAR_OLDESC	EQU	SYSVAR_STORE+2	    ;[=$62C4] ESC key roll over.
+SYSVAR_OLDKEY	EQU	SYSVAR_OLDESC+1	    ;[=$62C5] Rest of keyboard roll over.
+SYSVAR_WRA4	    EQU	SYSVAR_OLDKEY+10	;[=$62CF] WORKING REGISTER AREA 4
+SYSVAR_WRA3	    EQU	SYSVAR_WRA4+5	    ;[=$62D4] WORKING REGISTER AREA 3
+SYSVAR_WRAE	    EQU	SYSVAR_WRA3+9	    ;[=$62DD] WORKING REGISTER AREA 2 EXTENDED.
+SYSVAR_WRA2	    EQU	SYSVAR_WRAE+3	    ;[=$62E0] WORKING REGISTER AREA 2
+SYSVAR_WRA1	    EQU	SYSVAR_WRA2+5	    ;[=$62E5] WORKING REGISTER AREA I
+SYSVAR_SYNL	    EQU	SYSVAR_WRA1+5	    ;[=$62EA] .
+SYSVAR_SYNP	    EQU	SYSVAR_SYNL+1	    ;[=$62EB] .
+SYSVAR_SYNC	    EQU	SYSVAR_SYNP+1	    ;[=$62EC] .
+SYSVAR_NPM	    EQU	SYSVAR_SYNC+1	    ;[=$62ED] All used by NTP.
+SYSVAR_SBC	    EQU	SYSVAR_NPM+1	    ;[=$62EE] Space before command on line listing (used for indentation).
+SYSVAR_PROCST	EQU	SYSVAR_SBC+1	    ;[=$62EF] Pointer to first DEFPROC.
+SYSVAR_EDST	    EQU	SYSVAR_PROCST+2	    ;[=$62F1] EDIT buffer driver.
+SYSVAR_AUTOST	EQU	SYSVAR_EDST+2	    ;[=$62F3] Auto line number, increment.
+SYSVAR_PRTBUF	EQU	SYSVAR_AUTOST+10	;[=$62FD] Used during printing number.
+SYSVAR_POLBUFS	EQU	SYSVAR_PRTBUF+10	;[=$6307] Internal language buffer.
+SYSVAR_STRBUF	EQU	SYSVAR_POLBUFS+256	;[=$6407] String calculation buffer.
+SYSVAR_CSTACK	EQU	SYSVAR_STRBUF+256	;[=$6507] Calculator stack.
+SYSVAR_RSTACKS	EQU	SYSVAR_CSTACK+256	;[=$6607] Return stack.
+SYSVAR_VTBLS	EQU	SYSVAR_RSTACKS+256	;[=$6707] (53*5) Variable table.
+SYSVAR_ATBLS	EQU	SYSVAR_VTBLS+265	;[=$6810] (53*4) Array table.
+SYSVAR_STBLS	EQU	SYSVAR_ATBLS+212	;[=$68E4] String table.
+SYSVAR_DFTMRK	EQU	SYSVAR_STBLS+104	;[=$694C] Carriage return used in READ, DATA.
+SYSVAR_SOBS	    EQU	SYSVAR_DFTMRK+1	    ;[=$694D] START OF BASIC PROGRAM.
 
 ;
 ; Start. Disable interrupts. Jump to 3B.
@@ -478,7 +523,7 @@ CALL_XPOS3:
     JP    VIDEO_XPOS3B              ;[012D] 
 
 ;
-; First of four screen position routines (see Nilug 1)
+; First of four screen position routines (see Nilug 1) <DISPLAY.MAC: VID1>
 ;
 VIDEO_XPOS1:
     LD    B,$0A                     ;[0130] 
@@ -500,7 +545,7 @@ VIDEO_XPOS1A:
     RET                             ;[014A] 
 
 ;
-; Second of four screen position routines (see Nilug 1)
+; Second of four screen position routines (see Nilug 1) <DISPLAY.MAC: VID2>
 ;
 VIDEO_XPOS2:
     LD    B,$0A                     ;[014B] 
@@ -733,7 +778,7 @@ DATA_CHARS:
     DB $00,$00,$18,$18,$00,$00,$00,$00,$00,$00      ;[068E] 
 
 ;
-; Set ink and paper. VDU 1/2 with argument in A.
+; Set ink and paper. (VDU 1/2 with argument in A.)
 ;
 SETINK:
     LD    (SYSVAR_INKST),A          ;[0698] 
@@ -749,7 +794,7 @@ SETPAPER:
     JR    INKPAPER_EXIT             ;[06A2] 
 
 ;
-; Display Driver <D$SCRN>
+; Display Driver <DISPLAY.MAC:D$SCRN>
 ;
 SCREEN:
     PUSH  AF                        ;[06A4] 
@@ -777,6 +822,7 @@ SCREEN_END:
     POP   DE                        ;[06CA] 
     POP   HL                        ;[06CB] 
     POP   AF                        ;[06CC] 
+NULL:
     RET                             ;[06CD] 
 
 ;
@@ -791,7 +837,7 @@ OUTB_OR_VDU:
     POP   AF                        ;[06D8] 
     LD    HL,SCREEN2                ;[06D9] 
     PUSH  HL                        ;[06DC] Return address.
-    LD    HL,DATA_VDU_ROUTINES      ;[06DD] 
+    LD    HL,SCREEN_TBL             ;[06DD] 
     RLCA                            ;[06E0] 
     LD    E,A                       ;[06E1] 
     LD    D,$00                     ;[06E2] 
@@ -803,46 +849,71 @@ OUTB_OR_VDU:
     JP    (HL)                      ;[06E9] 
 
 ;
-; List of ROM addresses for the VDU routines. (VDU1-31)
+; List of ROM addresses for the VDU routines. (VDU 0-31)
 ;
-DATA_VDU_ROUTINES:
-    DB $CD,$06,$CD,$06,$CD,$06,$CD,$06      ;[06EA]  ........
-    DB $62,$07,$0C,$08,$87,$07,$2D,$09      ;[06F2]  b.....-.
-    DB $20,$08,$A2,$07,$7E,$07,$CD,$06      ;[06FA]  ....~...
-    DB $C5,$0D,$7B,$07,$28,$08,$2E,$08      ;[0702]  ..{.(...
-    DB $68,$07,$CD,$06,$3C,$07,$6F,$07      ;[070A]  h...<.o.
-    DB $34,$07,$36,$07,$DE,$07,$65,$07      ;[0712]  4.6...e.
-    DB $2A,$07,$30,$07,$CD,$06,$CD,$06      ;[071A]  *.0.....
-    DB $10,$08,$8B,$07,$C1,$07,$7B,$07      ;[0722]  ......{.
+SCREEN_TBL:
+    DW    NULL                      ;[06EA] 
+    DW    NULL                      ;[06EC] 1
+    DW    NULL                      ;[06EE] 2
+    DW    NULL                      ;[06F0] 3
+    DW    SCREEN_CLEAR              ;[06F2] 4
+    DW    SCREEN_UP_ONE             ;[06F4] 5
+    DW    SCREEN_DOWN_ONE           ;[06F6] 6
+    DW    SCREEN_BELL               ;[06F8] 7
+    DW    SCREEN_BACKSPACE          ;[06FA] 8
+    DW    SCREEN_TAB                ;[06FC] 9
+    DW    SCREEN_LF                 ;[06FE] 10
+    DW    NULL                      ;[0700] 11
+    DW    PATCH1                    ;[0702] 12
+    DW    SCREEN_CRLF               ;[0704] 13
+    DW    SCREEN_CURS_ON            ;[0706] 14
+    DW    SCREEN_CURS_OFF           ;[0708] 15
+    DW    SCREEN_TOP                ;[070A] 16
+    DW    NULL                      ;[070C] 17
+    DW    SCREEN_INVERT             ;[070E] 18
+    DW    SCREEN_BEGIN              ;[0710] 19
+    DW    SCREEN_MASK               ;[0712] 20
+    DW    SCREEN_MASK+$02           ;[0714] 21
+    DW    SCREEN_BACK_CURS          ;[0716] 22
+    DW    SCREEN_HOME               ;[0718] 23
+    DW    SCREEN_DOUBLE_ON          ;[071A] 24
+    DW    SCREEN_DOUBLE_OFF         ;[071C] 25
+    DW    NULL                      ;[071E] 26
+    DW    NULL                      ;[0720] 27
+    DW    SCREEN_HA_LF_UP           ;[0722] 28
+    DW    SCREEN_HA_LF              ;[0724] 29
+    DW    SCREEN_CLEAR_EOL          ;[0726] 30
+    DW    SCREEN_CRLF               ;[0728] 31
 
 ;
-; Turns double height characters on
+; Turns double height characters on (VDU 24)
 ;
-VDU_24:
+SCREEN_DOUBLE_ON:
     LD    A,$40                     ;[072A] 
+SCREEN_SET_BPERL:
     LD    (SYSVAR_BPERL),A          ;[072C] I guess it's 64 because 32 cols but printed twice when double height?
     RET                             ;[072F] 
 
 ;
-; Turns double height characters off
+; Turns double height characters off (VDU 25)
 ;
-VDU_25:
+SCREEN_DOUBLE_OFF:
     LD    A,$20                     ;[0730] 
-    JR    $072C                     ;[0732] 
+    JR    SCREEN_SET_BPERL          ;[0732] 
 
 ;
-; Overwrite on
+; Overwrite on (VDU 21)
 ;
-VDU_20:
+SCREEN_MASK:
     XOR   A                         ;[0734] 
-    LD    BC,$FF3E                  ;[0735] 
+    LD    BC,$FF3E                  ;[0735] (nb. SCREEN_MASK+$02:  LD  A,$FF)
     LD    (SYSVAR_MASK),A           ;[0738] 
     RET                             ;[073B] 
 
 ;
-; Swaps ink and paper
+; Swaps ink and paper (VDU 18)
 ;
-VDU_18:
+SCREEN_INVERT:
     LD    HL,(SYSVAR_INKST)         ;[073C] 
     LD    A,L                       ;[073F] 
     LD    L,H                       ;[0740] 
@@ -925,14 +996,14 @@ SCREEN_LF:
 ;
 SCREEN_DOWN_ONE:
     LD    C,$01                     ;[0787] 
-    JR    SCREEN_HALF_LF2           ;[0789] 
+    JR    SCREEN_HA_LF1             ;[0789] 
 
 ;
-; Moves cursor down 3 pixels (VDU_29)
+; Moves cursor down 3 pixels (VDU 29) (Half linefeed)
 ;
-SCREEN_HALF_LF:
+SCREEN_HA_LF:
     LD    C,$03                     ;[078B] 
-SCREEN_HALF_LF2:
+SCREEN_HA_LF1:
     LD    DE,(SYSVAR_CURSORX)       ;[078D] 
     LD    HL,(SYSVAR_WINDST+$02)    ;[0791] 
     LD    A,D                       ;[0794] 
@@ -949,7 +1020,7 @@ SCREEN_CR:
     RET                             ;[07A1] 
 
 ;
-; Tabs cursor to next field (VDU_9)
+; Tabs cursor to next field (VDU 9)
 ;
 SCREEN_TAB:
     LD    A,(SYSVAR_CURSORX)        ;[07A2] 
@@ -977,14 +1048,14 @@ SCREEN_TAB12:
     RST   $38                       ;[07C0] 
 
 ;
-; Clears to end of line
+; Clears to end of line (VDU 30)
 ;
-VDU_30:
+SCREEN_CLEAR_EOL:
     LD    A,(SYSVAR_WINDST+$01)     ;[07C1] 
     DEC   A                         ;[07C4] 
     LD    HL,(SYSVAR_CURSORX)       ;[07C5] 
     PUSH  HL                        ;[07C8] 
-VDU_30_LOOP:
+SCREEN_CLEAR_EOL_LOOP:
     LD    (SYSVAR_CURSORX),HL       ;[07C9] 
     PUSH  HL                        ;[07CC] 
     PUSH  AF                        ;[07CD] 
@@ -996,14 +1067,14 @@ VDU_30_LOOP:
     INC   L                         ;[07D6] 
     INC   L                         ;[07D7] 
     CP    L                         ;[07D8] 
-    JR    NC,VDU_30_LOOP            ;[07D9] 
+    JR    NC,SCREEN_CLEAR_EOL_LOOP  ;[07D9] 
     POP   DE                        ;[07DB] 
     JR    SAVE_CURSORX              ;[07DC] 
 
 ;
-; Backspace cursor
+; Backspace cursor (VDU 22)
 ;
-VDU_22:
+SCREEN_BACK_CURS:
     CALL  SUB_BACKSPACE             ;[07DE] 
 SAVE_CURSORX:
     LD    (SYSVAR_CURSORX),DE       ;[07E1] 
@@ -1044,18 +1115,18 @@ SUB_BACKSPACE3:
     RET                             ;[080B] 
 
 ;
-; Moves cursor up one pixel
+; Moves cursor up one pixel (VDU 5)
 ;
-VDU_5:
+SCREEN_UP_ONE:
     LD    C,$01                     ;[080C] 
-    JR    VDU_28A                   ;[080E] 
+    JR    SCREEN_HA_LF_UP1          ;[080E] 
 
 ;
-; Moves cursor up 3 pixels 
+; Moves cursor up 3 pixels (VDU 28)
 ;
-VDU_28:
+SCREEN_HA_LF_UP:
     LD    C,$03                     ;[0810] 
-VDU_28A:
+SCREEN_HA_LF_UP1:
     LD    DE,(SYSVAR_CURSORX)       ;[0812] 
     LD    HL,(SYSVAR_WINDST+$02)    ;[0816] 
     LD    A,D                       ;[0819] 
@@ -1064,15 +1135,15 @@ VDU_28A:
     JR    SAVE_CURSORX              ;[081E] 
 
 ;
-; Backspace and erase character
+; Backspace and erase character (VDU 8)
 ;
-VDU_8:
-    CALL  VDU_22                    ;[0820] 
+SCREEN_BACKSPACE:
+    CALL  SCREEN_BACK_CURS          ;[0820] 
     LD    A,$20                     ;[0823] 
     JP    SYSVAR_VIDEO              ;[0825] 
 
 ;
-; Turns cursor on (VDU_14)
+; Turns cursor on (VDU 14)
 ;
 SCREEN_CURS_ON:
     LD    A,$01                     ;[0828] 
@@ -1081,7 +1152,7 @@ GET_CURSTAT:
     RET                             ;[082D] 
 
 ;
-; Turns cursor off (VDU_15)
+; Turns cursor off (VDU 15)
 ;
 SCREEN_CURS_OFF:
     XOR   A                         ;[082E] 
@@ -1279,11 +1350,11 @@ SUB_CLS_COLOUR:
     RET                             ;[092C] 
 
 ;
-; beeps
+; beeps (VDU 7)
 ;
-VDU_7:
-    LD    HL,$00B4                  ;[092D] 
-    LD    DE,$01C8                  ;[0930] 
+SCREEN_BELL:
+    LD    HL,KBEEP_LEN              ;[092D] 
+    LD    DE,KBEEP_WAV              ;[0930] 
     LD    BC,$3F84                  ;[0933] 
     LD    A,$01                     ;[0936] 
     OUT   ($80),A                   ;[0938] 
@@ -1766,7 +1837,7 @@ TAPE_READ:
     INC   DE                        ;[0C26] 
 TAPE_READ_NEXT:
     PUSH  DE                        ;[0C27] 
-    LD    HL,INP_BUFFER             ;[0C28] 
+    LD    HL,INPBUF                 ;[0C28] 
 TAPE_FIND_SYNC:
     CALL  RSYNC                     ;[0C2B] 
     CALL  RBYTE                     ;[0C2E] 
@@ -1785,7 +1856,7 @@ TAPE_READ_FNAME:
     LD    A,$22                     ;[0C43] 
     RST   $08                       ;[0C45] 
     LD    (HL),$00                  ;[0C46] 
-    LD    HL,INP_BUFFER             ;[0C48] 
+    LD    HL,INPBUF                 ;[0C48] 
     PUSH  HL                        ;[0C4B] 
     CALL  PLINE                     ;[0C4C] Display filename.
     DEC   HL                        ;[0C4F] 
@@ -2014,9 +2085,9 @@ DATA_TAPE:
     DB $1B,$02,$01,$07,$14,$03,$02,$08      ;[0DBD]  ........
 
 ;
-; Moves cursor one character block to the right.
+; Moves cursor one character block to the right. (VDU 12) (I don't know why it's called PATCH1)
 ;
-VDU_12:
+PATCH1:
     CALL  ADV_CURSOR                ;[0DC5] 
     JP    SAVE_CURSORX              ;[0DC8] 
 
@@ -2733,7 +2804,7 @@ CHAR_INPUT:
 ; Load flash rate and cursor characters.
 ;
 CURS_VALUES:
-    LD    HL,INP_BUFFER             ;[10CC] 
+    LD    HL,INPBUF                 ;[10CC] 
     LD    D,H                       ;[10CF] 
     LD    E,L                       ;[10D0] 
     LD    BC,$0000                  ;[10D1] 
@@ -2871,7 +2942,7 @@ CONTROL_E:
     CALL  PLINE                     ;[116F] 
     CALL  CURS_VALUES               ;[1172] Load cursor values (rate,etc)
     CALL  LINP_CRLF                 ;[1175] 
-    LD    DE,INP_BUFFER             ;[1178] 
+    LD    DE,INPBUF                 ;[1178] 
     RST   $10                       ;[117B] is (DE) a space?
     CALL  RDN                       ;[117C] 
     CALL  FNDLN_WRA1                ;[117F] 
@@ -2880,7 +2951,7 @@ CONTROL_E:
     PUSH  HL                        ;[1188] 
     LD    HL,SUB_LINP_EDITB         ;[1189] 
     LD    (SYSVAR_PRINTD),HL        ;[118C] Display driver
-    LD    HL,INP_BUFFER             ;[118F] 
+    LD    HL,INPBUF                 ;[118F] 
     LD    (SYSVAR_EDST),HL          ;[1192] LET Edit buffer = $6000 (beginning of RAM)
     XOR   A                         ;[1195] 
     LD    (SYSVAR_SBC),A            ;[1196] Space before command
@@ -3145,7 +3216,7 @@ START:
     OR    A                         ;[16A6] 
     CALL  Z,EXT_ROM                 ;[16A7] External rom is present, boot it. (otherwise FF)
     CALL  ZERO_MEM                  ;[16AA] 
-    LD    HL,INP_BUFFER             ;[16AD] 
+    LD    HL,INPBUF                 ;[16AD] 
     LD    (HL),$0D                  ;[16B0] 
     ADD   HL,SP                     ;[16B2] 
     LD    HL,DATA_LYNX_LOGO         ;[16B3] 
@@ -3190,7 +3261,7 @@ USER_INPUT:
 ;
 DO_AUTONUM:
     LD    (SYSVAR_STACK),SP         ;[16F0] 
-    LD    DE,INP_BUFFER             ;[16F4] 
+    LD    DE,INPBUF                 ;[16F4] 
     CALL  LINP_ANLYS                ;[16F7] 
     LD    A,(SYSVAR_AUTOFL)         ;[16FA] 
     OR    A                         ;[16FD] 
@@ -4712,7 +4783,7 @@ BASIC_COM_INPUT:
     CALL  SUB_INPUT_IS_ESC          ;[20A4] 
     LD    A,$0F                     ;[20A7] 
     RST   $08                       ;[20A9] 
-    LD    DE,INP_BUFFER             ;[20AA] 
+    LD    DE,INPBUF                 ;[20AA] 
     EXX                             ;[20AD] 
     POP   DE                        ;[20AE] 
     CALL  $20B5                     ;[20AF] 
@@ -5871,7 +5942,7 @@ VALIDATE_LET:
     CALL  $2C9D                     ;[26A0] 
     INC   DE                        ;[26A3] 
     JR    $268F                     ;[26A4] 
-    LD    DE,INP_BUFFER             ;[26A6] 
+    LD    DE,INPBUF                 ;[26A6] 
     LD    HL,(SYSVAR_POLBUF)        ;[26A9] 
     PUSH  HL                        ;[26AC] 
     CALL  VALIDATE_INK              ;[26AD] 
@@ -9203,7 +9274,7 @@ BASIC_COM_MON:
     LD    A,$2A                     ;[3B9E] 
     RST   $08                       ;[3BA0] 
     CALL  SYSVAR_LINP               ;[3BA1] 
-    LD    DE,INP_BUFFER             ;[3BA4] 
+    LD    DE,INPBUF                 ;[3BA4] 
     LD    A,(DE)                    ;[3BA7] 
     CALL  TEST_MON_LETTER           ;[3BA8] 
     SUB   $41                       ;[3BAB] 
@@ -9327,7 +9398,7 @@ SUB_TBD_3C2D:
     CALL  OUTPUT_SPACE              ;[3C43] 
     CALL  SYSVAR_LINP               ;[3C46] 
     POP   BC                        ;[3C49] 
-    LD    DE,INP_BUFFER             ;[3C4A] 
+    LD    DE,INPBUF                 ;[3C4A] 
     LD    A,(DE)                    ;[3C4D] 
     CP    $0D                       ;[3C4E] 
     JR    Z,$3C2F                   ;[3C50] 
