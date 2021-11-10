@@ -50,22 +50,17 @@ ERR_OUT_OF_MEM          EQU $3B4D    ; Out of Memory
 
 ;
 ; Lynx Constants (as defined in Mark II source code, Apr 1984)
-; (possibly unused in 48K original rom - TBD)
+; (possibly some unused in 48K original rom - TBD)
 ;
-EXT_ROM     EQU $4000   ; External ROM address (constant)
-KBEEP_LEN   EQU 180     ; length of beep
-KBEEP_WAV   EQU 456     ; wavelength of beep
-PZ          EQU $0FF    ; "no next page" mark
-MXNFIL      EQU 48      ; max. no. of files
-FILINF      EQU $200-MXNFIL*8       ; file info
-TEDIT       EQU 5
-RLAST       EQU 17
+EXT_ROM     EQU $4000   ; External ROM address
+;TEDIT       EQU 5       ; unused
+RLAST       EQU 17      ; Input related
 MAXLEN      EQU 240     ; Maximum length of input buffer
-CURCHR      EQU 95
+CURCHR      EQU 95      ; (see SCREEN2)
 RSTLEN      EQU 256     ; RETURN STACK LENGTH
 EOP         EQU $7F     ; END OF POLISH
 SOP         EQU $7D     ; START OF POLISH
-NUM         EQU $7E
+NUM         EQU $7E     ; NUMBER MARKER
 HNUM        EQU $7A
 SOS         EQU $7C
 ARGSOS      EQU $79
@@ -116,11 +111,12 @@ KDBLUE      EQU $0C020  ; temp. addr. for double height
 KDRED       EQU $8020
 KDGREEN     EQU $8020
 KDALTG      EQU $0C020
+
 ;
-; Lynx System RAM addresses, prior to the start of Basic RAM.
+; Lynx System RAM locations, prior to the start of user ram (Basic).
 ; (taken from Camputers Lynx Mark II source code - RAM/E02 1-Apr-84)
 ;
-INPBUF      EQU $6000           ;[=$6000] Input buffer (length: MAXLEN+20=>260 bytes)
+INPBUF      EQU $6000           ;[=$6000] Input buffer (length: MAXLEN+20=260 bytes)
 MONSTACK    EQU INPBUF+260      ;[=$6104] Monitor stack
 TRAPREGS    EQU MONSTACK+150    ;[=$619A] Registers: AF,HL,DE,BC,AF',HL',DE',BC',IX,IY
 TRAPSP      EQU TRAPREGS+20     ;[=$61AE] SP
@@ -156,7 +152,8 @@ CURINC      EQU MODST+1         ;[=$61E2] Inc of CURSRX per char
 INTFLG      EQU CURINC+1        ;[=$61E3] Whether allow EI
 PORT80      EQU INTFLG+1        ;[=$61E4] Preserve status of port 80
 PORT82      EQU PORT80+1        ;[=$61E5] 
-EXTRAM      EQU PORT82+1        ;[=$61E6] 4 addresses for 
+EXTRAM      EQU PORT82+1        ;[=$61E6] 4 addresses for EXT
+
 ;
 ; Lynx system variables as listed in "Lynx User" 1 magazine (June 1983):
 ;

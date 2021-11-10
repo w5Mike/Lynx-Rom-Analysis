@@ -1,0 +1,208 @@
+;***********************************************************************
+;*
+;*               Camputers Lynx 48k Token Definitions
+;*               ------------------------------------
+;*
+;*   Lynx BASIC token values (taken from the Lynx "Mark II" source code, 
+;*   Apr-1984). Included here for compatibility. These tokens map to 
+;*   numeric values for basic keywords - used in the internal system 
+;*   representation of user's code.
+;*
+;*   Collation and formatting by: Mike Panter 06/11/2021.
+;*
+;*   Include file for use with: Lynx_48k_Rom.ASM
+;* ---------------------------------------------------------------------
+;*
+
+;
+; Extracted from TABLES module
+;
+S       EQU $80
+MINUS   EQU '-'         ;
+;
+MEM     EQU $80         ; $80
+PI      EQU MEM+1       ; $81
+INKEY   EQU PI+1        ; $82
+RND     EQU INKEY+1     ; $83
+THL     EQU RND+1       ; $84
+LEN     EQU THL+1       ; $85
+VAL     EQU LEN+1       ; $86
+ASC     EQU VAL+1       ; $87
+HIMEM   EQU ASC+1       ; $88
+GET     EQU HIMEM+1     ; $89
+FNINK   EQU GET+1       ; $8A
+FNPAP   EQU FNINK+1     ; $8B
+POS     EQU FNPAP+1     ; $8C
+VPOS    EQU POS+1       ; $8D
+TRUE    EQU VPOS+1      ; $8E
+FALSE   EQU TRUE+1      ; $8F
+INF     EQU FALSE+1     ; $90
+BLACK   EQU INF+1       ; $91
+BLUE    EQU BLACK+1     ; $92
+RED     EQU BLUE+1      ; $93
+MGNTA   EQU RED+1       ; $94
+GREEN   EQU MGNTA+1     ; $95
+CYAN    EQU GREEN+1     ; $96
+YELLOW  EQU CYAN+1      ; $97
+WHITE   EQU YELLOW+1    ; $98
+ALPHA   EQU WHITE+1     ; $99
+GRPHIC  EQU ALPHA+1     ; $9A
+;
+SIN     EQU GRPHIC+1    ; $9B
+COS     EQU SIN+1       ; $9C
+TAN     EQU COS+1       ; $9D
+EXP     EQU TAN+1       ; $9E
+LOG     EQU EXP+1       ; $9F
+ANTLOG  EQU LOG+1       ; $A0
+LN      EQU ANTLOG+1    ; $A1
+SGN     EQU LN+1        ; $A2
+ABS     EQU SGN+1       ; $A3
+INT     EQU ABS+1       ; $A4
+FRAC    EQU INT+1       ; $A5
+SQR     EQU FRAC+1      ; $A6
+PEEK    EQU SQR+1       ; $A7
+DPEEK   EQU PEEK+1      ; $A8
+INP     EQU DPEEK+1     ; $A9
+ATN     EQU INP+1       ; $AA
+FACT    EQU ATN+1       ; $AB
+ARCCOS  EQU FACT+1      ; $AC
+ARCSIN  EQU ARCCOS+1    ; $AD
+LOCTN   EQU ARCSIN+1    ; $AE
+BIN     EQU LOCTN+1     ; $AF
+DEG     EQU BIN+1       ; $B0
+RAD     EQU DEG+1       ; $B1
+RAND    EQU RAD+1       ; $B2
+LIGHTP  EQU RAND+1      ; $B3
+JOYSTK  EQU LIGHTP+1    ; $B4
+USER0   EQU JOYSTK+1    ; $B5
+USER1   EQU USER0+1     ; $B6
+USER2   EQU USER1+1     ; $B7
+USER3   EQU USER2+1     ; $B8
+TFONT   EQU USER3+1     ; $B9
+;
+PARENS  EQU TFONT+6     ; $BA
+NOT     EQU PARENS+1    ; $BB
+NEGATE  EQU NOT+1       ; $BC
+FN0     EQU NEGATE+1    ; $BD
+FN1     EQU FN0+1       ; $BE
+ARRAY   EQU FN1+1       ; $BF
+POWER   EQU ARRAY+1     ; $C0
+MULT    EQU POWER+1     ; $C1
+DIVIDE  EQU MULT+1      ; $C2
+ADDQ    EQU DIVIDE+1    ; $C3
+SUBT    EQU ADDQ+1      ; $C4
+GEQUAL  EQU SUBT+1      ; $C5
+LEQUAL  EQU GEQUAL+1    ; $C6
+NEQUAL  EQU LEQUAL+1    ; $C7
+GREATER EQU NEQUAL+1    ; $C8
+LESS    EQU GREATER+1   ; $C9
+EQUAL   EQU LESS+1      ; $CA
+ORQ     EQU EQUAL+1     ; $CB
+ANDQ    EQU ORQ+1       ; $CC
+BNOR    EQU ANDQ+1      ; $CD
+BNXOR   EQU BNOR+1      ; $CE
+BNAND   EQU BNXOR+1     ; $CF
+TDIV    EQU BNAND+1     ; $D0
+MOD     EQU TDIV+1      ; $D1
+;
+THEN    EQU MOD+1       ; $D2
+OLABEL  EQU THEN+1      ; $D3
+AT      EQU OLABEL+1    ; $D4
+TON     EQU AT+1        ; $D5
+TOFF    EQU TON+1       ; $D6
+STEP    EQU TOFF+1      ; $D7
+TO      EQU STEP+1      ; $D8
+TAB     EQU TO+1        ; $D9
+CHR     EQU TAB+1       ; $DA
+LEFT    EQU CHR+1       ; $DB
+RIGHT   EQU LEFT+1      ; $DC
+MID     EQU RIGHT+1     ; $DD
+UPCS    EQU MID+1       ; $DE
+INKEYS  EQU UPCS+1      ; $DF
+GETS    EQU INKEYS+1    ; $E0
+STR     EQU GETS+1      ; $E1
+WORDS   EQU 80H         ; $E2
+;
+; Extracted from JUMPS module (formerly called EXTRA)
+;
+LET     EQU 0           ; $00
+VDU     EQU LET+1       ; $01
+DEFPRC  EQU VDU+1       ; $02
+PROC    EQU DEFPRC+1    ; $03
+ENDPRC  EQU PROC+1      ; $04
+NEXT    EQU ENDPRC+1    ; $05
+INK     EQU NEXT+1      ; $06
+PAPER   EQU INK+1       ; $07
+RANDOM  EQU PAPER+1     ; $08
+VERIFY  EQU RANDOM+1    ; $09
+DOKE    EQU VERIFY+1    ; $0A
+POINT   EQU DOKE+1      ; $0B
+POKE    EQU POINT+1     ; $0C
+ENDQ    EQU POKE+1      ; $0D
+STOP    EQU ENDQ+1      ; $0E
+FOR     EQU STOP+1      ; $0F
+GOTO    EQU FOR+1       ; $10
+GOSUB   EQU GOTO+1      ; $11
+RETURN  EQU GOSUB+1     ; $12
+CLS     EQU RETURN+1    ; $13
+RUN     EQU CLS+1       ; $14
+CONT    EQU RUN+1       ; $15
+OUTQ    EQU CONT+1      ; $16
+REM     EQU OUTQ+1      ; $17
+READ    EQU REM+1       ; $18
+DATA    EQU READ+1      ; $19
+NEW     EQU DATA+1      ; $1A
+DELETE  EQU NEW+1       ; $1B
+AUTO    EQU DELETE+1    ; $1C
+PRINT   EQU AUTO+1      ; $1D
+LOADQ   EQU PRINT+1     ; $1E
+SAVE    EQU LOADQ+1     ; $1F
+RESTOR  EQU SAVE+1      ; $20
+PLOT    EQU RESTOR+1    ; $21
+MOVE    EQU PLOT+1      ; $22
+DRAW    EQU MOVE+1      ; $23
+CALLQ   EQU DRAW+1      ; $24
+INPUT   EQU CALLQ+1     ; $25
+DIM     EQU INPUT+1     ; $26
+IF      EQU DIM+1       ; $27
+LIST    EQU IF+1        ; $28
+WINDOW  EQU LIST+1      ; $29
+PAUSE   EQU WINDOW+1    ; $2A
+TROUND  EQU PAUSE+1     ; $2B
+TRAIL   EQU TROUND+1    ; $2C
+LPRINT  EQU TRAIL+1     ; $2D
+LLIST   EQU LPRINT+1    ; $2E
+LABEL   EQU LLIST+1     ; $2F
+BEEP    EQU LABEL+1     ; $30
+SOUND   EQU BEEP+1      ; $31
+APPEND  EQU SOUND+1     ; $32
+CODE    EQU APPEND+1    ; $33
+LINK    EQU CODE+1      ; $34
+ZSWAP   EQU LINK+1      ; $35
+WHILE   EQU ZSWAP+1     ; $36
+WEND    EQU WHILE+1     ; $37
+REPEAT  EQU WEND+1      ; $38
+UNTIL   EQU REPEAT+1    ; $39
+FTEXT   EQU UNTIL+1     ; $3A
+PRTABR  EQU FTEXT+1     ; $3B
+ELSE    EQU PRTABR+1    ; $3C
+RESERV  EQU ELSE+1      ; $3D
+MONITR  EQU RESERV+1    ; $3E
+RENUM   EQU MONITR+1    ; $3F
+DISK    EQU RENUM+1     ; $40
+EXT     EQU DISK+1      ; $41
+CFR     EQU EXT+1       ; $42
+CCHAR   EQU CFR+1       ; $43
+TRACE   EQU CCHAR+1     ; $44
+SPEED   EQU TRACE+1     ; $45
+PRTECT  EQU SPEED+1     ; $46
+TERROR  EQU PRTECT+1    ; $47
+TTAPE   EQU TERROR+1    ; $48
+TLOADM  EQU TTAPE+1     ; $49
+TEXT    EQU TLOADM+1    ; $4A
+BREAK   EQU TEXT+1      ; $4B
+LOW     EQU BREAK+1     ; $4C
+FAST    EQU LOW+1       ; $4D
+OLD     EQU FAST+1      ; $4E
+XTZZZ   EQU OLD+1       ; $4F
+; End TOKENS.DEF

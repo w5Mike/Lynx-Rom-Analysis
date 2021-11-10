@@ -35,9 +35,11 @@
 ;*
 
 ;
-; Lynx global definitions (see separate file)
+; Lynx global definitions (see separate files)
+; Lynx symbols and BASIC tokens
 ;
 include "Lynx.def"
+include "Tokens.def"
 
 ;
 ; Start. Disable interrupts. Jump to 3B.
@@ -616,7 +618,7 @@ SCREEN:
 SCREEN2:
     LD    A,(SYSVAR_CURSTAT)        ;[06C0] 
     OR    A                         ;[06C3] 
-    LD    A,$5F                     ;[06C4] 
+    LD    A,CURCHR                  ;[06C4] 
     CALL  NZ,SYSVAR_VIDEO           ;[06C6] 
 SCREEN_END:
     POP   BC                        ;[06C9] 
@@ -1154,8 +1156,8 @@ SUB_CLS_COLOUR:
 ; beeps (VDU 7)
 ;
 SCREEN_BELL:
-    LD    HL,KBEEP_LEN              ;[092D] 
-    LD    DE,KBEEP_WAV              ;[0930] 
+    LD    HL,KBPLEN                 ;[092D] 
+    LD    DE,KBPWAV                 ;[0930] 
     LD    BC,$3F84                  ;[0933] 
     LD    A,$01                     ;[0936] 
     OUT   ($80),A                   ;[0938] 
@@ -2572,7 +2574,7 @@ FLASH_CURSOR_END:
 CHAR_INPUT:
     EX    AF,AF'                    ;[10A7] 
     LD    A,B                       ;[10A8] 
-    CP    $F0                       ;[10A9] 
+    CP    MAXLEN                    ;[10A9] 
     JR    NC,LINP1                  ;[10AB] 
     EX    AF,AF'                    ;[10AD] 
     RST   $08                       ;[10AE] 
@@ -3126,20 +3128,21 @@ DATA_LYNX_LOGO:
 BAS_LINE_ANALYSIS:
     LD    A,(DE)                    ;[17FC] 
     INC   DE                        ;[17FD] 
-    CP    $7C                       ;[17FE] 
+    CP    SOS                       ;[17FE] 
     JR    Z,SUB_LINE_ANALYSIS3      ;[1800] 
-    CP    $79                       ;[1802] 
+    CP    ARGSOS                    ;[1802] 
     JR    Z,SUB_LINE_ANALYSIS3      ;[1804] 
-    CP    $85                       ;[1806] 
+    CP    LEN                       ;[1806] 
     JR    Z,BAS_LINE_ANALYSIS       ;[1808] 
-    CP    $87                       ;[180A] 
+    CP    ASC                       ;[180A] 
     JR    Z,BAS_LINE_ANALYSIS       ;[180C] 
-    CP    $86                       ;[180E] 
+    CP    VAL                       ;[180E] 
     JR    Z,BAS_LINE_ANALYSIS       ;[1810] 
-    CP    $7A                       ;[1812] 
-    JR    Z,$1819                   ;[1814] 
-    CP    $7E                       ;[1816] 
+    CP    HNUM                      ;[1812] 
+    JR    Z,BAS_LINE_ANALYSIS2      ;[1814] 
+    CP    NUM                       ;[1816] 
     RET   NZ                        ;[1818] 
+BAS_LINE_ANALYSIS2:
     INC   DE                        ;[1819] 
     INC   DE                        ;[181A] 
     INC   DE                        ;[181B] 
@@ -3152,7 +3155,7 @@ BAS_LINE_ANALYSIS:
 ;
 SUB_LINE_ANALYSIS3:
     CALL  BAS_LINE_ANALYSIS         ;[181F] 
-    CP    $7B                       ;[1822] 
+    CP    EOS                       ;[1822] 
     JR    NZ,SUB_LINE_ANALYSIS3     ;[1824] 
     RET                             ;[1826] 
 
@@ -3168,19 +3171,19 @@ SUB_LINE_ANALYSIS4:
 ;
 ; Line analysis subroutine.
 ;
-SUB_LINE_ANALYSIS5:
+PNAME:
     LD    A,(DE)                    ;[182D] 
-    CP    $7C                       ;[182E] 
+    CP    SOS                       ;[182E] 
     JR    Z,SUB_LINE_ANALYSIS4      ;[1830] 
     CP    $80                       ;[1832] 
     JR    NC,SUB_LINE_ANALYSIS6     ;[1834] 
-    CP    $7E                       ;[1836] 
+    CP    NUM                       ;[1836] 
     JR    Z,$184C                   ;[1838] 
-    CP    $7A                       ;[183A] 
+    CP    HNUM                      ;[183A] 
     JR    Z,$187B                   ;[183C] 
     RES   6,A                       ;[183E] 
-    ADD   A,$40                     ;[1840] 
-    CP    $5B                       ;[1842] 
+    ADD   A,'A'-1                   ;[1840] 
+    CP    'Z'+1                     ;[1842] 
     JP    C,PUTCHAR                 ;[1844] 
     ADD   A,$06                     ;[1847] 
     JP    PUTCHAR                   ;[1849] 
@@ -3341,7 +3344,7 @@ PP:
     LD    E,L                       ;[1935] 
     LD    D,H                       ;[1936] 
     LD    A,(DE)                    ;[1937] 
-    CALL  SUB_LINE_ANALYSIS5        ;[1938] 
+    CALL  PNAME                     ;[1938] 
     CALL  BAS_LINE_ANALYSIS         ;[193B] 
     JP    $18DD                     ;[193E] 
     POP   AF                        ;[1941] 
