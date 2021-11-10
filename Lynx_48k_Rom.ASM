@@ -752,7 +752,7 @@ ADV_CURSOR2:
 ; Clears screen and homes cursor (VDU 4)
 ;
 SCREEN_CLEAR:
-    CALL  CLS                       ;[0762] 
+    CALL  _CLS                      ;[0762] 
 
 ;
 ; Homes cursor (takes cursor inside of window) (VDU 23)
@@ -1109,7 +1109,7 @@ CLS_BANK1:
 ;
 ; Called by BASIC clear screen routine.
 ;
-CLS:
+_CLS:
     LD    A,$20                     ;[08E5] 
     OUT   ($80),A                   ;[08E7] 
     LD    DE,(SYSVAR_PAPST)         ;[08E9] 
@@ -1180,7 +1180,7 @@ BASIC_COM_BEEP:
 ;
 ; Beep routine (see Lynx User 2)
 ;
-BEEP:
+_BEEP:
     AND   $3F                       ;[094E] 
     LD    B,A                       ;[0950] 
     LD    C,$84                     ;[0951] 
@@ -1241,7 +1241,7 @@ BASIC_COM_SOUND:
 ;
 ; Sound routine  (see Lynx User 2)
 ;
-SOUND:
+_SOUND:
     LD    A,(HL)                    ;[0990] 
     INC   HL                        ;[0991] 
     AND   $3F                       ;[0992] 
@@ -1251,7 +1251,7 @@ SOUND:
     LD    BC,$0080                  ;[099A] 
     IN    B,(C)                     ;[099D] 
     BIT   6,B                       ;[099F] 
-    JR    NZ,SOUND                  ;[09A1] 
+    JR    NZ,_SOUND                 ;[09A1] 
     RET                             ;[09A3] 
 
 ;
