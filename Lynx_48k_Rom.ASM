@@ -1460,7 +1460,7 @@ KEYB_ESCKEY:
     LD    HL,(SYSVAR_XTTBL)         ;[0B3A] Shorthand token table (Auto, Beep, etc)
     INC   A                         ;[0B3D] 
     LD    B,A                       ;[0B3E] 
-    CALL  FIND_WORD_IN_LIST         ;[0B3F] 
+    CALL  TOKEN_TO_WORD_FIND        ;[0B3F] 
     LD    (SYSVAR_KSMS),HL          ;[0B42] 
     LD    A,(HL)                    ;[0B45] 
     RES   7,A                       ;[0B46] Reset Bit 7 (word marker)
@@ -3125,26 +3125,27 @@ DATA_LYNX_LOGO:
 ;
 ; BASIC line analysis routine.
 ;
-BAS_LINE_ANALYSIS:
+ADV:
     LD    A,(DE)                    ;[17FC] 
     INC   DE                        ;[17FD] 
     CP    SOS                       ;[17FE] 
-    JR    Z,SUB_LINE_ANALYSIS3      ;[1800] 
+    JR    Z,ADVSOS                  ;[1800] 
     CP    ARGSOS                    ;[1802] 
-    JR    Z,SUB_LINE_ANALYSIS3      ;[1804] 
+    JR    Z,ADVSOS                  ;[1804] 
     CP    LEN                       ;[1806] 
-    JR    Z,BAS_LINE_ANALYSIS       ;[1808] 
+    JR    Z,ADV                     ;[1808] 
     CP    ASC                       ;[180A] 
-    JR    Z,BAS_LINE_ANALYSIS       ;[180C] 
+    JR    Z,ADV                     ;[180C] 
     CP    VAL                       ;[180E] 
-    JR    Z,BAS_LINE_ANALYSIS       ;[1810] 
+    JR    Z,ADV                     ;[1810] 
     CP    HNUM                      ;[1812] 
-    JR    Z,BAS_LINE_ANALYSIS2      ;[1814] 
+    JR    Z,ADV2                    ;[1814] 
     CP    NUM                       ;[1816] 
     RET   NZ                        ;[1818] 
-BAS_LINE_ANALYSIS2:
+ADV2:
     INC   DE                        ;[1819] 
     INC   DE                        ;[181A] 
+ADV1:
     INC   DE                        ;[181B] 
     INC   DE                        ;[181C] 
     INC   DE                        ;[181D] 
@@ -3153,80 +3154,85 @@ BAS_LINE_ANALYSIS2:
 ;
 ; Line analysis subroutine.
 ;
-SUB_LINE_ANALYSIS3:
-    CALL  BAS_LINE_ANALYSIS         ;[181F] 
+ADVSOS:
+    CALL  ADV                       ;[181F] 
     CP    EOS                       ;[1822] 
-    JR    NZ,SUB_LINE_ANALYSIS3     ;[1824] 
+    JR    NZ,ADVSOS                 ;[1824] 
     RET                             ;[1826] 
 
 ;
 ; Line analysis subroutine.
 ;
-SUB_LINE_ANALYSIS4:
+PNAMST:
     PUSH  DE                        ;[1827] 
     CALL  DBASLN2                   ;[1828] 
     POP   DE                        ;[182B] 
     RET                             ;[182C] 
 
 ;
-; Line analysis subroutine.
+; Line analysis subroutine. (Polish name?)
 ;
 PNAME:
     LD    A,(DE)                    ;[182D] 
     CP    SOS                       ;[182E] 
-    JR    Z,SUB_LINE_ANALYSIS4      ;[1830] 
+    JR    Z,PNAMST                  ;[1830] 
     CP    $80                       ;[1832] 
-    JR    NC,SUB_LINE_ANALYSIS6     ;[1834] 
-    CP    NUM                       ;[1836] 
-    JR    Z,$184C                   ;[1838] 
+    JR    NC,PNE1                   ;[1834] Jump if not VAR or NUM
+    CP    NUM                       ;[1836] Check if number
+    JR    Z,PNAME2                  ;[1838] 
     CP    HNUM                      ;[183A] 
-    JR    Z,$187B                   ;[183C] 
-    RES   6,A                       ;[183E] 
-    ADD   A,'A'-1                   ;[1840] 
+    JR    Z,PNEH1                   ;[183C] 
+    RES   6,A                       ;[183E] Must be a variable
+    ADD   A,'A'-1                   ;[1840] Put in correct range
     CP    'Z'+1                     ;[1842] 
     JP    C,PUTCHAR                 ;[1844] 
-    ADD   A,$06                     ;[1847] 
+    ADD   A,6                       ;[1847] 
     JP    PUTCHAR                   ;[1849] 
-    PUSH  DE                        ;[184C] 
-    INC   DE                        ;[184D] 
-    EX    DE,HL                     ;[184E] 
+PNAME2:
+    PUSH  DE                        ;[184C] Save pointer
+    INC   DE                        ;[184D] Inc past num
+    EX    DE,HL                     ;[184E] Move to WRA1
     CALL  LNUM1                     ;[184F] 
-    CALL  PN                        ;[1852] 
+    CALL  PN                        ;[1852] Display number
     POP   DE                        ;[1855] 
     RET                             ;[1856] 
 
 ;
 ; Line analysis subroutine.
 ;
-SUB_LINE_ANALYSIS6:
-    CP    $85                       ;[1857] 
-    JR    Z,$1863                   ;[1859] 
-    CP    $87                       ;[185B] 
-    JR    Z,$1863                   ;[185D] 
-    CP    $86                       ;[185F] 
-    JR    NZ,SUB_LINE_ANALYSIS7     ;[1861] 
-    CALL  SUB_LINE_ANALYSIS7        ;[1863] 
+PNE1:
+    CP    LEN                       ;[1857] 
+    JR    Z,PNE14                   ;[1859] 
+    CP    ASC                       ;[185B] 
+    JR    Z,PNE14                   ;[185D] 
+    CP    VAL                       ;[185F] 
+    JR    NZ,PNE11                  ;[1861] 
+PNE14:
+    CALL  PNE11                     ;[1863] 
     PUSH  DE                        ;[1866] 
     INC   DE                        ;[1867] 
-    CALL  SUB_LINE_ANALYSIS4        ;[1868] 
+    CALL  PNAMST                    ;[1868] 
     POP   DE                        ;[186B] 
     RET                             ;[186C] 
 
 ;
 ; Line analysis subroutine.
 ;
-SUB_LINE_ANALYSIS7:
-    CALL  SUB_WORD_LIST             ;[186D] 
-    LD    A,(HL)                    ;[1870] 
+PNE11:
+    CALL  TOKEN_TO_WORD             ;[186D] 
+PNE15:
+    LD    A,(HL)                    ;[1870] Get first char
     RES   7,A                       ;[1871] 
-    RST   $08                       ;[1873] 
+PNE12:
+    RST   $08                       ;[1873] Print it
     INC   HL                        ;[1874] 
-    BIT   7,(HL)                    ;[1875] 
+    BIT   7,(HL)                    ;[1875] See if done
     RET   NZ                        ;[1877] 
     LD    A,(HL)                    ;[1878] 
-    JR    $1873                     ;[1879] 
+    JR    PNE12                     ;[1879] 
+PNEH1:
     PUSH  DE                        ;[187B] 
-    LD    A,$26                     ;[187C] 
+    LD    A,'&'                     ;[187C] 
     RST   $08                       ;[187E] 
     INC   DE                        ;[187F] 
     EX    DE,HL                     ;[1880] 
@@ -3237,64 +3243,71 @@ SUB_LINE_ANALYSIS7:
     RET                             ;[188B] 
 
 ;
-; Pick up address of a list of words.
+; Loop down a list of words to find an address.
 ;
-SUB_WORD_LIST:
+TOKEN_TO_WORD:
     SUB   $7F                       ;[188C] 
     LD    B,A                       ;[188E] 
     LD    HL,(SYSVAR_TTBL)          ;[188F] 
     DEC   HL                        ;[1892] 
-
-;
-; Loop down a list of words to find an address.
-;
-FIND_WORD_IN_LIST:
+TOKEN_TO_WORD_FIND:
     INC   HL                        ;[1893] 
     BIT   7,(HL)                    ;[1894] 
-    JR    Z,FIND_WORD_IN_LIST       ;[1896] 
-    DJNZ  FIND_WORD_IN_LIST         ;[1898] 
+    JR    Z,TOKEN_TO_WORD_FIND      ;[1896] 
+    DJNZ  TOKEN_TO_WORD_FIND        ;[1898] 
     RET                             ;[189A] 
 
 ;
 ; Line analysis subroutine.
 ;
-SUB_LINE_ANALYSIS8:
+SP1:
     CP    $C2                       ;[189B] 
     RET   NC                        ;[189D] 
     CP    $BF                       ;[189E] 
     RET   C                         ;[18A0] 
-    POP   IX                        ;[18A1] 
-    JR    $18B3                     ;[18A3] 
-    POP   IX                        ;[18A5] 
-    CP    $C5                       ;[18A7] 
-    JR    C,$18C9                   ;[18A9] 
-    CP    $D0                       ;[18AB] 
-    JR    C,$18B3                   ;[18AD] 
+    POP   IX                        ;[18A1] Get return address
+    JR    SP21                      ;[18A3] 
+SP2:
+    POP   IX                        ;[18A5] Get return address
+    CP    $C5                       ;[18A7] Right range?
+    JR    C,SP2E                    ;[18A9] 
+    CP    $D0                       ;[18AB] Put a b$spac in front
+    JR    C,SP21                    ;[18AD] AND, OR, etc.
     LD    HL,$2020                  ;[18AF] 
     PUSH  HL                        ;[18B2] 
-    LD    C,A                       ;[18B3] 
-    INC   A                         ;[18B4] 
-    CALL  SUB_WORD_LIST             ;[18B5] 
-    DEC   HL                        ;[18B8] 
-    LD    A,(HL)                    ;[18B9] 
-    BIT   7,A                       ;[18BA] 
-    RES   7,A                       ;[18BC] 
-    PUSH  AF                        ;[18BE] 
-    JR    Z,$18B8                   ;[18BF] 
+SP21:
+    LD    C,A                       ;[18B3] Save token
+    INC   A                         ;[18B4] Word after required one
+    CALL  TOKEN_TO_WORD             ;[18B5] 
+SP22:
+    DEC   HL                        ;[18B8] Back up
+    LD    A,(HL)                    ;[18B9] Get char
+    BIT   7,A                       ;[18BA] First?
+    RES   7,A                       ;[18BC] Ascii
+    PUSH  AF                        ;[18BE] Save char
+    JR    Z,SP22                    ;[18BF] 
     LD    A,C                       ;[18C1] 
     CP    $D0                       ;[18C2] 
-    JR    C,$18C9                   ;[18C4] 
-    LD    A,$20                     ;[18C6] 
+    JR    C,SP2E                    ;[18C4] 
+    LD    A,' '                     ;[18C6] Put B$SPAC after and, or, etc.
     PUSH  AF                        ;[18C8] 
-    JP    (IX)                      ;[18C9] 
+SP2E:
+    JP    (IX)                      ;[18C9] Exit
+
+;
+; Processing.
+;
+PS:
     POP   IX                        ;[18CB] 
-    POP   AF                        ;[18CD] 
-    OR    A                         ;[18CE] 
-    JR    Z,$18D4                   ;[18CF] 
-    RST   $08                       ;[18D1] 
-    JR    $18CD                     ;[18D2] 
-    PUSH  AF                        ;[18D4] 
-    JP    (IX)                      ;[18D5] 
+PS1:
+    POP   AF                        ;[18CD] Get char
+    OR    A                         ;[18CE] Top?
+    JR    Z,PSX                     ;[18CF] Exit if top
+    RST   $08                       ;[18D1] Print char
+    JR    PS1                       ;[18D2] 
+PSX:
+    PUSH  AF                        ;[18D4] Restore top marker
+    JP    (IX)                      ;[18D5] Return
 
 ;
 ; Print a polish expression
@@ -3303,107 +3316,132 @@ PP:
     XOR   A                         ;[18D7] 
     PUSH  AF                        ;[18D8] 
     LD    IY,SYSVAR_SYNL            ;[18D9] 
+PP1:
     LD    A,(DE)                    ;[18DD] 
     CP    $7F                       ;[18DE] 
-    JP    Z,$1941                   ;[18E0] 
+    JP    Z,PPX                     ;[18E0] 
     CP    $BF                       ;[18E3] 
-    JR    C,$18F1                   ;[18E5] 
+    JR    C,PP5                     ;[18E5] 
     LD    A,$29                     ;[18E7] 
     CALL  Z,PUTCHAR                 ;[18E9] 
-    CALL  BAS_LINE_ANALYSIS         ;[18EC] 
-    JR    $18DD                     ;[18EF] 
+    CALL  ADV                       ;[18EC] 
+    JR    PP1                       ;[18EF] 
+PP5:
     LD    (IY+$00),$00              ;[18F1] 
     LD    L,E                       ;[18F5] 
     LD    H,D                       ;[18F6] 
+PP2:
     INC   (IY+$00)                  ;[18F7] 
     DEC   (IY+$00)                  ;[18FA] 
-    JP    M,$1932                   ;[18FD] 
-    CALL  BAS_LINE_ANALYSIS         ;[1900] 
+    JP    M,PP6                     ;[18FD] 
+    CALL  ADV                       ;[1900] 
     LD    A,(DE)                    ;[1903] 
     CP    $7F                       ;[1904] 
-    JR    Z,$1932                   ;[1906] 
+    JR    Z,PP6                     ;[1906] 
     CP    $BF                       ;[1908] 
-    JP    NC,$1912                  ;[190A] 
+    JP    NC,PP3                    ;[190A] 
     INC   (IY+$00)                  ;[190D] 
-    JR    $18F7                     ;[1910] 
+    JR    PP2                       ;[1910] 
+PP3:
     CP    $C3                       ;[1912] 
-    JR    C,$1919                   ;[1914] 
+    JR    C,PP4                     ;[1914] 
     DEC   (IY+$00)                  ;[1916] 
+PP4:
     EXX                             ;[1919] 
     INC   (IY+$00)                  ;[191A] 
     DEC   (IY+$00)                  ;[191D] 
-    CALL  Z,SUB_LINE_ANALYSIS8      ;[1920] 
+    CALL  Z,SP1                     ;[1920] 
     INC   (IY+$00)                  ;[1923] 
     PUSH  AF                        ;[1926] 
     DEC   (IY+$00)                  ;[1927] 
     POP   AF                        ;[192A] 
-    CALL  Z,$18A5                   ;[192B] 
+    CALL  Z,SP2                     ;[192B] 
     EXX                             ;[192E] 
-    JP    $18F7                     ;[192F] 
-    CALL  $18CB                     ;[1932] 
+    JP    PP2                       ;[192F] 
+PP6:
+    CALL  PS                        ;[1932] 
     LD    E,L                       ;[1935] 
     LD    D,H                       ;[1936] 
     LD    A,(DE)                    ;[1937] 
     CALL  PNAME                     ;[1938] 
-    CALL  BAS_LINE_ANALYSIS         ;[193B] 
-    JP    $18DD                     ;[193E] 
+    CALL  ADV                       ;[193B] 
+    JP    PP1                       ;[193E] 
+PPX:
     POP   AF                        ;[1941] 
     RET                             ;[1942] 
 
 ;
 ; Pick up address from a list of BASIC words.
+; Check if DE points to a tokenable word.
+; Advance DE past word and return token in A 
+; else return CHR pointed to by DE & increment DE.
 ;
-SUB_BASIC_WORD:
+TK:
     LD    HL,(SYSVAR_TTBL)          ;[1943] 
     DEC   HL                        ;[1946] 
-    LD    B,$80                     ;[1947] 
-    CALL  $197E                     ;[1949] Find word in list, return address if pos.
+    LD    B,WORDS                   ;[1947] 
+    CALL  TKSUB                     ;[1949] Find word in list, return address if pos.
+TK1:
     INC   HL                        ;[194C] 
-    BIT   7,(HL)                    ;[194D] 
-    JR    Z,$194C                   ;[194F] 
-    CP    (HL)                      ;[1951] 
-    JR    Z,$1959                   ;[1952] 
-    DJNZ  $194C                     ;[1954] 
-    LD    A,(DE)                    ;[1956] 
-    SCF                             ;[1957] 
-    RET                             ;[1958] 
+    BIT   7,(HL)                    ;[194D] Jump to TK1 is not start of word
+    JR    Z,TK1                     ;[194F] 
+    CP    (HL)                      ;[1951] Check against table
+    JR    Z,TK2                     ;[1952] Jump if match
+TK5:
+    DJNZ  TK1                       ;[1954] else decrement word count
+    LD    A,(DE)                    ;[1956] No word matches so get byte
+    SCF                             ;[1957] Set carry to indicate no word
+    RET                             ;[1958] Found, return
 
-    PUSH  DE                        ;[1959] 
-    INC   DE                        ;[195A] 
+TK2:
+    PUSH  DE                        ;[1959] Save pointer
+TK3:
+    INC   DE                        ;[195A] Increment pointer
     INC   HL                        ;[195B] 
     EX    DE,HL                     ;[195C] 
     RST   $10                       ;[195D] 
     EX    DE,HL                     ;[195E] 
-    RST   $10                       ;[195F] 
-    BIT   7,(HL)                    ;[1960] 
-    JR    NZ,$1979                  ;[1962] 
-    CP    $2E                       ;[1964] 
-    JR    Z,$1977                   ;[1966] 
+    RST   $10                       ;[195F] Get next char
+    BIT   7,(HL)                    ;[1960] Check beginning of next word
+    JR    NZ,TK4                    ;[1962] 
+    CP    '.'                       ;[1964] G$DOT type abbreviation
+    JR    Z,TK6                     ;[1966] 
     CP    $40                       ;[1968] 
-    JR    C,$196E                   ;[196A] 
-    AND   $DF                       ;[196C] 
-    CP    (HL)                      ;[196E] 
-    JR    Z,$195A                   ;[196F] 
-    POP   DE                        ;[1971] 
-    CALL  $197E                     ;[1972] 
-    JR    $1954                     ;[1975] 
-    INC   DE                        ;[1977] 
-    RST   $10                       ;[1978] 
-    POP   HL                        ;[1979] 
-    XOR   A                         ;[197A] 
-    SUB   B                         ;[197B] 
-    OR    A                         ;[197C] 
+    JR    C,TK9                     ;[196A] 
+    AND   %11011111                 ;[196C] Uppercase
+TK9:
+    CP    (HL)                      ;[196E] Keep incrementing until NO
+    JR    Z,TK3                     ;[196F] No match found
+    POP   DE                        ;[1971] Put pointer back in DE
+    CALL  TKSUB                     ;[1972] Get char
+    JR    TK5                       ;[1975] Continue looking
+TK6:
+    INC   DE                        ;[1977] Advance pointer
+    RST   $10                       ;[1978] And exit
+TK4:
+    POP   HL                        ;[1979] Restore stack
+    XOR   A                         ;[197A] Put token into A
+    SUB   B                         ;[197B] A:=-A
+    OR    A                         ;[197C] Clear carry
     RET                             ;[197D] 
 
-    RST   $10                       ;[197E] Search for start of BASIC word in a list.
-    OR    $80                       ;[197F] 
-    CP    $C0                       ;[1981] 
+;
+; Search for start of BASIC word in a list.
+;
+TKSUB:
+    RST   $10                       ;[197E] 
+    OR    $80                       ;[197F] Set bit 7
+    CP    $C0                       ;[1981] Not alpha if C
     RET   C                         ;[1983] 
     AND   $DF                       ;[1984] 
-    RET                             ;[1986] 
+    RET                             ;[1986] Upper case
 
-    LD    B,(IX+$02)                ;[1987] Normal to internal language routine.
-    LD    C,(IX+$00)                ;[198A] 
+;
+; Normal to internal language routine.
+;
+NPSTR:
+    LD    B,(IX+$02)                ;[1987] 
+    LD    C,(IX+$00)                ;[198A] Save syntax checking
     PUSH  IX                        ;[198D] 
     PUSH  BC                        ;[198F] 
     LD    (HL),$7C                  ;[1990] 
@@ -3411,9 +3449,10 @@ SUB_BASIC_WORD:
     CALL  $2C9D                     ;[1993] 
     RST   $10                       ;[1996] 
     CP    $3D                       ;[1997] 
-    JR    Z,$19A0                   ;[1999] 
+    JR    Z,NPSTR1                  ;[1999] 
     CP    $3E                       ;[199B] 
     CALL  NZ,ERR_SOMETHG_MISSG      ;[199D] 
+NPSTR1:
     LD    (HL),A                    ;[19A0] 
     INC   HL                        ;[19A1] 
     INC   DE                        ;[19A2] 
@@ -3427,43 +3466,46 @@ SUB_BASIC_WORD:
     LD    (IX+$01),$01              ;[19B2] 
     INC   (IX+$02)                  ;[19B6] 
     LD    A,$01                     ;[19B9] 
-    JP    $19D1                     ;[19BB] 
+    JP    NP2                       ;[19BB] 
 
 ;
-; Normal to internal language conversion routine.
+; Convert normal format to reverse polish
+; DE points to normal, HL points to polish
 ;
-NTP:
+NTPS:
     XOR   A                         ;[19BE] 
     PUSH  AF                        ;[19BF] 
     LD    IX,SYSVAR_SYNL            ;[19C0] 
     LD    (IX+$00),$04              ;[19C4] 
     LD    (IX+$01),$04              ;[19C8] 
     LD    (IX+$02),$FF              ;[19CC] 
+NP1:
     XOR   A                         ;[19D0] 
+NP2:
     LD    (SYSVAR_NPM),A            ;[19D1] 
-    CALL  $1B70                     ;[19D4] 
+    CALL  SYNTAX                    ;[19D4] 
     RST   $10                       ;[19D7] 
     CALL  SUB_LINE_ANALYSIS1        ;[19D8] 
-    JR    Z,$1987                   ;[19DB] 
+    JR    Z,NPSTR                   ;[19DB] 
     LD    A,(DE)                    ;[19DD] 
-    CP    $2D                       ;[19DE] 
-    JP    Z,$1AF7                   ;[19E0] 
-    CP    $28                       ;[19E3] 
-    JP    Z,$1A8F                   ;[19E5] 
-    CP    $29                       ;[19E8] 
-    JP    Z,$1AA8                   ;[19EA] 
-    CALL  $2D08                     ;[19ED] 
-    JP    NC,$1A2B                  ;[19F0] 
+    CP    '-'                       ;[19DE] 
+    JP    Z,NOS                     ;[19E0] 
+    CP    '('                       ;[19E3] 
+    JP    Z,NP3                     ;[19E5] 
+    CP    ')'                       ;[19E8] 
+    JP    Z,NP4                     ;[19EA] 
+    CALL  TKSL                      ;[19ED] 
+    JP    NC,NP5                    ;[19F0] 
     CALL  TEST_ALPHA                ;[19F3] 
     JP    NC,$1AC4                  ;[19F6] 
     CALL  TEST_DIGIT                ;[19F9] 
     JP    NC,$1AD8                  ;[19FC] 
-    CP    $26                       ;[19FF] 
+    CP    '&'                       ;[19FF] 
     JP    Z,$1AD4                   ;[1A01] 
-    CP    $2E                       ;[1A04] 
+    CP    '.'                       ;[1A04] 
     JP    Z,$1AD8                   ;[1A06] 
     LD    (IX+$01),$08              ;[1A09] 
-    CALL  $1B70                     ;[1A0D] 
+    CALL  SYNTAX                    ;[1A0D] 
     POP   AF                        ;[1A10] 
     OR    A                         ;[1A11] 
     JR    Z,$1A20                   ;[1A12] 
@@ -3480,6 +3522,7 @@ NTP:
     CALL  NZ,ERR_SOMETHG_MISSG      ;[1A27] 
     RET                             ;[1A2A] 
 
+NP5:
     LD    (SYSVAR_NPM),A            ;[1A2B] 
     CP    $C0                       ;[1A2E] 
     JP    Z,$1B02                   ;[1A30] 
@@ -3529,11 +3572,12 @@ NTP:
     LD    C,$02                     ;[1A87] 
     LD    (IX+$01),C                ;[1A89] 
     JP    $1B0F                     ;[1A8C] 
+NP3:
     PUSH  AF                        ;[1A8F] 
     INC   DE                        ;[1A90] 
     LD    A,(SYSVAR_SYNL)           ;[1A91] 
     CP    $01                       ;[1A94] 
-    JR    NZ,$1AA1                  ;[1A96] 
+    JR    NZ,NP31                   ;[1A96] 
     POP   BC                        ;[1A98] 
     LD    A,$C4                     ;[1A99] 
     PUSH  AF                        ;[1A9B] 
@@ -3541,8 +3585,10 @@ NTP:
     DEC   HL                        ;[1A9D] 
     SET   6,(HL)                    ;[1A9E] 
     INC   HL                        ;[1AA0] 
+NP31:
     LD    (IX+$01),$04              ;[1AA1] 
-    JP    $19D0                     ;[1AA5] 
+    JP    NP1                       ;[1AA5] 
+NP4:
     POP   AF                        ;[1AA8] 
     CP    $28                       ;[1AA9] 
     JR    Z,$1AB8                   ;[1AAB] 
@@ -3551,20 +3597,20 @@ NTP:
     LD    (HL),A                    ;[1AB1] 
     INC   HL                        ;[1AB2] 
     CALL  $1B32                     ;[1AB3] 
-    JR    $1AA8                     ;[1AB6] 
+    JR    NP4                       ;[1AB6] 
     LD    A,$BF                     ;[1AB8] 
     INC   DE                        ;[1ABA] 
     LD    (HL),A                    ;[1ABB] 
     INC   HL                        ;[1ABC] 
     LD    (IX+$01),$05              ;[1ABD] 
-    JP    $19D1                     ;[1AC1] 
+    JP    NP2                       ;[1AC1] 
     CALL  TEST_UPPER_LOW            ;[1AC4] 
     LD    (HL),A                    ;[1AC7] 
     INC   HL                        ;[1AC8] 
     INC   DE                        ;[1AC9] 
     LD    (IX+$01),$01              ;[1ACA] 
     INC   (IX+$02)                  ;[1ACE] 
-    JP    $19D1                     ;[1AD1] 
+    JP    NP2                       ;[1AD1] 
     LD    (HL),$7A                  ;[1AD4] 
     JR    $1ADA                     ;[1AD6] 
     LD    (HL),$7E                  ;[1AD8] 
@@ -3582,7 +3628,8 @@ NTP:
     LD    A,$02                     ;[1AEC] 
     LD    (SYSVAR_SYNP),A           ;[1AEE] 
     INC   (IX+$02)                  ;[1AF1] 
-    JP    $19D1                     ;[1AF4] 
+    JP    NP2                       ;[1AF4] 
+NOS:
     LD    A,(SYSVAR_NPM)            ;[1AF7] 
     OR    A                         ;[1AFA] 
     LD    A,$C9                     ;[1AFB] 
@@ -3591,7 +3638,7 @@ NTP:
     LD    A,$C1                     ;[1B00] 
     PUSH  AF                        ;[1B02] 
     LD    (IX+$01),$06              ;[1B03] 
-    JP    $19D0                     ;[1B07] 
+    JP    NP1                       ;[1B07] 
     LD    B,A                       ;[1B0A] 
     LD    (IX+$01),$07              ;[1B0B] 
     POP   AF                        ;[1B0F] 
@@ -3611,9 +3658,9 @@ NTP:
     PUSH  BC                        ;[1B26] 
     LD    A,(IX+$03)                ;[1B27] 
     OR    A                         ;[1B2A] 
-    JP    NZ,$19D0                  ;[1B2B] 
+    JP    NZ,NP1                    ;[1B2B] 
     INC   A                         ;[1B2E] 
-    JP    $19D1                     ;[1B2F] 
+    JP    NP2                       ;[1B2F] 
     CP    $C1                       ;[1B32] 
     RET   Z                         ;[1B34] 
     CP    $BF                       ;[1B35] 
@@ -3665,32 +3712,43 @@ NTP:
     INC   C                         ;[1B6D] 
     INC   C                         ;[1B6E] 
     INC   C                         ;[1B6F] 
-    PUSH  HL                        ;[1B70] Line analysis subroutine.
+
+;
+; Line analysis subroutine.
+;
+SYNTAX:
+    PUSH  HL                        ;[1B70] 
     LD    A,(SYSVAR_SYNL)           ;[1B71] 
-    LD    BC,$1B90                  ;[1B74] 
+    LD    BC,SYNTBL-1               ;[1B74] 
     LD    L,A                       ;[1B77] 
     LD    H,$00                     ;[1B78] 
     ADD   HL,BC                     ;[1B7A] 
     LD    A,(SYSVAR_SYNP)           ;[1B7B] 
     LD    (SYSVAR_SYNL),A           ;[1B7E] 
     LD    C,$01                     ;[1B81] 
+SYN1:
     DEC   A                         ;[1B83] 
-    JR    Z,$1B8A                   ;[1B84] 
+    JR    Z,SYN2                    ;[1B84] 
     SLA   C                         ;[1B86] 
-    JR    $1B83                     ;[1B88] 
+    JR    SYN1                      ;[1B88] 
+SYN2:
     LD    A,C                       ;[1B8A] 
     AND   (HL)                      ;[1B8B] 
     CALL  Z,ERR_SYNTAX              ;[1B8C] 
     POP   HL                        ;[1B8F] 
     RET                             ;[1B90] 
 
-    RET   C                         ;[1B91] This looks like data: No idea
-    RET   NC                        ;[1B92] 
-    EX    AF,AF'                    ;[1B93] 
-    CPL                             ;[1B94] 
-    RET   NC                        ;[1B95] 
-    RRCA                            ;[1B96] 
-    CPL                             ;[1B97] 
+;
+; This looks like data: No idea
+;
+SYNTBL:
+    DB    %11011000                 ;[1B91] 
+    DB    %11010000                 ;[1B92] 
+    DB    %00001000                 ;[1B93] 
+    DB    %00101111                 ;[1B94] 
+    DB    %11010000                 ;[1B95] 
+    DB    %00001111                 ;[1B96] 
+    DB    %00101111                 ;[1B97] 
 
 ;
 ; Reads number pointed to by DE into WRA1 as floating point. (Asc l) 
@@ -5614,7 +5672,7 @@ VALIDATE_UTILITY:
 ; Validation for ROUND, TRAIL, LINK, TRACE.
 ;
 VALIDATE_ROUND:
-    CALL  $2D08                     ;[2606] 
+    CALL  TKSL                      ;[2606] 
     CP    $DA                       ;[2609] 
     JR    Z,$260F                   ;[260B] 
     RST   $20                       ;[260D] 
@@ -5769,7 +5827,7 @@ VALIDATE_DPOKE:
 ;
 VALIDATE_GOSUB:
     PUSH  DE                        ;[26C3] 
-    CALL  $2D08                     ;[26C4] 
+    CALL  TKSL                      ;[26C4] 
     JR    C,$26CD                   ;[26C7] 
     CP    $D8                       ;[26C9] 
     JR    Z,$26D1                   ;[26CB] 
@@ -5989,8 +6047,8 @@ SUB_PRINT_KEYWORD:
     LD    HL,(SYSVAR_XTTBL)         ;[27D5] 
     LD    B,A                       ;[27D8] 
     INC   B                         ;[27D9] 
-    CALL  FIND_WORD_IN_LIST         ;[27DA] 
-    CALL  $1870                     ;[27DD] 
+    CALL  TOKEN_TO_WORD_FIND        ;[27DA] 
+    CALL  PNE15                     ;[27DD] 
     CALL  OUTPUT_SPACE              ;[27E0] 
     INC   DE                        ;[27E3] 
     RET                             ;[27E4] 
@@ -6043,7 +6101,7 @@ DBASLN5:
     CP    $DF                       ;[282A] 
     PUSH  AF                        ;[282C] 
     CALL  C,OUTPUT_SPACE            ;[282D] 
-    CALL  SUB_LINE_ANALYSIS6        ;[2830] 
+    CALL  PNE1                      ;[2830] 
     POP   AF                        ;[2833] 
     PUSH  AF                        ;[2834] 
     CALL  C,OUTPUT_SPACE            ;[2835] 
@@ -6401,7 +6459,7 @@ VALIDATE_PRINT1:
     CALL  SUB_LINE_ANALYSIS1        ;[2A21] 
     JR    Z,$2A09                   ;[2A24] 
     PUSH  DE                        ;[2A26] 
-    CALL  $2D08                     ;[2A27] 
+    CALL  TKSL                      ;[2A27] 
     JR    C,$2A42                   ;[2A2A] 
     CP    $DE                       ;[2A2C] 
     JR    Z,$2A3E                   ;[2A2E] 
@@ -6477,7 +6535,7 @@ BASIC_COM_RENUM:
     LD    A,(DE)                    ;[2A95] 
     CP    $27                       ;[2A96] 
     JR    NZ,$2AA4                  ;[2A98] 
-    CALL  BAS_LINE_ANALYSIS         ;[2A9A] 
+    CALL  ADV                       ;[2A9A] 
     LD    A,(DE)                    ;[2A9D] 
     CP    $D7                       ;[2A9E] 
     JR    NZ,$2A9A                  ;[2AA0] 
@@ -6589,7 +6647,7 @@ SUB_LINE_ANALYSIS1:
     CALL  VALID_VAR_TEST            ;[2B4F] 
     RET   Z                         ;[2B52] 
     PUSH  DE                        ;[2B53] 
-    CALL  $2D08                     ;[2B54] 
+    CALL  TKSL                      ;[2B54] 
     POP   DE                        ;[2B57] 
     CP    $DF                       ;[2B58] 
     RET   C                         ;[2B5A] 
@@ -6843,7 +6901,7 @@ STRING_SEEK_END:
     JR    $2CAD                     ;[2C9B] 
     CALL  VALID_VAR_TEST            ;[2C9D] 
     JR    Z,$2D03                   ;[2CA0] 
-    CALL  $2D08                     ;[2CA2] 
+    CALL  TKSL                      ;[2CA2] 
     LD    (HL),A                    ;[2CA5] 
     INC   HL                        ;[2CA6] 
     JR    NC,$2CB6                  ;[2CA7] 
@@ -6897,8 +6955,13 @@ STRING_SEEK_END:
     JR    $2CE2                     ;[2D01] 
     CALL  VALIDATE_VAR              ;[2D03] 
     JR    $2CAD                     ;[2D06] 
+
+;
+; Save HL, Call P$TK
+;
+TKSL:
     PUSH  HL                        ;[2D08] 
-    CALL  SUB_BASIC_WORD            ;[2D09] 
+    CALL  TK                        ;[2D09] 
     POP   HL                        ;[2D0C] 
     RET                             ;[2D0D] 
 
