@@ -134,7 +134,7 @@ INIT_CRT:
     LD    BC,$FF7F                  ;[003C] 
     OUT   (C),A                     ;[003F] 
     LD    B,$10                     ;[0041] 
-    LD    HL,DATA_CRT               ;[0043] 
+    LD    HL,D6845                  ;[0043] 
     XOR   A                         ;[0046] 
 INIT_CRT1:
     OUT   ($86),A                   ;[0047] 
@@ -149,11 +149,25 @@ INIT_CRT1:
     NOP                             ;[0055] 
 
 ;
-; Data for CRT controller.
+; CRT controller registers.
 ;
-DATA_CRT:
-    DB $2F,$20,$26,$33,$4D,$02,$3F,$44      ;[0056]  /.&3M.?D
-    DB $00,$03,$03,$03,$00,$00,$07,$DF      ;[005E]  ........
+D6845:
+    DB    $2F  ;R0=h total          ;[0056] 
+    DB    $20  ;R1=h displayed      ;[0057] 
+    DB    $26  ;R2=h sync posn      ;[0058] 
+    DB    $33  ;R3=h sync width     ;[0059] 
+    DB    $4D  ;R4=v total          ;[005A] 
+    DB    $02  ;R5=v total adjust   ;[005B] 
+    DB    $3F  ;R6=v displayed      ;[005C] 
+    DB    $44  ;R7=v sync posn      ;[005D] 
+    DB    $00  ;R8=interlace        ;[005E] 
+    DB    $03  ;R9=max scanline adr ;[005F] 
+    DB    $03  ;R10=cursor start    ;[0060] 
+    DB    $03  ;R11=cursor end      ;[0061] 
+    DB    $00  ;R12=start hi        ;[0062] 
+    DB    $00  ;R13=start lo        ;[0063] 
+    DB    $07  ;R14=cursor hi       ;[0064] 
+    DB    $DF  ;R15=cursor lo       ;[0065] 
 
 ;
 ; Non-maskable interrupt routine, pointer in RAM
@@ -3029,13 +3043,13 @@ START:
 LOGO_OUTPUT:
     CALL  PLINE                     ;[16BC] 
 MAIN_LOOP:
-    CALL  MAIN                      ;[16BF] 
+    CALL  MAIN1                     ;[16BF] 
     JR    MAIN_LOOP                 ;[16C2] 
 
 ;
 ; MAIN - called from MAIN_LOOP.
 ;
-MAIN:
+MAIN1:
     LD    HL,DATA_PROMPT            ;[16C4] 
     CALL  PLINE                     ;[16C7] Display prompt
     LD    A,(SYSVAR_AUTOFL)         ;[16CA] Auto line numbering?
@@ -3044,10 +3058,10 @@ MAIN:
     LD    HL,SYSVAR_AUTOST          ;[16D0] Auto increment
     CALL  LNUM1                     ;[16D3] -> WRA1
     CALL  FNDLN_WRA1                ;[16D6] Find line with number in WRA1
-    LD    A,$20                     ;[16D9] 
-    JR    NZ,PRINT_LNUM             ;[16DB] 
-    LD    A,$21                     ;[16DD] Line already exists - exclamation mark!
-PRINT_LNUM:
+    LD    A,' '                     ;[16D9] 
+    JR    NZ,MAIN6                  ;[16DB] 
+    LD    A,'!'                     ;[16DD] Line already exists - exclamation mark!
+MAIN6:
     PUSH  AF                        ;[16DF] 
     CALL  PN                        ;[16E0] Print number in WRA1
     POP   AF                        ;[16E3] 
@@ -3068,7 +3082,7 @@ DO_AUTONUM:
     CALL  LINP_ANLYS                ;[16F7] 
     LD    A,(SYSVAR_AUTOFL)         ;[16FA] 
     OR    A                         ;[16FD] 
-    JR    Z,MAIN                    ;[16FE] 
+    JR    Z,MAIN1                   ;[16FE] 
     LD    HL,SYSVAR_AUTOST          ;[1700] 
     CALL  LNUM1                     ;[1703] 
     LD    HL,$62F8                  ;[1706] 
@@ -3686,46 +3700,29 @@ NOS:
     POP   HL                        ;[1B52] 
     RET                             ;[1B53] 
 
-    NOP                             ;[1B54] This looks like data : No idea
-    LD    B,$0E                     ;[1B55] 
-    INC   D                         ;[1B57] 
-    LD    (DE),A                    ;[1B58] 
-    LD    D,$10                     ;[1B59] 
-    INC   C                         ;[1B5B] 
-    INC   C                         ;[1B5C] 
-    LD    A,(BC)                    ;[1B5D] 
-    LD    A,(BC)                    ;[1B5E] 
-    EX    AF,AF'                    ;[1B5F] 
-    EX    AF,AF'                    ;[1B60] 
-    EX    AF,AF'                    ;[1B61] 
-    EX    AF,AF'                    ;[1B62] 
-    EX    AF,AF'                    ;[1B63] 
-    EX    AF,AF'                    ;[1B64] 
-    LD    (BC),A                    ;[1B65] 
-    INC   B                         ;[1B66] 
-    LD    (BC),A                    ;[1B67] 
-    LD    (BC),A                    ;[1B68] 
-    INC   B                         ;[1B69] 
-    INC   C                         ;[1B6A] 
-    INC   C                         ;[1B6B] 
-    INC   C                         ;[1B6C] 
-    INC   C                         ;[1B6D] 
-    INC   C                         ;[1B6E] 
-    INC   C                         ;[1B6F] 
+;
+; Priority table data
+;
+PTBL:
+    DB    0,6,14,20,18,22           ;[1B54] 
+    DB    16,12,12,10,10            ;[1B5A] 
+    DB    8,8,8,8,8,8               ;[1B5F] 
+    DB    2,4                       ;[1B65] 
+    DB    2,2,4,12,12,12,12,12,12   ;[1B67] 
 
 ;
 ; Line analysis subroutine.
 ;
 SYNTAX:
     PUSH  HL                        ;[1B70] 
-    LD    A,(SYSVAR_SYNL)           ;[1B71] 
-    LD    BC,SYNTBL-1               ;[1B74] 
+    LD    A,(SYSVAR_SYNL)           ;[1B71] Previous value
+    LD    BC,SYNTBL-1               ;[1B74] Get byte from syntax table
     LD    L,A                       ;[1B77] 
     LD    H,$00                     ;[1B78] 
     ADD   HL,BC                     ;[1B7A] 
-    LD    A,(SYSVAR_SYNP)           ;[1B7B] 
-    LD    (SYSVAR_SYNL),A           ;[1B7E] 
-    LD    C,$01                     ;[1B81] 
+    LD    A,(SYSVAR_SYNP)           ;[1B7B] Present value
+    LD    (SYSVAR_SYNL),A           ;[1B7E] Update last value
+    LD    C,$01                     ;[1B81] C := 2**A
 SYN1:
     DEC   A                         ;[1B83] 
     JR    Z,SYN2                    ;[1B84] 
@@ -3734,7 +3731,7 @@ SYN1:
 SYN2:
     LD    A,C                       ;[1B8A] 
     AND   (HL)                      ;[1B8B] 
-    CALL  Z,ERR_SYNTAX              ;[1B8C] 
+    CALL  Z,ERR_SYNTAX              ;[1B8C] Syntax error
     POP   HL                        ;[1B8F] 
     RET                             ;[1B90] 
 
@@ -4289,7 +4286,7 @@ FRNDS:
 ; Sets Z flag to zero if ESC key is currently pressed (negative logic)
 ;
 ESC:
-    LD    BC,$0080                  ;[1F05] 
+    LD    BC,PORT                   ;[1F05] 
     IN    B,(C)                     ;[1F08] 
     BIT   6,B                       ;[1F0A] 
     RET                             ;[1F0C] 
