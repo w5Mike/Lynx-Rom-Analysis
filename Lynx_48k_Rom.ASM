@@ -1456,7 +1456,7 @@ DATA_KEYBOARD:
 KEYB_ESCKEY:
     LD    A,(SYSVAR_KSMS+$01)       ;[0B1B] 
     OR    A,A                       ;[0B1E] 
-    JR    NZ,KEYB2                  ;[0B1F] Keyboard modifiers? Like [CTRL] [SHIFT]?
+    JR    NZ,$0b49                  ;[0B1F] Keyboard modifiers? Like [CTRL] [SHIFT]?
     CALL  KEYDVR                    ;[0B21] Get key in A
     CALL  ESC                       ;[0B24] 
     RET   NZ                        ;[0B27] Return if NOT escape
@@ -3511,13 +3511,13 @@ NP2:
     CALL  TKSL                      ;[19ED] 
     JP    NC,NP5                    ;[19F0] 
     CALL  TEST_ALPHA                ;[19F3] 
-    JP    NC,$1AC4                  ;[19F6] 
+    JP    NC,NP6                    ;[19F6] 
     CALL  TEST_DIGIT                ;[19F9] 
-    JP    NC,$1AD8                  ;[19FC] 
+    JP    NC,NP7                    ;[19FC] 
     CP    '&'                       ;[19FF] 
-    JP    Z,$1AD4                   ;[1A01] 
+    JP    Z,NP7H                    ;[1A01] 
     CP    '.'                       ;[1A04] 
-    JP    Z,$1AD8                   ;[1A06] 
+    JP    Z,NP7                     ;[1A06] 
     LD    (IX+$01),$08              ;[1A09] 
     CALL  SYNTAX                    ;[1A0D] 
     POP   AF                        ;[1A10] 
@@ -3527,7 +3527,7 @@ NP2:
     CALL  Z,ERR_MISSING_BRACKET     ;[1A16] 
     LD    (HL),A                    ;[1A19] 
     INC   HL                        ;[1A1A] 
-    CALL  $1B32                     ;[1A1B] 
+    CALL  DSC                       ;[1A1B] 
     JR    $1A10                     ;[1A1E] 
     LD    (HL),$7F                  ;[1A20] 
     INC   HL                        ;[1A22] 
@@ -3539,11 +3539,11 @@ NP2:
 NP5:
     LD    (SYSVAR_NPM),A            ;[1A2B] 
     CP    $C0                       ;[1A2E] 
-    JP    Z,$1B02                   ;[1A30] 
+    JP    Z,NOS1                    ;[1A30] 
     CP    $D7                       ;[1A33] 
     JR    NC,$1A09                  ;[1A35] 
     CP    $BF                       ;[1A37] 
-    JP    NC,$1B0A                  ;[1A39] 
+    JP    NC,NP10                   ;[1A39] 
     LD    (HL),A                    ;[1A3C] 
     INC   HL                        ;[1A3D] 
     INC   (IX+$02)                  ;[1A3E] 
@@ -3585,7 +3585,7 @@ NP5:
     POP   BC                        ;[1A86] 
     LD    C,$02                     ;[1A87] 
     LD    (IX+$01),C                ;[1A89] 
-    JP    $1B0F                     ;[1A8C] 
+    JP    NP103                     ;[1A8C] 
 NP3:
     PUSH  AF                        ;[1A8F] 
     INC   DE                        ;[1A90] 
@@ -3610,7 +3610,7 @@ NP4:
     JP    Z,$1A20                   ;[1AAE] 
     LD    (HL),A                    ;[1AB1] 
     INC   HL                        ;[1AB2] 
-    CALL  $1B32                     ;[1AB3] 
+    CALL  DSC                       ;[1AB3] 
     JR    NP4                       ;[1AB6] 
     LD    A,$BF                     ;[1AB8] 
     INC   DE                        ;[1ABA] 
@@ -3618,80 +3618,101 @@ NP4:
     INC   HL                        ;[1ABC] 
     LD    (IX+$01),$05              ;[1ABD] 
     JP    NP2                       ;[1AC1] 
-    CALL  TEST_UPPER_LOW            ;[1AC4] 
-    LD    (HL),A                    ;[1AC7] 
-    INC   HL                        ;[1AC8] 
+NP6:
+    CALL  TEST_UPPER_LOW            ;[1AC4] A:=token of letter
+    LD    (HL),A                    ;[1AC7] Store it
+    INC   HL                        ;[1AC8] Increment pointers
     INC   DE                        ;[1AC9] 
-    LD    (IX+$01),$01              ;[1ACA] 
-    INC   (IX+$02)                  ;[1ACE] 
+    LD    (IX+$01),$01              ;[1ACA] Variable in syntax table
+    INC   (IX+$02)                  ;[1ACE] Increment syntax counter
     JP    NP2                       ;[1AD1] 
-    LD    (HL),$7A                  ;[1AD4] 
-    JR    $1ADA                     ;[1AD6] 
-    LD    (HL),$7E                  ;[1AD8] 
+NP7H:
+    LD    (HL),HNUM                 ;[1AD4] 
+    JR    NP71                      ;[1AD6] 
+NP7:
+    LD    (HL),NUM                  ;[1AD8] Number marker
+NP71:
     INC   HL                        ;[1ADA] 
     PUSH  HL                        ;[1ADB] 
-    CALL  RDN                       ;[1ADC] 
-    POP   HL                        ;[1ADF] 
-    PUSH  DE                        ;[1AE0] 
-    EX    DE,HL                     ;[1AE1] 
-    LD    HL,SYSVAR_WRA1            ;[1AE2] 
+    CALL  RDN                       ;[1ADC] Read number
+    POP   HL                        ;[1ADF] Get pointer
+    PUSH  DE                        ;[1AE0] Save pointer
+    EX    DE,HL                     ;[1AE1] DE to polish line
+    LD    HL,SYSVAR_WRA1            ;[1AE2] HL to work area
     LD    BC,$0005                  ;[1AE5] 
-    LDIR                            ;[1AE8] 
-    EX    DE,HL                     ;[1AEA] 
-    POP   DE                        ;[1AEB] 
-    LD    A,$02                     ;[1AEC] 
+    LDIR                            ;[1AE8] Move number
+    EX    DE,HL                     ;[1AEA] Swap back
+    POP   DE                        ;[1AEB] Get input line pointer
+    LD    A,$02                     ;[1AEC] Number in syntax table
     LD    (SYSVAR_SYNP),A           ;[1AEE] 
-    INC   (IX+$02)                  ;[1AF1] 
-    JP    NP2                       ;[1AF4] 
+    INC   (IX+$02)                  ;[1AF1] Increment syntax counter
+    JP    NP2                       ;[1AF4] Next
 NOS:
-    LD    A,(SYSVAR_NPM)            ;[1AF7] 
-    OR    A                         ;[1AFA] 
-    LD    A,$C9                     ;[1AFB] 
-    INC   DE                        ;[1AFD] 
-    JR    NZ,$1B0A                  ;[1AFE] 
-    LD    A,$C1                     ;[1B00] 
-    PUSH  AF                        ;[1B02] 
-    LD    (IX+$01),$06              ;[1B03] 
-    JP    NP1                       ;[1B07] 
+    LD    A,(SYSVAR_NPM)            ;[1AF7] Negate or subtract
+    OR    A                         ;[1AFA] Test for zero
+    LD    A,SUBT                    ;[1AFB] A:=SUBT token
+    INC   DE                        ;[1AFD] Increment pointer
+    JR    NZ,NP10                   ;[1AFE] Jump to +/- routine
+    LD    A,NEGATE                  ;[1B00] A:=NEGATE token
+NOS1:
+    PUSH  AF                        ;[1B02] Store on stack
+    LD    (IX+$01),$06              ;[1B03] NEG in syntax table
+    JP    NP1                       ;[1B07] NEG could follow
+
+;
+; Normal to polish.
+;
+NP10:
     LD    B,A                       ;[1B0A] 
-    LD    (IX+$01),$07              ;[1B0B] 
-    POP   AF                        ;[1B0F] 
-    OR    A                         ;[1B10] 
-    JR    Z,$1B25                   ;[1B11] 
-    CP    $28                       ;[1B13] 
-    JR    Z,$1B25                   ;[1B15] 
-    LD    C,A                       ;[1B17] 
-    CALL  $1B42                     ;[1B18] 
-    LD    A,C                       ;[1B1B] 
-    JR    C,$1B25                   ;[1B1C] 
-    LD    (HL),A                    ;[1B1E] 
-    INC   HL                        ;[1B1F] 
-    CALL  $1B32                     ;[1B20] 
-    JR    $1B0F                     ;[1B23] 
-    PUSH  AF                        ;[1B25] 
-    PUSH  BC                        ;[1B26] 
-    LD    A,(IX+$03)                ;[1B27] 
+    LD    (IX+$01),$07              ;[1B0B] Store type in syntax table
+NP103:
+    POP   AF                        ;[1B0F] Get last op.
+    OR    A                         ;[1B10] See if top of stack
+    JR    Z,NP101                   ;[1B11] Jump if top
+    CP    '('                       ;[1B13] If bracket
+    JR    Z,NP101                   ;[1B15] Jump
+    LD    C,A                       ;[1B17] Save popped op. in C
+    CALL  PRIORITY                  ;[1B18] Test priority
+    LD    A,C                       ;[1B1B] Unsave
+    JR    C,NP101                   ;[1B1C] Priority(A)<Priority(B)
+    LD    (HL),A                    ;[1B1E] Store op
+    INC   HL                        ;[1B1F] Increment pointer
+    CALL  DSC                       ;[1B20] Decrement syntax counter if necessary
+    JR    NP103                     ;[1B23] Next off stack
+NP101:
+    PUSH  AF                        ;[1B25] Put back on stack
+    PUSH  BC                        ;[1B26] Put op. on stack
+    LD    A,(IX+$03)                ;[1B27] A:=(NPM)
     OR    A                         ;[1B2A] 
     JP    NZ,NP1                    ;[1B2B] 
-    INC   A                         ;[1B2E] 
+    INC   A                         ;[1B2E] A now <>0
     JP    NP2                       ;[1B2F] 
+
+;
+; Decrement syntax counter
+;
+DSC:
     CP    $C1                       ;[1B32] 
     RET   Z                         ;[1B34] 
     CP    $BF                       ;[1B35] 
     RET   Z                         ;[1B37] 
     CP    $C0                       ;[1B38] 
     RET   Z                         ;[1B3A] 
-    DEC   (IX+$02)                  ;[1B3B] 
-    CALL  M,ERR_SOMETHG_MISSG       ;[1B3E] 
+    DEC   (IX+$02)                  ;[1B3B] Decrement counter
+    CALL  M,ERR_SOMETHG_MISSG       ;[1B3E] Missing operator/operand
     RET                             ;[1B41] 
 
+;
+; Get priority
+;
+PRIORITY:
     PUSH  HL                        ;[1B42] 
     PUSH  DE                        ;[1B43] 
-    LD    DE,$1A95                  ;[1B44] 
-    LD    H,$00                     ;[1B47] 
+    LD    DE,PTBL-PARENS            ;[1B44] Priority table
+    LD    H,$00                     ;[1B47] Add token
     LD    L,C                       ;[1B49] 
     ADD   HL,DE                     ;[1B4A] 
-    LD    A,(HL)                    ;[1B4B] 
+    LD    A,(HL)                    ;[1B4B] get priority
     LD    H,$00                     ;[1B4C] 
     LD    L,B                       ;[1B4E] 
     ADD   HL,DE                     ;[1B4F] 
@@ -8237,24 +8258,24 @@ TEST_DIGIT:
 ;
 TEST_ALPHA:
     LD    A,(DE)                    ;[34F5] 
-    CP    $41                       ;[34F6] 
+    CP    'A'                       ;[34F6] 
     RET   C                         ;[34F8] 
-    CP    $5B                       ;[34F9] 
+    CP    'Z'+1                     ;[34F9] 
     CCF                             ;[34FB] 
     RET   NC                        ;[34FC] 
-    CP    $61                       ;[34FD] 
+    CP    'a'                       ;[34FD] 
     RET   C                         ;[34FF] 
-    CP    $7B                       ;[3500] 
+    CP    'z'+1                     ;[3500] 
     CCF                             ;[3502] 
     RET                             ;[3503] 
 
 ;
-; Test for uppercase/lowercase.
+; Test for uppercase/lowercase. (aka. N$VT)
 ;
 TEST_UPPER_LOW:
     LD    A,(DE)                    ;[3504] 
-    SUB   $40                       ;[3505] 
-    CP    $1B                       ;[3507] 
+    SUB   'A'-1                     ;[3505] 
+    CP    27                        ;[3507] 
     RET   C                         ;[3509] 
     SUB   $06                       ;[350A] 
     RET                             ;[350C] 
@@ -8264,16 +8285,18 @@ TEST_UPPER_LOW:
 ;
 ZWRA1:
     LD    HL,SYSVAR_WRA1            ;[350D] 
-    LD    B,$05                     ;[3510] 
-    LD    (HL),$00                  ;[3512] 
-    INC   HL                        ;[3514] 
-    DJNZ  $3512                     ;[3515] 
-    RET                             ;[3517] 
+    LD    B,$05                     ;[3510] No. of bytes
+ZW1:
+    LD    (HL),$00                  ;[3512] Store A 0
+    INC   HL                        ;[3514] Increment pointer
+    DJNZ  ZW1                       ;[3515] Repeat B times
+    RET                             ;[3517] Return
 
 ;
 ; Data. Used to to 'Clear to end of line'
 ;
-    DB $0D,$1E,$00                  ;[3518]  ...
+CRMS:
+    DB    NEWLINE,CEL,0             ;[3518] 
 
 ;
 ; Display character in A (PutChar)
@@ -8633,7 +8656,7 @@ MLT:
     JP    Z,SUB_MULTIPLY            ;[36FC] 
     LD    HL,$62D5                  ;[36FF] 
     LD    B,$0C                     ;[3702] 
-    CALL  $3512                     ;[3704] 
+    CALL  ZW1                       ;[3704] 
     LD    DE,SYSVAR_WRA2+$04        ;[3707] 
     LD    HL,$62DC                  ;[370A] 
     LD    B,$04                     ;[370D] 
@@ -8791,7 +8814,7 @@ DIV:
     JP    Z,$384F                   ;[37E4] 
     LD    HL,$62D5                  ;[37E7] 
     LD    B,$0C                     ;[37EA] 
-    CALL  $3512                     ;[37EC] 
+    CALL  ZW1                       ;[37EC] 
     LD    DE,SYSVAR_WRA2+$01        ;[37EF] 
     LD    HL,SYSVAR_WRAE            ;[37F2] 
     LD    B,$04                     ;[37F5] 
