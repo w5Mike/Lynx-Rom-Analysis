@@ -3087,7 +3087,7 @@ DO_AUTONUM:
     CALL  LNUM1                     ;[1703] 
     LD    HL,$62F8                  ;[1706] 
     CALL  LNUM2                     ;[1709] 
-    CALL  AD                        ;[170C] 
+    CALL  ADD                       ;[170C] 
     LD    DE,SYSVAR_AUTOST          ;[170F] 
     JP    WRA1_TO_DE                ;[1712] 
 
@@ -3833,7 +3833,7 @@ RDN:
     CP    $0A                       ;[1BF6] 
     JR    NC,$1C12                  ;[1BF8] 
     INC   C                         ;[1BFA] 
-    CALL  $3657                     ;[1BFB] 
+    CALL  RL1A                      ;[1BFB] 
     INC   DE                        ;[1BFE] 
     DJNZ  $1BEF                     ;[1BFF] 
     DEC   DE                        ;[1C01] 
@@ -3847,7 +3847,7 @@ RDN:
     INC   DE                        ;[1C0E] 
     INC   C                         ;[1C0F] 
     JR    $1C03                     ;[1C10] 
-    CALL  $3656                     ;[1C12] 
+    CALL  RL10                      ;[1C12] 
     DJNZ  $1C12                     ;[1C15] 
     LD    A,(SYSVAR_WRA1)           ;[1C17] 
     OR    C                         ;[1C1A] 
@@ -3883,7 +3883,7 @@ RDN:
     SUB   $30                       ;[1C49] 
     CP    $0A                       ;[1C4B] 
     JR    NC,$1C12                  ;[1C4D] 
-    CALL  $3657                     ;[1C4F] 
+    CALL  RL1A                      ;[1C4F] 
     DJNZ  $1C47                     ;[1C52] 
     INC   DE                        ;[1C54] 
     LD    A,(DE)                    ;[1C55] 
@@ -3985,7 +3985,7 @@ PHL:
     INC   HL                        ;[1CE0] 
     RET                             ;[1CE1] 
 
-    CALL  $3657                     ;[1CE2] 
+    CALL  RL1A                      ;[1CE2] 
     AND   $0F                       ;[1CE5] 
     ADD   A,$30                     ;[1CE7] 
     LD    (HL),A                    ;[1CE9] 
@@ -5194,7 +5194,7 @@ SUB_ARGUMENT1:
     PUSH  DE                        ;[2371] 
     LD    HL,FLOAT_16B              ;[2372] 
     CALL  LNUM2                     ;[2375] 
-    CALL  AD                        ;[2378] 
+    CALL  ADD                       ;[2378] 
     POP   DE                        ;[237B] 
     RET                             ;[237C] 
 
@@ -5302,7 +5302,7 @@ BASIC_COM_NEXT:
     CALL  GET_VAR_ADDR              ;[23F6] 
     PUSH  HL                        ;[23F9] 
     CALL  LNUM1                     ;[23FA] 
-    CALL  AD                        ;[23FD] 
+    CALL  ADD                       ;[23FD] 
     POP   HL                        ;[2400] 
     EX    DE,HL                     ;[2401] 
     CALL  WRA1_TO_DE                ;[2402] 
@@ -6247,7 +6247,7 @@ BASIC_FN_BIN:
     LD    B,A                       ;[28E8] 
     LD    C,$00                     ;[28E9] 
     PUSH  BC                        ;[28EB] 
-    CALL  $3656                     ;[28EC] 
+    CALL  RL10                      ;[28EC] 
     POP   BC                        ;[28EF] 
     AND   $0F                       ;[28F0] 
     CP    $02                       ;[28F2] 
@@ -6592,7 +6592,7 @@ BASIC_COM_RENUM:
     CALL  MLT                       ;[2ADA] 
     LD    HL,SYSVAR_AUTOST          ;[2ADD] 
     CALL  LNUM2                     ;[2AE0] 
-    CALL  AD                        ;[2AE3] 
+    CALL  ADD                       ;[2AE3] 
     POP   DE                        ;[2AE6] 
     CALL  WRA1_TO_DE                ;[2AE7] 
     POP   IX                        ;[2AEA] 
@@ -6610,7 +6610,7 @@ BASIC_COM_RENUM:
     CALL  WRA1_TO_DE                ;[2B05] 
     LD    HL,$62F8                  ;[2B08] 
     CALL  LNUM2                     ;[2B0B] 
-    CALL  AD                        ;[2B0E] 
+    CALL  ADD                       ;[2B0E] 
     POP   IX                        ;[2B11] 
     CALL  SKIP_TO_LINE_END          ;[2B13] 
     JR    $2AFB                     ;[2B16] 
@@ -7282,7 +7282,7 @@ VALIDATE_DIM:
     DAA                             ;[2EB2] 
     LD    (HL),A                    ;[2EB3] 
     DJNZ  $2EAE                     ;[2EB4] 
-    CALL  TBD                       ;[2EB6] 
+    CALL  ALIGN                     ;[2EB6] 
     POP   DE                        ;[2EB9] 
     RET                             ;[2EBA] 
 
@@ -7312,7 +7312,7 @@ MULTIPLY_ADD:
     POP   IY                        ;[2EDB] 
     CALL  MLT                       ;[2EDD] 
     CALL  IX_TO_WRA2                ;[2EE0] 
-    CALL  AD                        ;[2EE3] 
+    CALL  ADD                       ;[2EE3] 
     POP   BC                        ;[2EE6] 
     DJNZ  $2ED5                     ;[2EE7] 
     RET                             ;[2EE9] 
@@ -7421,7 +7421,7 @@ BASIC_FN_ARCSIN:
     CALL  BASIC_FN_SQR              ;[2F6D] 
     CALL  SUB_ARCTAN                ;[2F70] 
     CALL  $2759                     ;[2F73] 
-    CALL  AD                        ;[2F76] 
+    CALL  ADD                       ;[2F76] 
     POP   AF                        ;[2F79] 
     RLA                             ;[2F7A] 
     RET   C                         ;[2F7B] 
@@ -7440,7 +7440,7 @@ BASIC_FN_ARCCOS:
     CALL  $2759                     ;[2F8C] 
     CALL  PUSH_WRA1                 ;[2F8F] 
     CALL  LONE                      ;[2F92] 
-    CALL  AD                        ;[2F95] 
+    CALL  ADD                       ;[2F95] 
     CALL  POP_WRA2                  ;[2F98] 
     CALL  PUSH_WRA1                 ;[2F9B] 
     CALL  LONE                      ;[2F9E] 
@@ -7553,7 +7553,7 @@ BASIC_FN_SQR:
     CALL  SWAP                      ;[307B] 
     CALL  DIV                       ;[307E] 
     CALL  POP_WRA2                  ;[3081] 
-    CALL  AD                        ;[3084] 
+    CALL  ADD                       ;[3084] 
     LD    HL,FLOAT_05               ;[3087] 
     CALL  LNUM2                     ;[308A] 
     CALL  MLT                       ;[308D] 
@@ -7578,7 +7578,7 @@ BASIC_FN_POWER:
     JR    Z,SUB_POWER1              ;[30A2] 
     CP    $C0                       ;[30A4] 
     JR    NZ,$30D2                  ;[30A6] 
-    CALL  $3656                     ;[30A8] 
+    CALL  RL10                      ;[30A8] 
     EX    AF,AF'                    ;[30AB] 
     LD    B,$04                     ;[30AC] 
     LD    HL,SYSVAR_WRA1+$01        ;[30AE] 
@@ -7606,7 +7606,7 @@ BASIC_FN_POWER:
 ;
 SUB_POWER2:
     EX    AF,AF'                    ;[30CE] 
-    CALL  $3643                     ;[30CF] 
+    CALL  RRD1A                     ;[30CF] 
     CALL  PUSH_WRA1                 ;[30D2] 
     CALL  $2EF0                     ;[30D5] 
     CALL  BASIC_FN_LOG              ;[30D8] 
@@ -7643,7 +7643,7 @@ BASIC_FN_LOG:
     CALL  PUSH_WRA1                 ;[310B] 
     LD    HL,FLOAT_RT10             ;[310E] 
     CALL  LNUM2                     ;[3111] 
-    CALL  AD                        ;[3114] 
+    CALL  ADD                       ;[3114] 
     CALL  POP_WRA2                  ;[3117] 
     CALL  PUSH_WRA1                 ;[311A] 
     LD    HL,FLOAT_RT10             ;[311D] 
@@ -7660,7 +7660,7 @@ BASIC_FN_LOG:
     CALL  MLT                       ;[313F] 
     LD    HL,FLOAT_05               ;[3142] 
     CALL  LNUM2                     ;[3145] 
-    CALL  AD                        ;[3148] 
+    CALL  ADD                       ;[3148] 
     LD    HL,SYSVAR_WRA1            ;[314B] 
     PUSH  HL                        ;[314E] 
     CALL  LNUM2                     ;[314F] 
@@ -7669,12 +7669,12 @@ BASIC_FN_LOG:
     SET   0,(HL)                    ;[3156] 
     POP   AF                        ;[3158] 
     LD    (SYSVAR_WRA1+$01),A       ;[3159] 
-    CALL  TBD                       ;[315C] 
+    CALL  ALIGN                     ;[315C] 
     POP   AF                        ;[315F] 
     JR    NZ,$3167                  ;[3160] 
     LD    HL,SYSVAR_WRA1            ;[3162] 
     RES   7,(HL)                    ;[3165] 
-    JP    AD                        ;[3167] 
+    JP    ADD                       ;[3167] 
 
 ;
 ; Data for LOG routine.
@@ -7735,7 +7735,7 @@ BASIC_FN_ANTILOG:
     LD    A,$BF                     ;[31D0] 
     LD    (SYSVAR_WRA1),A           ;[31D2] 
     OR    A                         ;[31D5] 
-    CALL  TBD                       ;[31D6] 
+    CALL  ALIGN                     ;[31D6] 
     LD    IX,DATA_ANTILOG           ;[31D9] 
     CALL  MULTIPLY_ADD              ;[31DD] 
     CALL  VALIDATE_SWAP_MULTI       ;[31E0] 
@@ -7765,7 +7765,7 @@ DATA_ANTILOG:
 BASIC_FN_COS:
     LD    HL,FLOAT_RDEG             ;[321A] 
     CALL  LNUM2                     ;[321D] 
-    CALL  AD                        ;[3220] 
+    CALL  ADD                       ;[3220] 
 
 ;
 ; SIN.
@@ -7783,7 +7783,7 @@ BASIC_FN_SIN:
     JR    NZ,$3248                  ;[323D] 
     LD    HL,FLOAT4                 ;[323F] 
     CALL  LNUM2                     ;[3242] 
-    CALL  AD                        ;[3245] 
+    CALL  ADD                       ;[3245] 
     LD    HL,FLOAT1                 ;[3248] 
     CALL  LNUM2                     ;[324B] 
     CALL  CMP                       ;[324E] 
@@ -8153,11 +8153,11 @@ BASIC_FN_INT:
     LD    B,A                       ;[3467] 
     PUSH  BC                        ;[3468] 
 BASIC_FN_INT1:
-    CALL  $3643                     ;[3469] 
+    CALL  RRD1A                     ;[3469] 
     DJNZ  BASIC_FN_INT1             ;[346C] 
     POP   BC                        ;[346E] 
 BASIC_FN_INT2:
-    CALL  $3656                     ;[346F] 
+    CALL  RL10                      ;[346F] 
     DJNZ  BASIC_FN_INT2             ;[3472] 
     RET                             ;[3474] 
 
@@ -8177,10 +8177,10 @@ BASIC_FN_FRAC:
     AND   $C0                       ;[3488] 
     DEC   A                         ;[348A] 
     LD    (SYSVAR_WRA1),A           ;[348B] 
-    CALL  $3656                     ;[348E] 
+    CALL  RL10                      ;[348E] 
     DJNZ  $348E                     ;[3491] 
     OR    A                         ;[3493] 
-    JP    TBD                       ;[3494] 
+    JP    ALIGN                     ;[3494] 
 
 ;
 ; Floating point in WRA1 to integer in HL
@@ -8199,7 +8199,7 @@ FPINT:
     SUB   $BF                       ;[34AF] 
     LD    B,A                       ;[34B1] 
     PUSH  DE                        ;[34B2] 
-    CALL  $3656                     ;[34B3] 
+    CALL  RL10                      ;[34B3] 
     LD    E,L                       ;[34B6] 
     LD    D,H                       ;[34B7] 
     ADD   HL,HL                     ;[34B8] 
@@ -8218,38 +8218,40 @@ FPINT:
 ;
 INTFP:
     LD    A,$C7                     ;[34C4] 
-    LD    (SYSVAR_WRA1),A           ;[34C6] 
-    PUSH  HL                        ;[34C9] 
-    LD    HL,$0000                  ;[34CA] 
+    LD    (SYSVAR_WRA1),A           ;[34C6] Store power and N$SIGN
+    PUSH  HL                        ;[34C9] Save number
+    LD    HL,$0000                  ;[34CA] N$ZERO WRA1
     LD    (SYSVAR_WRA1+$03),HL      ;[34CD] 
     LD    (SYSVAR_WRA1+$01),HL      ;[34D0] 
     POP   HL                        ;[34D3] 
-    LD    B,$10                     ;[34D4] 
-    ADD   HL,HL                     ;[34D6] 
-    PUSH  BC                        ;[34D7] 
-    PUSH  HL                        ;[34D8] 
-    LD    B,$04                     ;[34D9] 
-    LD    HL,SYSVAR_WRA1+$04        ;[34DB] 
-    LD    A,(HL)                    ;[34DE] 
-    ADC   A,(HL)                    ;[34DF] 
-    DAA                             ;[34E0] 
-    LD    (HL),A                    ;[34E1] 
-    DEC   HL                        ;[34E2] 
-    DJNZ  $34DE                     ;[34E3] 
-    POP   HL                        ;[34E5] 
-    POP   BC                        ;[34E6] 
-    DJNZ  $34D6                     ;[34E7] 
-    OR    A                         ;[34E9] 
-    JP    TBD                       ;[34EA] 
+    LD    B,$10                     ;[34D4] Number of bits
+INTFP1:
+    ADD   HL,HL                     ;[34D6] Top bit into carry
+    PUSH  BC                        ;[34D7] Save count
+    PUSH  HL                        ;[34D8] Save number
+    LD    B,$04                     ;[34D9] Number of mantissa bytes
+    LD    HL,SYSVAR_WRA1+$04        ;[34DB] End of WRA1
+INTFP2:
+    LD    A,(HL)                    ;[34DE] Get byte
+    ADC   A,(HL)                    ;[34DF] Double and add carry
+    DAA                             ;[34E0] Decimal adjust
+    LD    (HL),A                    ;[34E1] Store byte
+    DEC   HL                        ;[34E2] Advance pointer
+    DJNZ  INTFP2                    ;[34E3] Cont.
+    POP   HL                        ;[34E5] Get number
+    POP   BC                        ;[34E6] Get count
+    DJNZ  INTFP1                    ;[34E7] Cont.
+    OR    A                         ;[34E9] Clear carry
+    JP    ALIGN                     ;[34EA] Align number
 
 ;
 ; Test for '0' to '9'
 ;
 TEST_DIGIT:
     LD    A,(DE)                    ;[34ED] 
-    CP    $30                       ;[34EE] 
+    CP    '0'                       ;[34EE] 
     RET   C                         ;[34F0] 
-    CP    $3A                       ;[34F1] 
+    CP    '9'+1                     ;[34F1] 
     CCF                             ;[34F3] 
     RET                             ;[34F4] 
 
@@ -8376,41 +8378,45 @@ SUB_SUBTRACT:
 ; Compares WRA2, WRA1. Flags set as (WRA2) - (WRA1). 
 ;
 CMP:
-    CALL  SUB_CMP                   ;[3561] 
+    CALL  CMPS                      ;[3561] 
     RET   Z                         ;[3564] 
     PUSH  AF                        ;[3565] 
     LD    HL,SYSVAR_WRA1            ;[3566] 
     BIT   7,(HL)                    ;[3569] 
-    JR    NZ,$3577                  ;[356B] 
+    JR    NZ,CMPX1                  ;[356B] 
     LD    HL,SYSVAR_WRA2            ;[356D] 
     BIT   7,(HL)                    ;[3570] 
-    JR    NZ,$3577                  ;[3572] 
+    JR    NZ,CMPX1                  ;[3572] 
     POP   AF                        ;[3574] 
     CCF                             ;[3575] 
     RET                             ;[3576] 
 
+CMPX1:
     POP   AF                        ;[3577] 
     RET                             ;[3578] 
 
 ;
 ; Subroutine called by compare routine.
 ;
-SUB_CMP:
+CMPS:
     LD    HL,SYSVAR_WRA1            ;[3579] 
     LD    DE,SYSVAR_WRA2            ;[357C] 
     LD    B,$05                     ;[357F] 
+CMP1:
     LD    A,(DE)                    ;[3581] 
     CP    (HL)                      ;[3582] 
+CMP2:
     RET   NZ                        ;[3583] 
     INC   HL                        ;[3584] 
     INC   DE                        ;[3585] 
-    DJNZ  $3581                     ;[3586] 
+    DJNZ  CMP1                      ;[3586] 
     RET                             ;[3588] 
 
 ;
-; Subroutine called by the addition routine.
+; Same as N$CMP but compares absolute values
+; (called by the addition routine.)
 ;
-SUB_ADD:
+CPABS:
     LD    HL,SYSVAR_WRA1            ;[3589] 
     LD    DE,SYSVAR_WRA2            ;[358C] 
     LD    A,(DE)                    ;[358F] 
@@ -8419,19 +8425,19 @@ SUB_ADD:
     RES   7,C                       ;[3593] 
     CP    C                         ;[3595] 
     LD    B,$05                     ;[3596] 
-    JR    $3583                     ;[3598] 
+    JR    CMP2                      ;[3598] 
 
 ;
-; To be determined
+; Align number in WRA1, C contains overflow
 ;
-TBD:
-    CALL  $361E                     ;[359A] 
+ALIGN:
+    CALL  ALN1                      ;[359A] 
     LD    A,(SYSVAR_WRA1)           ;[359D] 
     RES   7,A                       ;[35A0] 
     ADD   A,C                       ;[35A2] 
     JR    Z,LZERO                   ;[35A3] 
     BIT   7,A                       ;[35A5] 
-    JR    Z,$3616                   ;[35A7] 
+    JR    Z,ALN3                    ;[35A7] 
     CP    $C0                       ;[35A9] 
     CALL  C,ERR_OVERFLOW            ;[35AB] 
 
@@ -8493,68 +8499,86 @@ UNUSED:
 ; PI.
 ;
 BASIC_FN_PI:
-    LD    HL,DATA_PI                ;[360C] 
+    LD    HL,DATA_NPI               ;[360C] 
     JR    LNUM1                     ;[360F] 
 
 ;
 ; Data for Pi.
 ;
-DATA_PI:
+DATA_NPI:
     DB $C0,$31,$41,$59,$27          ;[3611]  .1AY'
 
-    LD    A,(SYSVAR_WRA1)           ;[3616] Numeric manipulation routines.
-    ADD   A,C                       ;[3619] 
-    LD    (SYSVAR_WRA1),A           ;[361A] 
+ALN3:
+    LD    A,(SYSVAR_WRA1)           ;[3616] Get exponent
+    ADD   A,C                       ;[3619] Add correction
+    LD    (SYSVAR_WRA1),A           ;[361A] Store WRA1
     RET                             ;[361D] 
 
-    LD    BC,$0900                  ;[361E] 
-    JR    NC,$362A                  ;[3621] 
-    LD    A,$01                     ;[3623] 
-    CALL  $3643                     ;[3625] 
-    INC   C                         ;[3628] 
+ALN1:
+    LD    BC,$0900                  ;[361E] B=max. number of  rotations. C=correction
+    JR    NC,ALN2                   ;[3621] If not overflow, jump
+    LD    A,$01                     ;[3623] Rotate in A 1
+    CALL  RRD1A                     ;[3625] 
+    INC   C                         ;[3628] Increment correction
     RET                             ;[3629] 
 
-    LD    A,(SYSVAR_WRA1+$01)       ;[362A] 
-    CP    $10                       ;[362D] 
-    RET   NC                        ;[362F] 
-    DEC   C                         ;[3630] 
-    CALL  $3656                     ;[3631] 
-    DJNZ  $362A                     ;[3634] 
-    POP   HL                        ;[3636] 
-    JP    LZERO                     ;[3637] 
+ALN2:
+    LD    A,(SYSVAR_WRA1+$01)       ;[362A] Get top two digits
+    CP    $10                       ;[362D] See if top digit is non-zero
+    RET   NC                        ;[362F] Return if non-zero
+    DEC   C                         ;[3630] Decrement correction
+    CALL  RL10                      ;[3631] Rotate in A zero
+    DJNZ  ALN2                      ;[3634] Do for max nine times
+    POP   HL                        ;[3636] Pull off return address
+    JP    LZERO                     ;[3637] Load WRA1 with zero
+
+;
+; Rotate WRA2 right put in A 0
+;
+RRD20:
     XOR   A                         ;[363A] 
-    PUSH  HL                        ;[363B] 
+RRD2A:
+    PUSH  HL                        ;[363B] "               "   in A reg
     PUSH  BC                        ;[363C] 
     LD    HL,SYSVAR_WRA2+$01        ;[363D] 
-    JR    $3648                     ;[3640] 
-    XOR   A                         ;[3642] 
+    JR    RR2                       ;[3640] 
+RRD10:
+    XOR   A                         ;[3642] Rotate WRA1 right put in A 0
+RRD1A:
     PUSH  HL                        ;[3643] 
     PUSH  BC                        ;[3644] 
     LD    HL,SYSVAR_WRA1+$01        ;[3645] 
-    CALL  $364E                     ;[3648] 
+RR2:
+    CALL  RRSUB                     ;[3648] 
     POP   BC                        ;[364B] 
     POP   HL                        ;[364C] 
     RET                             ;[364D] 
 
+RRSUB:
     LD    B,$04                     ;[364E] 
+RR1:
     RRD                             ;[3650] 
     INC   HL                        ;[3652] 
-    DJNZ  $3650                     ;[3653] 
+    DJNZ  RR1                       ;[3653] 
     RET                             ;[3655] 
 
-    XOR   A                         ;[3656] 
+RL10:
+    XOR   A                         ;[3656] Rotate WRA1 left with 0
+RL1A:
     PUSH  HL                        ;[3657] 
     PUSH  BC                        ;[3658] 
     LD    HL,SYSVAR_WRA1+$04        ;[3659] 
-    CALL  $3662                     ;[365C] 
+    CALL  RLSUB                     ;[365C] 
     POP   BC                        ;[365F] 
     POP   HL                        ;[3660] 
     RET                             ;[3661] 
 
+RLSUB:
     LD    B,$04                     ;[3662] ? Fancy rotate with (HL) !! ??
+RL1:
     RLD                             ;[3664] 
     DEC   HL                        ;[3666] 
-    DJNZ  $3664                     ;[3667] 
+    DJNZ  RL1                       ;[3667] 
     RET                             ;[3669] 
 
 ;
@@ -8566,8 +8590,8 @@ SBT:
 ;
 ; Basic Add Function:  Adds (WRA1) and (WRA2), stores result in WRA1.
 ;
-AD:
-    CALL  SUB_ADD                   ;[366D] 
+ADD:
+    CALL  CPABS                     ;[366D] 
     CALL  NC,SWAP                   ;[3670] 
     LD    A,(SYSVAR_WRA2)           ;[3673] 
     AND   $7F                       ;[3676] 
@@ -8580,7 +8604,7 @@ AD:
     CP    $08                       ;[3682] 
     RET   NC                        ;[3684] 
     LD    B,A                       ;[3685] 
-    CALL  $363A                     ;[3686] 
+    CALL  RRD20                     ;[3686] 
     DJNZ  $3686                     ;[3689] 
     LD    A,(SYSVAR_WRA1)           ;[368B] 
     LD    C,A                       ;[368E] 
@@ -8590,9 +8614,9 @@ AD:
     JR    Z,$369E                   ;[3695] 
     CALL  $36A4                     ;[3697] 
     OR    A                         ;[369A] 
-    JP    TBD                       ;[369B] 
+    JP    ALIGN                     ;[369B] 
     CALL  SUB_PLUS                  ;[369E] 
-    JP    TBD                       ;[36A1] 
+    JP    ALIGN                     ;[36A1] 
     OR    A                         ;[36A4] 
     LD    DE,SYSVAR_WRA1+$04        ;[36A5] 
     LD    HL,SYSVAR_WRA2+$04        ;[36A8] 
@@ -8678,7 +8702,7 @@ MLT:
     JR    NC,$3737                  ;[3726] 
     LD    HL,$62D9                  ;[3728] 
     LD    B,$05                     ;[372B] 
-    CALL  $3664                     ;[372D] 
+    CALL  RL1                       ;[372D] 
     LD    A,(HL)                    ;[3730] 
     DEC   A                         ;[3731] 
     LD    (HL),A                    ;[3732] 
@@ -8835,11 +8859,11 @@ DIV:
     INC   C                         ;[381A] 
     JR    $380A                     ;[381B] 
     LD    A,C                       ;[381D] 
-    CALL  $3657                     ;[381E] 
+    CALL  RL1A                      ;[381E] 
     LD    HL,SYSVAR_WRAE            ;[3821] 
     LD    B,$08                     ;[3824] 
     XOR   A                         ;[3826] 
-    CALL  $3650                     ;[3827] 
+    CALL  RR1                       ;[3827] 
     POP   BC                        ;[382A] 
     DJNZ  $3807                     ;[382B] 
     LD    A,(SYSVAR_WRA1+$01)       ;[382D] 
@@ -8856,7 +8880,7 @@ DIV:
     LD    DE,$62D5                  ;[3844] 
     LD    HL,SYSVAR_WRAE            ;[3847] 
     LD    B,$08                     ;[384A] 
-    JP    $3581                     ;[384C] 
+    JP    CMP1                      ;[384C] 
     LD    A,(SYSVAR_WRA2+$01)       ;[384F] 
     RRCA                            ;[3852] 
     RRCA                            ;[3853] 
@@ -8878,7 +8902,7 @@ DIV:
     INC   HL                        ;[386E] 
     DJNZ  $3860                     ;[386F] 
     OR    A                         ;[3871] 
-    JP    TBD                       ;[3872] 
+    JP    ALIGN                     ;[3872] 
     PUSH  BC                        ;[3875] 
     PUSH  AF                        ;[3876] 
     LD    A,E                       ;[3877] 
@@ -8960,7 +8984,7 @@ SUB_MULTIPLY:
     INC   E                         ;[38D8] 
     DEC   E                         ;[38D9] 
     LD    A,E                       ;[38DA] 
-    JP    NZ,$3643                  ;[38DB] 
+    JP    NZ,RRD1A                  ;[38DB] 
     LD    HL,SYSVAR_WRA1            ;[38DE] 
     LD    A,(HL)                    ;[38E1] 
     OR    A                         ;[38E2] 
@@ -9970,9 +9994,9 @@ SUB_DIM:
     JP    $2FCB                     ;[3FEE] 
 SUB_MOD:
     RLA                             ;[3FF1] 
-    CALL  NC,AD                     ;[3FF2] 
+    CALL  NC,ADD                    ;[3FF2] 
     LD    HL,FLOAT_05               ;[3FF5] Let HL = 0.5
     CALL  LNUM2                     ;[3FF8] 
-    JP    AD                        ;[3FFB] 
+    JP    ADD                       ;[3FFB] 
     RST   $38                       ;[3FFE] 
     NOP                             ;[3FFF] 
