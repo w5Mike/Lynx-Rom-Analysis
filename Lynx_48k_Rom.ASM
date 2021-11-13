@@ -9017,76 +9017,39 @@ JUMP_TO_CMDLINE:
     LD    SP,(SYSVAR_STACK)         ;[38E8] 
     JP    SUB_JUMP_TO_CMDLINE       ;[38EC] 
 
-;
-; Data. Error messages.
-;
-DATA_ERROR_MSGS:
-    DB $00,$4F,$75,$74,$20,$6F,$66,$20      ;[38EF]  .Out.of.
-    DB $4D,$65,$6D,$6F,$72,$79,$00,$57      ;[38F7]  Memory.W
-    DB $72,$6F,$6E,$67,$20,$4D,$6F,$64      ;[38FF]  rong.Mod
-    DB $65,$00,$53,$74,$72,$69,$6E,$67      ;[3907]  e.String
-    DB $20,$65,$72,$72,$6F,$72,$00,$4D      ;[390F]  .error.M
-    DB $69,$73,$73,$69,$6E,$67,$20,$62      ;[3917]  issing.b
-    DB $72,$61,$63,$6B,$65,$74,$00,$44      ;[391F]  racket.D
-    DB $69,$76,$69,$64,$65,$20,$62,$79      ;[3927]  ivide.by
-    DB $20,$7A,$65,$72,$6F,$20,$65,$72      ;[392F]  .zero.er
-    DB $72,$6F,$72,$00,$4F,$76,$65,$72      ;[3937]  ror.Over
-    DB $66,$6C,$6F,$77,$20,$65,$72,$72      ;[393F]  flow.err
-    DB $6F,$72,$00,$53,$79,$6E,$74,$61      ;[3947]  or.Synta
-    DB $78,$20,$65,$72,$72,$6F,$72,$00      ;[394F]  x.error.
-    DB $53,$6F,$6D,$65,$74,$68,$69,$6E      ;[3957]  Somethin
-    DB $67,$20,$6D,$69,$73,$73,$69,$6E      ;[395F]  g.missin
-    DB $67,$00,$46,$75,$6E,$63,$74,$69      ;[3967]  g.Functi
-    DB $6F,$6E,$20,$61,$72,$67,$75,$6D      ;[396F]  on.argum
-    DB $65,$6E,$74,$20,$65,$72,$72,$6F      ;[3977]  ent.erro
-    DB $72,$00,$4E,$4F,$54,$20,$59,$45      ;[397F]  r.NOT.YE
-    DB $54,$20,$49,$4D,$50,$4C,$45,$4D      ;[3987]  T.IMPLEM
-    DB $45,$4E,$54,$45,$44,$00,$52,$65      ;[398F]  ENTED.Re
-    DB $64,$69,$6D,$65,$6E,$73,$69,$6F      ;[3997]  dimensio
-    DB $6E,$65,$64,$20,$61,$72,$72,$61      ;[399F]  ned.arra
-    DB $79,$00,$4C,$69,$6E,$65,$2C,$20      ;[39A7]  y.Line,.
-    DB $4C,$41,$42,$45,$4C,$20,$6F,$72      ;[39AF]  LABEL.or
-    DB $20,$50,$52,$4F,$43,$20,$6E,$6F      ;[39B7]  .PROC.no
-    DB $74,$20,$66,$6F,$75,$6E,$64,$00      ;[39BF]  t.found.
-    DB $4E,$75,$6D,$62,$65,$72,$20,$6F      ;[39C7]  Number.o
-    DB $75,$74,$20,$6F,$66,$20,$72,$61      ;[39CF]  ut.of.ra
-    DB $6E,$67,$65,$00,$53,$75,$62,$73      ;[39D7]  nge.Subs
-    DB $63,$72,$69,$70,$74,$20,$6F,$75      ;[39DF]  cript.ou
-    DB $74,$20,$6F,$66,$20,$72,$61,$6E      ;[39E7]  t.of.ran
-    DB $67,$65,$00,$54,$79,$70,$65,$20      ;[39EF]  ge.Type.
-    DB $6D,$69,$73,$6D,$61,$74,$63,$68      ;[39F7]  mismatch
-    DB $00,$4C,$69,$6E,$65,$20,$74,$6F      ;[39FF]  .Line.to
-    DB $6F,$20,$6C,$6F,$6E,$67,$00,$43      ;[3A07]  o.long.C
-    DB $61,$6E,$6E,$6F,$74,$20,$63,$6F      ;[3A0F]  annot.co
-    DB $6E,$74,$69,$6E,$75,$65,$00,$4F      ;[3A17]  ntinue.O
-    DB $75,$74,$20,$6F,$66,$20,$44,$61      ;[3A1F]  ut.of.Da
-    DB $74,$61,$00,$52,$45,$54,$55,$52      ;[3A27]  ta.RETUR
-    DB $4E,$20,$77,$69,$74,$68,$6F,$75      ;[3A2F]  N.withou
-    DB $74,$20,$47,$4F,$53,$55,$42,$00      ;[3A37]  t.GOSUB.
-    DB $4E,$45,$58,$54,$20,$77,$69,$74      ;[3A3F]  NEXT.wit
-    DB $68,$6F,$75,$74,$20,$46,$4F,$52      ;[3A47]  hout.FOR
-    DB $00,$55,$6E,$64,$65,$66,$69,$6E      ;[3A4F]  .Undefin
-    DB $65,$64,$20,$76,$61,$72,$69,$61      ;[3A57]  ed.varia
-    DB $62,$6C,$65,$00,$55,$4E,$54,$49      ;[3A5F]  ble.UNTI
-    DB $4C,$20,$77,$69,$74,$68,$6F,$75      ;[3A67]  L.withou
-    DB $74,$20,$52,$45,$50,$45,$41,$54      ;[3A6F]  t.REPEAT
-    DB $00,$57,$45,$4E,$44,$20,$77,$69      ;[3A77]  .WEND.wi
-    DB $74,$68,$6F,$75,$74,$20,$57,$48      ;[3A7F]  thout.WH
-    DB $49,$4C,$45,$00,$57,$48,$49,$4C      ;[3A87]  ILE.WHIL
-    DB $45,$20,$77,$69,$74,$68,$6F,$75      ;[3A8F]  E.withou
-    DB $74,$20,$57,$45,$4E,$44,$00,$52      ;[3A97]  t.WEND.R
-    DB $65,$74,$75,$72,$6E,$20,$73,$74      ;[3A9F]  eturn.st
-    DB $61,$63,$6B,$20,$66,$75,$6C,$6C      ;[3AA7]  ack.full
-    DB $00,$52,$45,$50,$45,$41,$54,$20      ;[3AAF]  .REPEAT.
-    DB $77,$69,$74,$68,$6F,$75,$74,$20      ;[3AB7]  without.
-    DB $55,$4E,$54,$49,$4C,$00,$47,$4F      ;[3ABF]  UNTIL.GO
-    DB $53,$55,$42,$20,$77,$69,$74,$68      ;[3AC7]  SUB.with
-    DB $6F,$75,$74,$20,$52,$45,$54,$55      ;[3ACF]  out.RETU
-    DB $52,$4E,$00,$45,$4E,$44,$50,$52      ;[3AD7]  RN.ENDPR
-    DB $4F,$43,$20,$77,$69,$74,$68,$6F      ;[3ADF]  OC.witho
-    DB $75,$74,$20,$50,$52,$4F,$43,$00      ;[3AE7]  ut.PROC.
-    DB $0D,$42,$61,$64,$20,$54,$61,$70      ;[3AEF]  .Bad.Tap
-    DB $65,$00                              ;[3AF7]  e.
+; 
+; Error message table
+; 
+ERRS:    DB    0                                  ;[38EF] 
+OMMSG:   DB    "Out of Memory",0                  ;[38F0] 
+WRMSG:   DB    "Wrong Mode",0                     ;[38FE] 
+STRMSG:  DB    "String error",0                   ;[3909] 
+PRNMSG:  DB    "Missing bracket",0                ;[3916] 
+D0MSG:   DB    "Divide by zero error",0           ;[3926] 
+OVMSG:   DB    "Overflow error",0                 ;[393B] 
+SNMSG:   DB    "Syntax error",0                   ;[394A] 
+MOPMSG:  DB    "Something missing",0              ;[3957] 
+ARGMSG:  DB    "Function argument error",0        ;[3969] 
+NIERR:   DB    "NOT YET IMPLEMENTED",0            ;[3981] 
+RAMSG:   DB    "Redimensioned array",0            ;[3995] 
+ULMSG:   DB    "Line, LABEL or PROC not found",0  ;[39A9] 
+NRMSG:   DB    "Number out of range",0            ;[39C7] 
+SRMSG:   DB    "Subscript out of range",0         ;[39DB] 
+TMMSG:   DB    "Type mismatch",0                  ;[39F2] 
+TLMSG:   DB    "Line too long",0                  ;[3A00] 
+CCMSG:   DB    "Cannot continue",0                ;[3A0E] 
+ODMSG:   DB    "Out of Data",0                    ;[3A1E] 
+RGMSG:   DB    "RETURN without GOSUB",0           ;[3A2A] 
+NFMSG:   DB    "NEXT without FOR",0               ;[3A3F] 
+UVMSG:   DB    "Undefined variable",0             ;[3A50] 
+URMSG:   DB    "UNTIL without REPEAT",0           ;[3A63] 
+WWMSG:   DB    "WEND without WHILE",0             ;[3A78] 
+WDMSG:   DB    "WHILE without WEND",0             ;[3A8B] 
+SMMSG:   DB    "Return stack full",0              ;[3A9E] 
+RUMSG:   DB    "REPEAT without UNTIL",0           ;[3AB0] 
+GRMSG:   DB    "GOSUB without RETURN",0           ;[3AC5] 
+EPMSG:   DB    "ENDPROC without PROC",0           ;[3ADA] 
+BTMS:    DB    $0D,"Bad Tape",0                   ;[3AEF] 
 
 ;
 ; Error message selection code. (also BAD_TAPE jump)
@@ -9976,7 +9939,7 @@ MONITOR_P1:
 SUB_MONITOR_R:
     JP    (HL)                      ;[3FC3] 
     CALL  MOTOFF                    ;[3FC4] 
-    LD    HL,$3AEF                  ;[3FC7] 
+    LD    HL,BTMS                   ;[3FC7] 
     CALL  PLINE                     ;[3FCA] 
     LD    A,$0D                     ;[3FCD] 
     RST   $08                       ;[3FCF] 
