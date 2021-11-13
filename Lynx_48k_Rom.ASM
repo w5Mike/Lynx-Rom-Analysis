@@ -1989,7 +1989,7 @@ BASIC_FN_MOD:
     CALL  DIV                       ;[0E27] 
     CALL  BASIC_FN_FRAC             ;[0E2A] 
     CALL  POP_WRA2                  ;[0E2D] 
-    CALL  MULT                      ;[0E30] 
+    CALL  _MULT                     ;[0E30] 
     CALL  POP_WRA2                  ;[0E33] 
     LD    A,(SYSVAR_WRA1)           ;[0E36] 
     CALL  SUB_MOD                   ;[0E39] 
@@ -2119,7 +2119,7 @@ BASIC_FN_RAND:
     CALL  PUSH_WRA1                 ;[0E9F] 
     CALL  BASIC_FN_RND              ;[0EA2] 
     CALL  POP_WRA2                  ;[0EA5] 
-    CALL  MULT                      ;[0EA8] 
+    CALL  _MULT                     ;[0EA8] 
     JP    BASIC_FN_INT              ;[0EAB] 
 
 ;
@@ -6589,7 +6589,7 @@ BASIC_COM_RENUM:
     CALL  INTFP                     ;[2AD1] 
     LD    HL,$62F8                  ;[2AD4] 
     CALL  LNUM2                     ;[2AD7] 
-    CALL  MULT                      ;[2ADA] 
+    CALL  _MULT                     ;[2ADA] 
     LD    HL,SYSVAR_AUTOST          ;[2ADD] 
     CALL  LNUM2                     ;[2AE0] 
     CALL  ADD                       ;[2AE3] 
@@ -7291,7 +7291,7 @@ VALIDATE_DIM:
 ;
 VALIDATE_SWAP_MULTI:
     CALL  $2759                     ;[2EBB] 
-    JP    MULT                      ;[2EBE] 
+    JP    _MULT                     ;[2EBE] 
 
 ;
 ; Multiply and add routine.
@@ -7310,7 +7310,7 @@ MULTIPLY_ADD:
     PUSH  IY                        ;[2ED6] 
     CALL  IY_TO_WRA2                ;[2ED8] 
     POP   IY                        ;[2EDB] 
-    CALL  MULT                      ;[2EDD] 
+    CALL  _MULT                     ;[2EDD] 
     CALL  IX_TO_WRA2                ;[2EE0] 
     CALL  ADD                       ;[2EE3] 
     POP   BC                        ;[2EE6] 
@@ -7486,7 +7486,7 @@ SUB_ARCTAN:
     LD    IX,DATA_ARCTAN            ;[2FDF] 
     CALL  MULTIPLY_ADD              ;[2FE3] 
     CALL  POP_WRA2                  ;[2FE6] 
-    JP    MULT                      ;[2FE9] 
+    JP    _MULT                     ;[2FE9] 
 
 ;
 ; Data for ARCTAN
@@ -7519,7 +7519,7 @@ BASIC_FN_FACT:
     JR    Z,$304C                   ;[3036] 
     CALL  POP_WRA2                  ;[3038] 
     CALL  PUSH_WRA1                 ;[303B] 
-    CALL  MULT                      ;[303E] 
+    CALL  _MULT                     ;[303E] 
     CALL  POP_WRA2                  ;[3041] 
     CALL  PUSH_WRA1                 ;[3044] 
     CALL  SWAP                      ;[3047] 
@@ -7556,7 +7556,7 @@ BASIC_FN_SQR:
     CALL  ADD                       ;[3084] 
     LD    HL,FLOAT_05               ;[3087] 
     CALL  LNUM2                     ;[308A] 
-    CALL  MULT                      ;[308D] 
+    CALL  _MULT                     ;[308D] 
     POP   BC                        ;[3090] 
     DJNZ  $3070                     ;[3091] 
     RET                             ;[3093] 
@@ -7596,7 +7596,7 @@ BASIC_FN_POWER:
     PUSH  IY                        ;[30C0] 
     CALL  IY_TO_WRA2                ;[30C2] 
     POP   IY                        ;[30C5] 
-    CALL  MULT                      ;[30C7] 
+    CALL  _MULT                     ;[30C7] 
     POP   BC                        ;[30CA] 
     DJNZ  $30BF                     ;[30CB] 
     RET                             ;[30CD] 
@@ -7611,7 +7611,7 @@ SUB_POWER2:
     CALL  $2EF0                     ;[30D5] 
     CALL  BASIC_FN_LOG              ;[30D8] 
     CALL  POP_WRA2                  ;[30DB] 
-    CALL  MULT                      ;[30DE] 
+    CALL  _MULT                     ;[30DE] 
     JP    BASIC_FN_ANTILOG          ;[30E1] 
 
 ;
@@ -7657,7 +7657,7 @@ BASIC_FN_LOG:
     LD    IX,DATA_LOG               ;[3135] 
     CALL  MULTIPLY_ADD              ;[3139] 
     CALL  POP_WRA2                  ;[313C] 
-    CALL  MULT                      ;[313F] 
+    CALL  _MULT                     ;[313F] 
     LD    HL,FLOAT_05               ;[3142] 
     CALL  LNUM2                     ;[3145] 
     CALL  ADD                       ;[3148] 
@@ -7691,7 +7691,7 @@ DATA_LOG:
 BASIC_FN_EXP:
     LD    HL,FLOAT_LOGE             ;[3184] 
     CALL  LNUM2                     ;[3187] 
-    CALL  MULT                      ;[318A] 
+    CALL  _MULT                     ;[318A] 
     JP    BASIC_FN_ANTILOG          ;[318D] 
 
 ;
@@ -7777,7 +7777,7 @@ BASIC_FN_SIN:
     CALL  BASIC_FN_FRAC             ;[322C] 
     LD    HL,FLOAT4                 ;[322F] 
     CALL  LNUM2                     ;[3232] 
-    CALL  MULT                      ;[3235] 
+    CALL  _MULT                     ;[3235] 
     LD    A,(SYSVAR_WRA1)           ;[3238] 
     BIT   7,A                       ;[323B] 
     JR    NZ,$3248                  ;[323D] 
@@ -7806,7 +7806,7 @@ BASIC_FN_SIN:
     LD    IX,DATA_SINCOS            ;[327E] 
     CALL  MULTIPLY_ADD              ;[3282] 
     CALL  POP_WRA2                  ;[3285] 
-    JP    MULT                      ;[3288] 
+    JP    _MULT                     ;[3288] 
 
 ;
 ; Data for SIN and COS
@@ -7973,7 +7973,7 @@ BASIC_FN_PEEK:
 BASIC_FN_DEG:
     LD    HL,SUB_ANGLE              ;[3345] 
     CALL  LNUM2                     ;[3348] 
-    JP    MULT                      ;[334B] 
+    JP    _MULT                     ;[334B] 
 
 ;
 ; RAD.
@@ -8653,7 +8653,7 @@ AD121:
 ;
 ; Basic Multiply Function: Multiplies (WRA1) and (WRA2), stores answer in WRA1.
 ;
-MULT:
+_MULT:
     LD    A,(SYSVAR_WRA1)           ;[36C8] 
     CP    $80                       ;[36CB] See if zero
     JR    Z,MTZ                     ;[36CD] Load 0 & return
