@@ -16,39 +16,6 @@
 ;*
 
 ;
-; Lynx Error Address Symbols
-;
-ERR_BAD_TAPE            EQU $3AF9    ; Bad Tape
-ERR_ENDPROC_NO_PROC     EQU $3AFC    ; ENDPROC without PROC
-ERR_GOSUB_NO_RETURN     EQU $3AFF    ; GOSUB without RETURN
-ERR_REPEAT_NO_UNTIL     EQU $3B02    ; REPEAT without UNTIL
-ERR_RETURN_STACK_FULL   EQU $3B05    ; Return stack full
-ERR_WHILE_NO_WEND       EQU $3B08    ; WHILE without WEND
-ERR_WEND_NO_WHILE       EQU $3B0B    ; WEND without WHILE
-ERR_UNTIL_NO_REPEAT     EQU $3B0E    ; UNTIL without REPEAT
-ERR_UNDEFINED_VAR       EQU $3B11    ; Undefined variable
-ERR_NEXT_NO_FOR         EQU $3B14    ; NEXT without FOR
-ERR_RETURN_NO_GOSUB     EQU $3B17    ; RETURN without GOSUB
-ERR_OUT_OF_DATA         EQU $3B1A    ; Out of Data
-ERR_CANNOT_CONT         EQU $3B1D    ; Cannot continue
-ERR_LINE_TOO_LONG       EQU $3B20    ; Line too long
-ERR_TYPE_MISMATCH       EQU $3B23    ; Type mismatch
-ERR_SUBS_OUT_RANGE      EQU $3B26    ; Subscript out of range
-ERR_NUM_OUT_RANGE       EQU $3B29    ; Number out of range
-ERR_NOT_FOUND           EQU $3B2C    ; Line, LABEL or PROC not found
-ERR_REDIM_ARRAY         EQU $3B2F    ; Redimensioned array
-ERR_NOT_YET_IMP         EQU $3B32    ; NOT YET IMPLEMENTED
-ERR_FUNCT_ARG           EQU $3B35    ; Function argument error
-ERR_SOMETHG_MISSG       EQU $3B38    ; Something missing
-ERR_SYNTAX              EQU $3B3B    ; Syntax error
-ERR_OVERFLOW            EQU $3B3E    ; Overflow error
-ERR_DIVIDE_BY_Z         EQU $3B41    ; Divide by zero error
-ERR_MISSING_BRACKET     EQU $3B44    ; Missing bracket
-ERR_STRING              EQU $3B47    ; String error
-ERR_WRONG_MODE          EQU $3B4A    ; Wrong Mode
-ERR_OUT_OF_MEM          EQU $3B4D    ; Out of Memory
-
-;
 ; Lynx Constants (as defined in Mark II source code, Apr 1984)
 ; (possibly some unused in 48K original rom - TBD)
 ;

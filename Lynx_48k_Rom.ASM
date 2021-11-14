@@ -1710,7 +1710,7 @@ VERIFY_READ_NEXT:
     JP    MOTOFF                    ;[0C7E] 
 VERIFY_ERROR_EXIT:
     CALL  MOTOFF                    ;[0C81] 
-    JP    ERROR                     ;[0C84] 
+    JP    ERR_BAD_TAPE              ;[0C84] 
 
 ;
 ; APPEND BASIC command.
@@ -9052,69 +9052,44 @@ EPMSG:   DB    "ENDPROC without PROC",0           ;[3ADA]
 BTMS:    DB    $0D,"Bad Tape",0                   ;[3AEF] 
 
 ;
-; Error message selection code. (also BAD_TAPE jump)
+; Error jump points - increments A (error num) a number of times, 
+; depending on label, then displays corresponding error message.
 ;
-ERROR:
-    XOR   A                         ;[3AF9] 
-    INC   A                         ;[3AFA] 
-    LD    B,$AF                     ;[3AFB] ENDPROC without PROC
-    INC   A                         ;[3AFD] 
-    LD    B,$AF                     ;[3AFE] GOSUB without RETURN
-    INC   A                         ;[3B00] 
-    LD    B,$AF                     ;[3B01] REPEAT without UNTIL
-    INC   A                         ;[3B03] 
-    LD    B,$AF                     ;[3B04] Return stack full
-    INC   A                         ;[3B06] 
-    LD    B,$AF                     ;[3B07] WHILE without WEND
-    INC   A                         ;[3B09] 
-    LD    B,$AF                     ;[3B0A] WEND without WHILE
-    INC   A                         ;[3B0C] 
-    LD    B,$AF                     ;[3B0D] UNTIL without REPEAT
-    INC   A                         ;[3B0F] 
-    LD    B,$AF                     ;[3B10] Undefined variable
-    INC   A                         ;[3B12] 
-    LD    B,$AF                     ;[3B13] NEXT without FOR
-    INC   A                         ;[3B15] 
-    LD    B,$AF                     ;[3B16] RETURN without GOSUB
-    INC   A                         ;[3B18] 
-    LD    B,$AF                     ;[3B19] Out of Data
-    INC   A                         ;[3B1B] 
-    LD    B,$AF                     ;[3B1C] Cannot continue
-    INC   A                         ;[3B1E] 
-    LD    B,$AF                     ;[3B1F] Line too long
-    INC   A                         ;[3B21] 
-    LD    B,$AF                     ;[3B22] Type mismatch
-    INC   A                         ;[3B24] 
-    LD    B,$AF                     ;[3B25] Subscript out of range
-    INC   A                         ;[3B27] 
-    LD    B,$AF                     ;[3B28] Number out of range
-    INC   A                         ;[3B2A] 
-    LD    B,$AF                     ;[3B2B] Line, LABEL or PROC not found
-    INC   A                         ;[3B2D] 
-    LD    B,$AF                     ;[3B2E] Redimensioned array
-    INC   A                         ;[3B30] 
-    LD    B,$AF                     ;[3B31] NOT YET IMPLEMENTED
-    INC   A                         ;[3B33] 
-    LD    B,$AF                     ;[3B34] Function argument error
-    INC   A                         ;[3B36] 
-    LD    B,$AF                     ;[3B37] Something missing
-    INC   A                         ;[3B39] 
-    LD    B,$AF                     ;[3B3A] Syntax error
-    INC   A                         ;[3B3C] 
-    LD    B,$AF                     ;[3B3D] Overflow error
-    INC   A                         ;[3B3F] 
-    LD    B,$AF                     ;[3B40] Divide by zero error
-    INC   A                         ;[3B42] 
-    LD    B,$AF                     ;[3B43] Missing bracket
-    INC   A                         ;[3B45] 
-    LD    B,$AF                     ;[3B46] String error
-    INC   A                         ;[3B48] 
-    LD    B,$AF                     ;[3B49] Wrong Mode
-    INC   A                         ;[3B4B] 
-    LD    B,$AF                     ;[3B4C] Out of Memory
-    INC   A                         ;[3B4E] 
+ERR_BAD_TAPE:           DB    0AFH,3CH,6          ;[3AF9] 
+ERR_ENDPROC_NO_PROC:    DB    0AFH,3CH,6          ;[3AFC] 
+ERR_GOSUB_NO_RETURN:    DB    0AFH,3CH,6          ;[3AFF] 
+ERR_REPEAT_NO_UNTIL:    DB    0AFH,3CH,6          ;[3B02] 
+ERR_RETURN_STACK_FULL:  DB    0AFH,3CH,6          ;[3B05] 
+ERR_WHILE_NO_WEND:      DB    0AFH,3CH,6          ;[3B08] 
+ERR_WEND_NO_WHILE:      DB    0AFH,3CH,6          ;[3B0B] 
+ERR_UNTIL_NO_REPEAT:    DB    0AFH,3CH,6          ;[3B0E] 
+ERR_UNDEFINED_VAR:      DB    0AFH,3CH,6          ;[3B11] 
+ERR_NEXT_NO_FOR:        DB    0AFH,3CH,6          ;[3B14] 
+ERR_RETURN_NO_GOSUB:    DB    0AFH,3CH,6          ;[3B17] 
+ERR_OUT_OF_DATA:        DB    0AFH,3CH,6          ;[3B1A] 
+ERR_CANNOT_CONT:        DB    0AFH,3CH,6          ;[3B1D] 
+ERR_LINE_TOO_LONG:      DB    0AFH,3CH,6          ;[3B20] 
+ERR_TYPE_MISMATCH:      DB    0AFH,3CH,6          ;[3B23] 
+ERR_SUBS_OUT_RANGE:     DB    0AFH,3CH,6          ;[3B26] 
+ERR_NUM_OUT_RANGE:      DB    0AFH,3CH,6          ;[3B29] 
+ERR_NOT_FOUND:          DB    0AFH,3CH,6          ;[3B2C] 
+ERR_REDIM_ARRAY:        DB    0AFH,3CH,6          ;[3B2F] 
+ERR_NOT_YET_IMP:        DB    0AFH,3CH,6          ;[3B32] 
+ERR_FUNCT_ARG:          DB    0AFH,3CH,6          ;[3B35] 
+ERR_SOMETHG_MISSG:      DB    0AFH,3CH,6          ;[3B38] 
+ERR_SYNTAX:             DB    0AFH,3CH,6          ;[3B3B] 
+ERR_OVERFLOW:           DB    0AFH,3CH,6          ;[3B3E] 
+ERR_DIVIDE_BY_Z:        DB    0AFH,3CH,6          ;[3B41] 
+ERR_MISSING_BRACKET:    DB    0AFH,3CH,6          ;[3B44] 
+ERR_STRING:             DB    0AFH,3CH,6          ;[3B47] 
+ERR_WRONG_MODE:         DB    0AFH,3CH,6          ;[3B4A] 
+ERR_OUT_OF_MEM:         DB    0AFH,3CH            ;[3B4D] 
+
+;
+; Unused. For future use. Call to RAM
+;
 DISP_ERROR_A:
-    CALL  SYSVAR_ERRAM              ;[3B4F] Unused. For future use.
+    CALL  SYSVAR_ERRAM              ;[3B4F] 
     LD    HL,(SYSVAR_ERRTBL)        ;[3B52] Table of error messages. (see DATA_ERROR_MSGS)
     LD    C,A                       ;[3B55] 
 ERROR_PRINT:
