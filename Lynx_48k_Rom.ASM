@@ -2221,7 +2221,7 @@ VALIDATE_WORD_ABCD:
 VALIDATE_PRINT:
     DEC   HL                        ;[0F04] 
     LD    A,$1D                     ;[0F05] 
-    JP    SUB_FIND2                 ;[0F07] 
+    JP    IL2                       ;[0F07] 
 
 ;
 ; Called from DBASLN (Display Basic Line)
@@ -4130,7 +4130,7 @@ PN:
     RET                             ;[1DD7] 
 
     PUSH  DE                        ;[1DD8] 
-    CALL  $2EF0                     ;[1DD9] 
+    CALL  CSW1                      ;[1DD9] 
     DEC   IY                        ;[1DDC] 
     LD    A,(IY+$00)                ;[1DDE] 
     CALL  $1E23                     ;[1DE1] 
@@ -5523,7 +5523,7 @@ SKIP_LNUM:
 ; Input line analysis routine.
 ;
 LINP_ANLYS:
-    CALL  $2779                     ;[2524] 
+    CALL  INPLN                     ;[2524] 
     LD    HL,(SYSVAR_POLBUF)        ;[2527] 
     LD    A,(HL)                    ;[252A] 
     CP    $80                       ;[252B] 
@@ -5803,7 +5803,7 @@ VALIDATE_LET:
     JR    Z,$2696                   ;[267F] 
     CALL  VALIDATE_READ             ;[2681] 
     CP    $3D                       ;[2684] 
-    JP    NZ,$26A6                  ;[2686] 
+    JP    NZ,IERR                   ;[2686] 
     LD    (HL),A                    ;[2689] 
     INC   HL                        ;[268A] 
     INC   DE                        ;[268B] 
@@ -5822,6 +5822,11 @@ VALIDATE_LET:
     CALL  $2C9D                     ;[26A0] 
     INC   DE                        ;[26A3] 
     JR    $268F                     ;[26A4] 
+
+;
+; Input error
+;
+IERR:
     LD    DE,INPBUF                 ;[26A6] 
     LD    HL,(SYSVAR_POLBUF)        ;[26A9] 
     PUSH  HL                        ;[26AC] 
@@ -5829,7 +5834,7 @@ VALIDATE_LET:
     POP   DE                        ;[26B0] 
     CALL  SYSVAR_EE                 ;[26B1] 
     CALL  PN                        ;[26B4] 
-    LD    A,$0D                     ;[26B7] 
+    LD    A,CR                      ;[26B7] 
     RST   $08                       ;[26B9] 
     JP    JUMP_TO_CMDLINE           ;[26BA] 
 
@@ -5841,16 +5846,18 @@ VALIDATE_DPOKE:
     JP    VALIDATE_INK              ;[26C0] 
 
 ;
-; Validation routine for GOSUB.GOTO.
+; Validation routine for GOSUB, GOTO.  (expr,expr type)
 ;
-VALIDATE_GOSUB:
+VALIDATE_GOTO:
     PUSH  DE                        ;[26C3] 
     CALL  TKSL                      ;[26C4] 
-    JR    C,$26CD                   ;[26C7] 
-    CP    $D8                       ;[26C9] 
-    JR    Z,$26D1                   ;[26CB] 
+    JR    C,VALIDATE_GOTO2          ;[26C7] 
+    CP    OLABEL                    ;[26C9] 
+    JR    Z,VALIDATE_GOTO1          ;[26CB] 
+VALIDATE_GOTO2:
     POP   DE                        ;[26CD] 
     JP    VALIDATE_INK              ;[26CE] 
+VALIDATE_GOTO1:
     POP   BC                        ;[26D1] 
     LD    (HL),A                    ;[26D2] 
     INC   HL                        ;[26D3] 
@@ -5902,7 +5909,7 @@ VALIDATE_IF:
     RST   $10                       ;[2701] 
     LD    (HL),A                    ;[2702] 
     INC   HL                        ;[2703] 
-    JP    $27A9                     ;[2704] 
+    JP    IL1                       ;[2704] 
 
 ;
 ; Validation for INK, PAPER, PAUSE, WHILE, UNTIL, RESERVE, CFR,  CCHAR, SPEED, 
@@ -5939,7 +5946,7 @@ TEST_IS_VAR:
 ;
 VALIDATE_READ:
     CALL  TEST_ALPHA                ;[2721] 
-    JP    C,$26A6                   ;[2724] 
+    JP    C,IERR                    ;[2724] 
     LD    (HL),A                    ;[2727] 
     INC   HL                        ;[2728] 
     INC   DE                        ;[2729] 
@@ -5983,6 +5990,11 @@ VALIDATE_SWAP:
     CP    $0D                       ;[2753] 
     RET   Z                         ;[2755] 
     CALL  ERR_SOMETHG_MISSG         ;[2756] 
+
+;
+; WRA1 to WRA2
+;
+WRA1_TO_WRA2:
     LD    DE,SYSVAR_WRA2            ;[2759] 
 
 ;
@@ -5994,7 +6006,11 @@ WRA1_TO_DE:
     LDIR                            ;[2762] 
     RET                             ;[2764] 
 
-    LD    A,(SYSVAR_AUTOFL)         ;[2765] Line analysis subroutine.
+;
+; Input line process?
+;
+INPLNP:
+    LD    A,(SYSVAR_AUTOFL)         ;[2765] 
     OR    A                         ;[2768] 
     JP    Z,SUB_FIND                ;[2769] 
     PUSH  HL                        ;[276C] 
@@ -6003,8 +6019,9 @@ WRA1_TO_DE:
     CALL  LNUM1                     ;[2771] 
     POP   DE                        ;[2774] 
     POP   HL                        ;[2775] 
-    JP    $2796                     ;[2776] 
-    CALL  $2765                     ;[2779] Line analysis subroutine.
+    JP    INPLN3                    ;[2776] 
+INPLN:
+    CALL  INPLNP                    ;[2779] Line analysis subroutine.
     INC   HL                        ;[277C] 
     LD    (HL),$80                  ;[277D] 
     LD    DE,(SYSVAR_POLBUF)        ;[277F] 
@@ -6024,17 +6041,20 @@ WRA1_TO_DE:
 SUB_FIND:
     RST   $10                       ;[2792] 
     CALL  RDN                       ;[2793] 
+INPLN3:
     LD    A,(SYSVAR_WRA1)           ;[2796] 
     BIT   7,A                       ;[2799] 
-    JP    Z,$26A6                   ;[279B] 
+    JP    Z,IERR                    ;[279B] 
     PUSH  DE                        ;[279E] 
     LD    DE,(SYSVAR_POLBUF)        ;[279F] 
     CALL  WRA1_TO_DE                ;[27A3] 
     EX    DE,HL                     ;[27A6] 
     INC   HL                        ;[27A7] 
     POP   DE                        ;[27A8] 
+IL1:
     RST   $10                       ;[27A9] Validation for ELSE.
     CALL  SYSVAR_INPLSUB            ;[27AA] 
+IL4:
     PUSH  HL                        ;[27AD] 
     LD    HL,(SYSVAR_XTTBL)         ;[27AE] 
     LD    B,(HL)                    ;[27B1] 
@@ -6044,10 +6064,11 @@ SUB_FIND:
     POP   AF                        ;[27B9] 
     SUB   B                         ;[27BA] 
     POP   HL                        ;[27BB] 
-SUB_FIND2:
+IL2:
     LD    (HL),A                    ;[27BC] 
     INC   HL                        ;[27BD] 
     LD    IX,(SYSVAR_XITBL)         ;[27BE] 
+IL3:
     RLCA                            ;[27C2] 
     LD    C,A                       ;[27C3] 
     LD    B,$00                     ;[27C4] 
@@ -7287,49 +7308,52 @@ VALIDATE_DIM:
     RET                             ;[2EBA] 
 
 ;
-; Validate SWAP and multiply.
+; Square contents of WRA1
 ;
-VALIDATE_SWAP_MULTI:
-    CALL  $2759                     ;[2EBB] 
+SQUARE:
+    CALL  WRA1_TO_WRA2              ;[2EBB] 
     JP    _MULT                     ;[2EBE] 
 
 ;
-; Multiply and add routine.
+; X := (((A1*X)*X+A2)*X+A3)*X+A4
 ;
-MULTIPLY_ADD:
+SERIES:
     PUSH  IY                        ;[2EC1] 
-    CALL  WRA1_TO_IY                ;[2EC3] 
+    CALL  WRA1_TO_IY                ;[2EC3] Load calc stack
     POP   IY                        ;[2EC6] 
-    LD    B,(IX+$00)                ;[2EC8] 
-    INC   IX                        ;[2ECB] 
-    LD    HL,SYSVAR_WRA1            ;[2ECD] 
-    PUSH  BC                        ;[2ED0] 
-    CALL  $2F20                     ;[2ED1] 
-    POP   BC                        ;[2ED4] 
-    PUSH  BC                        ;[2ED5] 
-    PUSH  IY                        ;[2ED6] 
-    CALL  IY_TO_WRA2                ;[2ED8] 
+    LD    B,(IX+$00)                ;[2EC8] Series IX points to coeff.
+    INC   IX                        ;[2ECB] Inc past # coeff.
+    LD    HL,SYSVAR_WRA1            ;[2ECD] Load first coeff.
+    PUSH  BC                        ;[2ED0] Save count
+    CALL  LIXW                      ;[2ED1] 
+    POP   BC                        ;[2ED4] Unsave count
+SERIES1:
+    PUSH  BC                        ;[2ED5] Save count
+    PUSH  IY                        ;[2ED6] Save calc stack pointer
+    CALL  IY_TO_WRA2                ;[2ED8] Load WRA2
     POP   IY                        ;[2EDB] 
     CALL  _MULT                     ;[2EDD] 
-    CALL  IX_TO_WRA2                ;[2EE0] 
+    CALL  IX_TO_WRA2                ;[2EE0] Load WRA2 with coeff.
     CALL  ADD                       ;[2EE3] 
-    POP   BC                        ;[2EE6] 
-    DJNZ  $2ED5                     ;[2EE7] 
+    POP   BC                        ;[2EE6] Get count
+    DJNZ  SERIES1                   ;[2EE7] 
     RET                             ;[2EE9] 
 
 ;
 ; (IY) to WRA1.
 ;
 IY_TO_WRA1:
-    CALL  $2EF0                     ;[2EEA] 
-    CALL  SWAP                      ;[2EED] 
+    CALL  CSW1                      ;[2EEA] 
+    CALL  SWAP                      ;[2EED] Swap WRA1,2
+CSW1:
     LD    HL,SYSVAR_SYNL            ;[2EF0] LYNX_IY_TO_WRA1+$06
     LD    B,$05                     ;[2EF3] 
+CW1:
     DEC   IY                        ;[2EF5] 
     DEC   HL                        ;[2EF7] 
     LD    A,(IY+$00)                ;[2EF8] 
     LD    (HL),A                    ;[2EFB] 
-    DJNZ  $2EF5                     ;[2EFC] 
+    DJNZ  CW1                       ;[2EFC] 
     RET                             ;[2EFE] 
 
 ;
@@ -7337,12 +7361,13 @@ IY_TO_WRA1:
 ;
 WRA1_TO_IY:
     LD    HL,SYSVAR_WRA1            ;[2EFF] 
-    LD    B,$05                     ;[2F02] 
+    LD    B,$05                     ;[2F02] WRA1 to calc stack
+WC1:
     LD    A,(HL)                    ;[2F04] 
     LD    (IY+$00),A                ;[2F05] 
     INC   IY                        ;[2F08] 
     INC   HL                        ;[2F0A] 
-    DJNZ  $2F04                     ;[2F0B] 
+    DJNZ  WC1                       ;[2F0B] 
     RET                             ;[2F0D] 
 
 ;
@@ -7351,11 +7376,12 @@ WRA1_TO_IY:
 IY_TO_WRA2:
     LD    B,$05                     ;[2F0E] 
     LD    HL,SYSVAR_WRA2            ;[2F10] 
+LW1:
     LD    A,(IY+$00)                ;[2F13] 
     LD    (HL),A                    ;[2F16] 
     INC   IY                        ;[2F17] 
     INC   HL                        ;[2F19] 
-    DJNZ  $2F13                     ;[2F1A] 
+    DJNZ  LW1                       ;[2F1A] 
     RET                             ;[2F1C] 
 
 ;
@@ -7363,12 +7389,14 @@ IY_TO_WRA2:
 ;
 IX_TO_WRA2:
     LD    HL,SYSVAR_WRA2            ;[2F1D] 
+LIXW:
     LD    B,$05                     ;[2F20] 
+LW2:
     LD    A,(IX+$00)                ;[2F22] 
     LD    (HL),A                    ;[2F25] 
     INC   IX                        ;[2F26] 
     INC   HL                        ;[2F28] 
-    DJNZ  $2F22                     ;[2F29] 
+    DJNZ  LW2                       ;[2F29] 
     RET                             ;[2F2B] 
 
 ;
@@ -7398,7 +7426,7 @@ POP_WRA2:
     JP    (IX)                      ;[2F4A] 
 
 ;
-; LN.
+; Log base e, get log base 10
 ;
 BASIC_FN_LN:
     CALL  BASIC_FN_LOG              ;[2F4C] 
@@ -7420,12 +7448,12 @@ BASIC_FN_ARCSIN:
     CALL  DIV                       ;[2F6A] 
     CALL  BASIC_FN_SQR              ;[2F6D] 
     CALL  SUB_ARCTAN                ;[2F70] 
-    CALL  $2759                     ;[2F73] 
+    CALL  WRA1_TO_WRA2              ;[2F73] 
     CALL  ADD                       ;[2F76] 
     POP   AF                        ;[2F79] 
     RLA                             ;[2F7A] 
     RET   C                         ;[2F7B] 
-    CALL  $2759                     ;[2F7C] 
+    CALL  WRA1_TO_WRA2              ;[2F7C] 
     CALL  BASIC_FN_PI               ;[2F7F] 
     JP    SUB                       ;[2F82] 
 
@@ -7437,7 +7465,7 @@ BASIC_FN_ARCCOS:
     LD    A,(HL)                    ;[2F88] 
     PUSH  AF                        ;[2F89] 
     SET   7,(HL)                    ;[2F8A] 
-    CALL  $2759                     ;[2F8C] 
+    CALL  WRA1_TO_WRA2              ;[2F8C] 
     CALL  PUSH_WRA1                 ;[2F8F] 
     CALL  LONE                      ;[2F92] 
     CALL  ADD                       ;[2F95] 
@@ -7467,11 +7495,11 @@ BASIC_FN_ARCTAN:
     RET                             ;[2FBE] 
 
 SUB_ARCTAN1:
-    CALL  $2759                     ;[2FBF] 
+    CALL  WRA1_TO_WRA2              ;[2FBF] 
     CALL  LONE                      ;[2FC2] 
     CALL  DIV                       ;[2FC5] 
     CALL  SUB_ARCTAN                ;[2FC8] 
-    CALL  $2759                     ;[2FCB] 
+    CALL  WRA1_TO_WRA2              ;[2FCB] 
     LD    HL,FLOAT_RDEG             ;[2FCE] 
     CALL  LNUM1                     ;[2FD1] 
     CALL  SUB                       ;[2FD4] 
@@ -7482,9 +7510,9 @@ SUB_ARCTAN1:
 ;
 SUB_ARCTAN:
     CALL  PUSH_WRA1                 ;[2FD9] 
-    CALL  VALIDATE_SWAP_MULTI       ;[2FDC] 
+    CALL  SQUARE                    ;[2FDC] 
     LD    IX,DATA_ARCTAN            ;[2FDF] 
-    CALL  MULTIPLY_ADD              ;[2FE3] 
+    CALL  SERIES                    ;[2FE3] 
     CALL  POP_WRA2                  ;[2FE6] 
     JP    _MULT                     ;[2FE9] 
 
@@ -7565,14 +7593,14 @@ BASIC_FN_SQR:
 ; Part of power routine
 ;
 SUB_POWER1:
-    CALL  $2EF0                     ;[3094] 
+    CALL  CSW1                      ;[3094] 
     JP    LONE                      ;[3097] 
 
 ;
 ; ** Power routine.
 ;
 BASIC_FN_POWER:
-    CALL  $2EF0                     ;[309A] 
+    CALL  CSW1                      ;[309A] 
     LD    A,(SYSVAR_WRA1)           ;[309D] 
     CP    $80                       ;[30A0] 
     JR    Z,SUB_POWER1              ;[30A2] 
@@ -7587,7 +7615,7 @@ BASIC_FN_POWER:
     JR    NZ,SUB_POWER2             ;[30B3] 
     INC   HL                        ;[30B5] 
     DJNZ  $30B2                     ;[30B6] 
-    CALL  $2EF0                     ;[30B8] 
+    CALL  CSW1                      ;[30B8] 
     EX    AF,AF'                    ;[30BB] 
     DEC   A                         ;[30BC] 
     RET   Z                         ;[30BD] 
@@ -7608,7 +7636,7 @@ SUB_POWER2:
     EX    AF,AF'                    ;[30CE] 
     CALL  RRD1A                     ;[30CF] 
     CALL  PUSH_WRA1                 ;[30D2] 
-    CALL  $2EF0                     ;[30D5] 
+    CALL  CSW1                      ;[30D5] 
     CALL  BASIC_FN_LOG              ;[30D8] 
     CALL  POP_WRA2                  ;[30DB] 
     CALL  _MULT                     ;[30DE] 
@@ -7653,9 +7681,9 @@ BASIC_FN_LOG:
     CALL  POP_WRA2                  ;[3129] 
     CALL  DIV                       ;[312C] 
     CALL  PUSH_WRA1                 ;[312F] 
-    CALL  VALIDATE_SWAP_MULTI       ;[3132] 
+    CALL  SQUARE                    ;[3132] 
     LD    IX,DATA_LOG               ;[3135] 
-    CALL  MULTIPLY_ADD              ;[3139] 
+    CALL  SERIES                    ;[3139] 
     CALL  POP_WRA2                  ;[313C] 
     CALL  _MULT                     ;[313F] 
     LD    HL,FLOAT_05               ;[3142] 
@@ -7737,8 +7765,8 @@ BASIC_FN_ANTILOG:
     OR    A                         ;[31D5] 
     CALL  ALIGN                     ;[31D6] 
     LD    IX,DATA_ANTILOG           ;[31D9] 
-    CALL  MULTIPLY_ADD              ;[31DD] 
-    CALL  VALIDATE_SWAP_MULTI       ;[31E0] 
+    CALL  SERIES                    ;[31DD] 
+    CALL  SQUARE                    ;[31E0] 
     POP   AF                        ;[31E3] 
     LD    (SYSVAR_WRA1),A           ;[31E4] 
     EX    AF,AF'                    ;[31E7] 
@@ -7802,9 +7830,9 @@ BASIC_FN_SIN:
     CALL  SWAP                      ;[3272] 
     CALL  SUB                       ;[3275] 
     CALL  PUSH_WRA1                 ;[3278] 
-    CALL  VALIDATE_SWAP_MULTI       ;[327B] 
+    CALL  SQUARE                    ;[327B] 
     LD    IX,DATA_SINCOS            ;[327E] 
-    CALL  MULTIPLY_ADD              ;[3282] 
+    CALL  SERIES                    ;[3282] 
     CALL  POP_WRA2                  ;[3285] 
     JP    _MULT                     ;[3288] 
 
@@ -7821,7 +7849,7 @@ DATA_SINCOS:
 ; NOT.
 ;
 BASIC_FN_NOT:
-    CALL  $2EF0                     ;[32A5] 
+    CALL  CSW1                      ;[32A5] 
     LD    A,(SYSVAR_WRA1)           ;[32A8] 
     CP    $80                       ;[32AB] 
     JR    $32B2                     ;[32AD] 
@@ -7899,7 +7927,7 @@ BASIC_FN_AND:
     LD    A,(SYSVAR_WRA2)           ;[32FD] 
     CP    $80                       ;[3300] 
     JR    $32EB                     ;[3302] 
-    CALL  $2EF0                     ;[3304] 
+    CALL  CSW1                      ;[3304] 
     POP   BC                        ;[3307] 
     POP   DE                        ;[3308] 
     DEC   IY                        ;[3309] 
@@ -7910,7 +7938,7 @@ BASIC_FN_AND:
 ; - Minus sign.
 ;
 BASIC_FN_MINUS:
-    CALL  $2EF0                     ;[3311] 
+    CALL  CSW1                      ;[3311] 
     JP    NEGATE_WRA1               ;[3314] 
 FN_NEGATE1:
     CP    (HL)                      ;[3317] 
@@ -8105,7 +8133,7 @@ EE:
     LD    (IY+$00),A                ;[341D] 
     INC   IY                        ;[3420] 
     JP    $33AD                     ;[3422] 
-    JP    $2EF0                     ;[3425] 
+    JP    CSW1                      ;[3425] 
     LD    B,$05                     ;[3428] 
     LD    A,(DE)                    ;[342A] 
     LD    (IY+$00),A                ;[342B] 
@@ -9047,7 +9075,7 @@ MLONE4:
 ;
 JUMP_TO_CMDLINE:
     LD    SP,(SYSVAR_STACK)         ;[38E8] 
-    JP    SUB_JUMP_TO_CMDLINE       ;[38EC] 
+    JP    SUB_JUMP_TO_CMDLINE       ;[38EC] Recover continued.
 
 ; 
 ; Error message table
