@@ -7444,7 +7444,7 @@ BASIC_FN_ARCSIN:
     CP    $80                       ;[2F5B] 
     JP    Z,LZERO                   ;[2F5D] 
     PUSH  AF                        ;[2F60] 
-    JP    ARCCOS                    ;[2F61] 
+    JP    FNACOS                    ;[2F61] 
 
 ;
 ; Part of arccos
@@ -10057,7 +10057,7 @@ SUB_DIM:
     OR    A                         ;[3FE6] 
     RET   Z                         ;[3FE7] 
     JP    STRING_SEEK_END           ;[3FE8] 
-ARCCOS:
+FNACOS:
     CALL  BASIC_FN_ARCCOS           ;[3FEB] 
     JP    ARCTAN4                   ;[3FEE] 
 SUB_MOD:
