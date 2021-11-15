@@ -4601,12 +4601,12 @@ SUB_LPUTCHAR:
     JP    (HL)                      ;[2058] 
 
 ;
-; Check and then evaluate an expression.
+; Check and then evaluate an expression. (AKA N$ESOP)
 ;
 SUB_CHK_EXP_EVAL:
     LD    A,(DE)                    ;[2059] 
     RST   $20                       ;[205A] 
-    LD    A,L                       ;[205B] 
+    DB    SOP                       ;[205B] 
     JP    SYSVAR_EE                 ;[205C] 
 
 ;
@@ -7444,7 +7444,12 @@ BASIC_FN_ARCSIN:
     CP    $80                       ;[2F5B] 
     JP    Z,LZERO                   ;[2F5D] 
     PUSH  AF                        ;[2F60] 
-    JP    $3FEB                     ;[2F61] 
+    JP    ARCCOS                    ;[2F61] 
+
+;
+; Part of arccos
+;
+ARCCOS1:
     CALL  SUB                       ;[2F64] 
     CALL  POP_WRA2                  ;[2F67] 
     CALL  DIV                       ;[2F6A] 
@@ -7474,7 +7479,7 @@ BASIC_FN_ARCCOS:
     CALL  POP_WRA2                  ;[2F98] 
     CALL  PUSH_WRA1                 ;[2F9B] 
     CALL  LONE                      ;[2F9E] 
-    JR    $2F64                     ;[2FA1] 
+    JR    ARCCOS1                   ;[2FA1] 
     NOP                             ;[2FA3] 
     NOP                             ;[2FA4] 
 
@@ -8102,52 +8107,52 @@ ESTRING:
 EE:
     LD    IY,SYSVAR_CSTACK          ;[33A9] 
 EE1:
-    LD    A,(DE)                    ;[33AD] 
-    INC   DE                        ;[33AE] 
+    LD    A,(DE)                    ;[33AD] Get CHR
+    INC   DE                        ;[33AE] Inc pointer
     CP    ARGSOS                    ;[33AF] 
     JR    Z,EESARG                  ;[33B1] 
-    CP    SOS                       ;[33B3] 
+    CP    SOS                       ;[33B3] String
     JR    Z,ESTRING                 ;[33B5] 
-    CP    NUM                       ;[33B7] 
+    CP    NUM                       ;[33B7] Number marker
     JR    Z,EENUM                   ;[33B9] 
     CP    HNUM                      ;[33BB] 
     JR    Z,EENUM                   ;[33BD] 
-    CP    53                        ;[33BF] 
+    CP    53                        ;[33BF] Variable
     JR    C,EEVAR                   ;[33C1] 
-    CP    64+53                     ;[33C3] 
+    CP    64+53                     ;[33C3] Array
     JR    C,EEARY                   ;[33C5] 
-    CP    EOP                       ;[33C7] 
+    CP    EOP                       ;[33C7] End
     JR    Z,EEX                     ;[33C9] 
-    CP    PARENS                    ;[33CB] 
-    JR    Z,EE1                     ;[33CD] 
-    JR    C,EEARY                   ;[33CF] 
+    CP    PARENS                    ;[33CB] Parentheses
+    JR    Z,EE1                     ;[33CD] Ignore
+    JR    C,EEARY                   ;[33CF] Function
     CP    THEN                      ;[33D1] 
-    CALL  NC,ERR_SOMETHG_MISSG      ;[33D3] 
+    CALL  NC,ERR_SOMETHG_MISSG      ;[33D3] Error else operator
 EE2:
-    LD    IX,(SYSVAR_FTBL)          ;[33D6] 
-    PUSH  DE                        ;[33DA] 
+    LD    IX,(SYSVAR_FTBL)          ;[33D6] IX points to function table
+    PUSH  DE                        ;[33DA] Save pointer
     CP    $C6                       ;[33DB] 
     PUSH  AF                        ;[33DD] 
     CALL  NC,IY_TO_WRA1             ;[33DE] 
     POP   AF                        ;[33E1] 
-    SLA   A                         ;[33E2] 
-    LD    C,A                       ;[33E4] 
+    SLA   A                         ;[33E2] A := A*2
+    LD    C,A                       ;[33E4] Add A to IX
     LD    B,$00                     ;[33E5] 
     ADD   IX,BC                     ;[33E7] 
-    LD    L,(IX+$00)                ;[33E9] 
+    LD    L,(IX+$00)                ;[33E9] Get vector
     LD    H,(IX+$01)                ;[33EC] 
-    LD    BC,EERENT                 ;[33EF] 
+    LD    BC,EERENT                 ;[33EF] Save return address
     PUSH  BC                        ;[33F2] 
-    JP    (HL)                      ;[33F3] 
+    JP    (HL)                      ;[33F3] JP to routine
 EERENT:
-    POP   DE                        ;[33F4] 
-    CALL  WRA1_TO_IY                ;[33F5] 
-    JP    EE1                       ;[33F8] 
+    POP   DE                        ;[33F4] Unsave pointer
+    CALL  WRA1_TO_IY                ;[33F5] Load WRA1
+    JP    EE1                       ;[33F8] Next
 EENUM:
-    CALL  LCST                      ;[33FB] 
-    JR    EE1                       ;[33FE] 
+    CALL  LCST                      ;[33FB] Load calc stack with number
+    JR    EE1                       ;[33FE] Next
 EEVAR:
-    PUSH  DE                        ;[3400] 
+    PUSH  DE                        ;[3400] Save pointer
     LD    L,A                       ;[3401] 
     LD    H,$00                     ;[3402] 
     LD    E,L                       ;[3404] 
@@ -8155,23 +8160,23 @@ EEVAR:
     ADD   HL,HL                     ;[3406] 
     ADD   HL,HL                     ;[3407] 
     ADD   HL,DE                     ;[3408] 
-    LD    DE,(SYSVAR_VTBL)          ;[3409] 
+    LD    DE,(SYSVAR_VTBL)          ;[3409] Variable table
     ADD   HL,DE                     ;[340D] 
     INC   HL                        ;[340E] 
     LD    A,(HL)                    ;[340F] 
     INC   A                         ;[3410] 
     DEC   HL                        ;[3411] 
-    CALL  Z,ERR_UNDEFINED_VAR       ;[3412] 
-    EX    DE,HL                     ;[3415] 
-    CALL  LCST                      ;[3416] 
-    POP   DE                        ;[3419] 
-    JP    EE1                       ;[341A] 
+    CALL  Z,ERR_UNDEFINED_VAR       ;[3412] Undefined variable
+    EX    DE,HL                     ;[3415] DE point to num
+    CALL  LCST                      ;[3416] Load stack
+    POP   DE                        ;[3419] Unsave pointer
+    JP    EE1                       ;[341A] Next
 EEARY:
-    LD    (IY+$00),A                ;[341D] 
-    INC   IY                        ;[3420] 
+    LD    (IY+$00),A                ;[341D] Store token
+    INC   IY                        ;[3420] Inc calc SP
     JP    EE1                       ;[3422] 
 EEX:
-    JP    CSW1                      ;[3425] 
+    JP    CSW1                      ;[3425] Load WRA1
 
 ;
 ; Load from DE to calc stack
@@ -8514,14 +8519,14 @@ CPABS:
 ;
 ALIGN:
     CALL  ALN1                      ;[359A] 
-    LD    A,(SYSVAR_WRA1)           ;[359D] 
-    RES   7,A                       ;[35A0] 
-    ADD   A,C                       ;[35A2] 
-    JR    Z,LZERO                   ;[35A3] 
-    BIT   7,A                       ;[35A5] 
-    JR    Z,ALN3                    ;[35A7] 
-    CP    $C0                       ;[35A9] 
-    CALL  C,ERR_OVERFLOW            ;[35AB] 
+    LD    A,(SYSVAR_WRA1)           ;[359D] Get exponent
+    RES   7,A                       ;[35A0] Scap sign
+    ADD   A,C                       ;[35A2] Add exponent correction
+    JR    Z,LZERO                   ;[35A3] If 0 load WRA1 with 0
+    BIT   7,A                       ;[35A5] Check for overflow
+    JR    Z,ALN3                    ;[35A7] JP if not
+    CP    $C0                       ;[35A9] See if overflowed top or bot.
+    CALL  C,ERR_OVERFLOW            ;[35AB] If top, overflow error
 
 ;
 ; Basic FALSE Function: Loads-WRA1 with floating point 0.
@@ -8572,10 +8577,10 @@ FLOAT_05:      DB $BF,$50,$00,$00,$00          ;[35FB]
 FLOAT_M05:     DB $3F,$50,$00,$00,$00          ;[3600] 
 FLOAT_ZERO:    DB $80,$00,$00,$00,$00          ;[3605] 
 ;
-; I don't think these bytes are used.
+; Used by EXEC?? (apparently)
 ;
-UNUSED:
-    LD    B,$80                     ;[360A] 
+DATA_EXEC:
+    DB    6,$80                     ;[360A] 
 
 ;
 ; PI.
@@ -8786,11 +8791,11 @@ MLT6:
     DEC   DE                        ;[371D] 
     POP   BC                        ;[371E] 
     DJNZ  MLT6                      ;[371F] 
-    LD    A,($62D5)                 ;[3721] A=first two digits
+    LD    A,(SYSVAR_WRA3+1)         ;[3721] A=first two digits
     CP    $10                       ;[3724] See if need to rotate
     JR    NC,MT5                    ;[3726] Jp if not
-    LD    HL,$62D9                  ;[3728] Rot. start point
-    LD    B,$05                     ;[372B] No. to rotate
+    LD    HL,SYSVAR_WRA3+5          ;[3728] Rot. start point
+    LD    B,5                       ;[372B] No. to rotate
     CALL  RL1                       ;[372D] Rotate
     LD    A,(HL)                    ;[3730] Get exp.
     DEC   A                         ;[3731] Dec exp.
@@ -8823,7 +8828,7 @@ ETOBIN:
 ; Subroutine called by multiply.
 ;
 MLTAE:
-    LD    HL,$0000                  ;[374C] 
+    LD    HL,0                      ;[374C] 
     LD    B,H                       ;[374F] 
     LD    C,A                       ;[3750] 
 MLTAE2:
@@ -10052,6 +10057,7 @@ SUB_DIM:
     OR    A                         ;[3FE6] 
     RET   Z                         ;[3FE7] 
     JP    STRING_SEEK_END           ;[3FE8] 
+ARCCOS:
     CALL  BASIC_FN_ARCCOS           ;[3FEB] 
     JP    ARCTAN4                   ;[3FEE] 
 SUB_MOD:
