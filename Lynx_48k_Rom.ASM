@@ -3460,7 +3460,7 @@ NPSTR:
     PUSH  BC                        ;[198F] 
     LD    (HL),$7C                  ;[1990] 
     INC   HL                        ;[1992] 
-    CALL  $2C9D                     ;[1993] 
+    CALL  READ_STRING_EXPR          ;[1993] 
     RST   $10                       ;[1996] 
     CP    $3D                       ;[1997] 
     JR    Z,NPSTR1                  ;[1999] 
@@ -3470,7 +3470,7 @@ NPSTR1:
     LD    (HL),A                    ;[19A0] 
     INC   HL                        ;[19A1] 
     INC   DE                        ;[19A2] 
-    CALL  $2C9D                     ;[19A3] 
+    CALL  READ_STRING_EXPR          ;[19A3] 
     LD    (HL),$7B                  ;[19A6] 
     INC   HL                        ;[19A8] 
     POP   BC                        ;[19A9] 
@@ -3499,7 +3499,7 @@ NP2:
     LD    (SYSVAR_NPM),A            ;[19D1] 
     CALL  SYNTAX                    ;[19D4] 
     RST   $10                       ;[19D7] 
-    CALL  SUB_LINE_ANALYSIS1        ;[19D8] 
+    CALL  TEST_FOR_STR_EXP          ;[19D8] 
     JR    Z,NPSTR                   ;[19DB] 
     LD    A,(DE)                    ;[19DD] 
     CP    '-'                       ;[19DE] 
@@ -3561,7 +3561,7 @@ NP5:
     CP    $86                       ;[1A5A] 
     JR    NZ,$1A87                  ;[1A5C] 
     PUSH  BC                        ;[1A5E] 
-    CALL  SUB_LINE_ANALYSIS1        ;[1A5F] 
+    CALL  TEST_FOR_STR_EXP          ;[1A5F] 
     CALL  NZ,ERR_TYPE_MISMATCH      ;[1A62] 
     LD    (HL),$79                  ;[1A65] 
     INC   HL                        ;[1A67] 
@@ -3569,7 +3569,7 @@ NP5:
     LD    B,(IX+$02)                ;[1A6A] 
     LD    C,(IX+$00)                ;[1A6D] 
     PUSH  BC                        ;[1A70] 
-    CALL  $2C9D                     ;[1A71] 
+    CALL  READ_STRING_EXPR          ;[1A71] 
     POP   BC                        ;[1A74] 
     POP   IX                        ;[1A75] 
     LD    (IX+$00),C                ;[1A77] 
@@ -4059,7 +4059,7 @@ PHL:
 ; Displays number in WRA1. 
 ;
 PN:
-    CALL  $2E93                     ;[1D59] 
+    CALL  ROUND                     ;[1D59] 
     LD    A,(SYSVAR_WRA1)           ;[1D5C] 
     LD    HL,SYSVAR_PRTBUF          ;[1D5F] 
     BIT   7,A                       ;[1D62] 
@@ -5819,7 +5819,7 @@ VALIDATE_LET:
     INC   HL                        ;[269D] 
     INC   DE                        ;[269E] 
     RST   $10                       ;[269F] 
-    CALL  $2C9D                     ;[26A0] 
+    CALL  READ_STRING_EXPR          ;[26A0] 
     INC   DE                        ;[26A3] 
     JR    $268F                     ;[26A4] 
 
@@ -6476,7 +6476,7 @@ PRINT_AT:
     INC   DE                        ;[2A05] 
     INC   HL                        ;[2A06] 
     JR    VALIDATE_PRINT1A          ;[2A07] 
-    CALL  $2C9D                     ;[2A09] 
+    CALL  READ_STRING_EXPR          ;[2A09] 
     JR    $2A10                     ;[2A0C] 
     INC   HL                        ;[2A0E] 
     INC   DE                        ;[2A0F] 
@@ -6495,7 +6495,7 @@ VALIDATE_PRINT1:
     JR    Z,$2A0E                   ;[2A1B] 
     CP    $3B                       ;[2A1D] 
     JR    Z,$2A0E                   ;[2A1F] 
-    CALL  SUB_LINE_ANALYSIS1        ;[2A21] 
+    CALL  TEST_FOR_STR_EXP          ;[2A21] 
     JR    Z,$2A09                   ;[2A24] 
     PUSH  DE                        ;[2A26] 
     CALL  TKSL                      ;[2A27] 
@@ -6677,9 +6677,9 @@ FNDLN_WRA1:
     RET                             ;[2B4A] 
 
 ;
-; Line analysis subroutine.
+; Test for start of string expression.
 ;
-SUB_LINE_ANALYSIS1:
+TEST_FOR_STR_EXP:
     RST   $10                       ;[2B4B] 
     CP    $22                       ;[2B4C] 
     RET   Z                         ;[2B4E] 
@@ -6697,9 +6697,9 @@ SUB_LINE_ANALYSIS1:
     RET                             ;[2B60] 
 
 ;
-; Line analysis subroutine.
+; Line analysis - String expression int?
 ;
-SUB_LINE_ANALYSIS2:
+SEINT:
     PUSH  IX                        ;[2B61] 
     LD    A,(DE)                    ;[2B63] 
     RST   $20                       ;[2B64] 
@@ -6710,7 +6710,11 @@ SUB_LINE_ANALYSIS2:
     POP   IX                        ;[2B6D] 
     RET                             ;[2B6F] 
 
-    LD    (IX+$00),A                ;[2B70] Load A to where IX points. Increment IX.
+;
+; Load A to where IX points. Increment IX.
+;
+STRDVR:
+    LD    (IX+$00),A                ;[2B70] 
     INC   IX                        ;[2B73] 
     RET                             ;[2B75] 
 
@@ -6719,19 +6723,19 @@ SUB_LINE_ANALYSIS2:
 ;
 BASIC_FN_STR_STRING:
     PUSH  IX                        ;[2B76] 
-    INC   DE                        ;[2B78] 
-    CALL  EE1                       ;[2B79] 
-    POP   IX                        ;[2B7C] 
-    PUSH  DE                        ;[2B7E] 
-    LD    HL,(SYSVAR_PRINTD)        ;[2B7F] 
+    INC   DE                        ;[2B78] Past sop
+    CALL  EE1                       ;[2B79] Evaluate
+    POP   IX                        ;[2B7C] Restore ptr
+    PUSH  DE                        ;[2B7E] Save line ptr
+    LD    HL,(SYSVAR_PRINTD)        ;[2B7F] Save scrn dvr
     PUSH  HL                        ;[2B82] 
-    LD    HL,$2B70                  ;[2B83] 
+    LD    HL,STRDVR                 ;[2B83] Change to str dvr
     LD    (SYSVAR_PRINTD),HL        ;[2B86] 
-    CALL  PN                        ;[2B89] 
-    POP   HL                        ;[2B8C] 
+    CALL  PN                        ;[2B89] Print number
+    POP   HL                        ;[2B8C] Restore scrn dvr
     LD    (SYSVAR_PRINTD),HL        ;[2B8D] 
-    POP   DE                        ;[2B90] 
-    JR    LEFT_STRING               ;[2B91] 
+    POP   DE                        ;[2B90] Restore line ptr
+    JR    ESECT1                    ;[2B91] 
 
 ;
 ; KEY$
@@ -6744,7 +6748,7 @@ BASIC_FN_KEY_STRING:
 ;
 ; Part of GET$
 ;
-SUB_GET_STRING:
+GET_STRING:
     LD    (IX+$00),A                ;[2B99] 
     INC   IX                        ;[2B9C] 
     JR    ESECT                     ;[2B9E] 
@@ -6756,32 +6760,32 @@ BASIC_FN_GET_STRING:
     CALL  KEY                       ;[2BA0] 
     OR    A                         ;[2BA3] 
     JR    Z,BASIC_FN_GET_STRING     ;[2BA4] 
-    JR    SUB_GET_STRING            ;[2BA6] 
+    JR    GET_STRING                ;[2BA6] 
 
 ;
 ; UPC$
 ;
 BASIC_FN_UPC_STRING:
     CALL  SYSVAR_VRPTS              ;[2BA8] 
-BASIC_FN_UPC_STRING1:
+ESEUP1:
     LD    A,(HL)                    ;[2BAB] 
     CP    $0D                       ;[2BAC] 
-    JR    Z,LEFT_STRING             ;[2BAE] 
+    JR    Z,ESECT1                  ;[2BAE] 
     CP    $61                       ;[2BB0] 
-    JR    C,BASIC_FN_UPC_STRING2    ;[2BB2] 
+    JR    C,ESEUP2                  ;[2BB2] 
     CP    $7B                       ;[2BB4] 
-    JR    NC,BASIC_FN_UPC_STRING2   ;[2BB6] 
+    JR    NC,ESEUP2                 ;[2BB6] 
     RES   5,A                       ;[2BB8] 
-BASIC_FN_UPC_STRING2:
+ESEUP2:
     LD    (IX+$00),A                ;[2BBA] 
     INC   IX                        ;[2BBD] 
     INC   HL                        ;[2BBF] 
-    JR    BASIC_FN_UPC_STRING1      ;[2BC0] 
+    JR    ESEUP1                    ;[2BC0] 
 
 ;
 ; Left String function?
 ;
-LEFT_STRING:
+ESECT1:
     INC   DE                        ;[2BC2] 
 ESECT:
     PUSH  IX                        ;[2BC3] 
@@ -6810,7 +6814,7 @@ ESEE:
     LD    IX,SYSVAR_STRBUF          ;[2BE1] 
 ESE1:
     LD    A,(DE)                    ;[2BE5] 
-    CP    '"'                       ;[2BE6] Quote "
+    CP    $22                       ;[2BE6] 
     JR    Z,ESE2                    ;[2BE8] 
     CALL  VALID_VAR_TEST            ;[2BEA] 
     JR    Z,ESE3                    ;[2BED] 
@@ -6847,84 +6851,87 @@ ESE3:
     JR    ESECT                     ;[2C26] 
 
 ;
-; CHR$
+; CHR$ (aka ESE4)
 ;
 BASIC_FN_CHR_STRING:
-    CALL  SUB_LINE_ANALYSIS2        ;[2C28] 
+    CALL  SEINT                     ;[2C28] 
     LD    (IX+$00),L                ;[2C2B] 
     INC   IX                        ;[2C2E] 
-    JR    LEFT_STRING               ;[2C30] 
+    JR    ESECT1                    ;[2C30] 
 
 ;
-; LEFT$
+; LEFT$ (aka ESE5)
 ;
 BASIC_FN_LEFT_STRING:
     CALL  SYSVAR_VRPTS              ;[2C32] 
     PUSH  HL                        ;[2C35] 
     INC   DE                        ;[2C36] 
-    CALL  SUB_LINE_ANALYSIS2        ;[2C37] 
+    CALL  SEINT                     ;[2C37] 
     LD    B,L                       ;[2C3A] 
     POP   HL                        ;[2C3B] 
-    CALL  $3FE5                     ;[2C3C] 
-    JR    LEFT_STRING               ;[2C3F] 
+    CALL  PATCH6                    ;[2C3C] 
+    JR    ESECT1                    ;[2C3F] 
 
 ;
-; MID$
+; MID$ (aka ESE7)
 ;
 BASIC_FN_MID_STRING:
     CALL  SYSVAR_VRPTS              ;[2C41] 
     INC   DE                        ;[2C44] 
     PUSH  HL                        ;[2C45] 
-    CALL  SUB_LINE_ANALYSIS2        ;[2C46] 
+    CALL  SEINT                     ;[2C46] 
     INC   DE                        ;[2C49] 
     PUSH  HL                        ;[2C4A] 
-    CALL  SUB_LINE_ANALYSIS2        ;[2C4B] 
+    CALL  SEINT                     ;[2C4B] 
     LD    C,L                       ;[2C4E] 
     POP   HL                        ;[2C4F] 
     LD    B,L                       ;[2C50] 
-BASIC_FN_MID_STRING1:
+ESE72:
     POP   HL                        ;[2C51] 
+ESE71:
     LD    A,(HL)                    ;[2C52] 
     CP    $0D                       ;[2C53] 
-    JP    Z,LEFT_STRING             ;[2C55] 
+    JP    Z,ESECT1                  ;[2C55] 
     INC   HL                        ;[2C58] 
-    DJNZ  $2C52                     ;[2C59] 
+    DJNZ  ESE71                     ;[2C59] 
     DEC   HL                        ;[2C5B] 
     LD    B,C                       ;[2C5C] 
-    CALL  $3FE5                     ;[2C5D] 
-    JP    LEFT_STRING               ;[2C60] 
+    CALL  PATCH6                    ;[2C5D] 
+    JP    ESECT1                    ;[2C60] 
 
 ;
-; RIGHT$
+; RIGHT$ (aka ESE6)
 ;
 BASIC_FN_RIGHT_STRING:
     CALL  SYSVAR_VRPTS              ;[2C63] 
     INC   DE                        ;[2C66] 
     PUSH  HL                        ;[2C67] 
-    CALL  SUB_LINE_ANALYSIS2        ;[2C68] 
+    CALL  SEINT                     ;[2C68] 
     LD    C,L                       ;[2C6B] 
     POP   HL                        ;[2C6C] 
     PUSH  HL                        ;[2C6D] 
     LD    B,$00                     ;[2C6E] 
+ESE61:
     INC   B                         ;[2C70] 
     LD    A,(HL)                    ;[2C71] 
     INC   HL                        ;[2C72] 
     CP    $0D                       ;[2C73] 
-    JR    NZ,$2C70                  ;[2C75] 
+    JR    NZ,ESE61                  ;[2C75] 
     LD    A,B                       ;[2C77] 
     SUB   C                         ;[2C78] 
     CALL  C,ERR_STRING              ;[2C79] 
     LD    B,A                       ;[2C7C] 
-    JR    BASIC_FN_MID_STRING1      ;[2C7D] 
+    JR    ESE72                     ;[2C7D] 
 
 ;
-; Returns when it sees quote " or CR
+; Returns when it sees quote " or CR (aka RSIB)
+; Read string into buffer.
 ;
 STRING_SEEK_END:
     LD    A,(HL)                    ;[2C7F] 
     CP    $22                       ;[2C80] 
     RET   Z                         ;[2C82] 
-    CP    $0D                       ;[2C83] 
+    CP    SZ                        ;[2C83] 
     RET   Z                         ;[2C85] 
     LD    (IX+$00),A                ;[2C86] 
     INC   IX                        ;[2C89] 
@@ -6932,70 +6939,88 @@ STRING_SEEK_END:
     DJNZ  STRING_SEEK_END           ;[2C8C] 
     RET                             ;[2C8E] 
 
+;
+; String expr upper case?
+;
+RSEUPC:
     CALL  VALIDATE_VAR              ;[2C8F] 
     RST   $10                       ;[2C92] 
-    CP    $29                       ;[2C93] 
+    CP    ')'                       ;[2C93] 
     LD    (HL),A                    ;[2C95] 
     INC   HL                        ;[2C96] 
     INC   DE                        ;[2C97] 
     CALL  NZ,ERR_MISSING_BRACKET    ;[2C98] 
-    JR    $2CAD                     ;[2C9B] 
+    JR    RSE8                      ;[2C9B] 
+
+;
+; Read string expression (aka RSE)
+;
+READ_STRING_EXPR:
     CALL  VALID_VAR_TEST            ;[2C9D] 
-    JR    Z,$2D03                   ;[2CA0] 
+    JR    Z,RSE7                    ;[2CA0] 
     CALL  TKSL                      ;[2CA2] 
     LD    (HL),A                    ;[2CA5] 
     INC   HL                        ;[2CA6] 
-    JR    NC,$2CB6                  ;[2CA7] 
+    JR    NC,RSE1                   ;[2CA7] 
     DEC   HL                        ;[2CA9] 
     CALL  VALIDATE_UTILITY          ;[2CAA] 
+RSE8:
     RST   $10                       ;[2CAD] 
-    CP    $2B                       ;[2CAE] 
+RSE6:
+    CP    '+'                       ;[2CAE] 
     RET   NZ                        ;[2CB0] 
     INC   DE                        ;[2CB1] 
     LD    (HL),A                    ;[2CB2] 
     INC   HL                        ;[2CB3] 
-    JR    $2C9D                     ;[2CB4] 
-    CP    $DF                       ;[2CB6] 
-    JR    Z,$2CE8                   ;[2CB8] 
-    CP    $E6                       ;[2CBA] 
-    JR    Z,$2CE8                   ;[2CBC] 
-    CP    $E4                       ;[2CBE] 
-    JR    Z,$2CAD                   ;[2CC0] 
-    CP    $E5                       ;[2CC2] 
-    JR    Z,$2CAD                   ;[2CC4] 
-    CP    $E3                       ;[2CC6] 
-    JR    Z,$2C8F                   ;[2CC8] 
-    CP    $E2                       ;[2CCA] 
-    JR    Z,$2CEE                   ;[2CCC] 
-    CP    $E0                       ;[2CCE] 
-    JR    Z,$2CD7                   ;[2CD0] 
-    CP    $E1                       ;[2CD2] 
+    JR    READ_STRING_EXPR          ;[2CB4] 
+RSE1:
+    CP    CHR                       ;[2CB6] 
+    JR    Z,RSE2                    ;[2CB8] 
+    CP    STR                       ;[2CBA] 
+    JR    Z,RSE2                    ;[2CBC] 
+    CP    INKEYS                    ;[2CBE] 
+    JR    Z,RSE8                    ;[2CC0] 
+    CP    GETS                      ;[2CC2] 
+    JR    Z,RSE8                    ;[2CC4] 
+    CP    UPCS                      ;[2CC6] 
+    JR    Z,RSEUPC                  ;[2CC8] 
+    CP    MID                       ;[2CCA] 
+    JR    Z,RSE3                    ;[2CCC] 
+    CP    LEFT                      ;[2CCE] 
+    JR    Z,RSE5                    ;[2CD0] 
+    CP    RIGHT                     ;[2CD2] 
     CALL  NZ,ERR_SOMETHG_MISSG      ;[2CD4] 
+RSE5:
     CALL  VALID_VAR_TEST            ;[2CD7] 
+RSEN:
     CALL  NZ,ERR_SYNTAX             ;[2CDA] 
     CALL  VALIDATE_VAR              ;[2CDD] 
     RST   $10                       ;[2CE0] 
     INC   DE                        ;[2CE1] 
-    CP    $2C                       ;[2CE2] 
-    JR    NZ,$2CDA                  ;[2CE4] 
+RSE4:
+    CP    ','                       ;[2CE2] 
+    JR    NZ,RSEN                   ;[2CE4] 
     LD    (HL),A                    ;[2CE6] 
     INC   HL                        ;[2CE7] 
+RSE2:
     DEC   DE                        ;[2CE8] 
     CALL  $2731                     ;[2CE9] 
-    JR    $2CAE                     ;[2CEC] 
+    JR    RSE6                      ;[2CEC] 
+RSE3:
     CALL  VALID_VAR_TEST            ;[2CEE] 
-    JR    NZ,$2CDA                  ;[2CF1] 
+    JR    NZ,RSEN                   ;[2CF1] 
     CALL  VALIDATE_VAR              ;[2CF3] 
     RST   $10                       ;[2CF6] 
     INC   DE                        ;[2CF7] 
-    CP    $2C                       ;[2CF8] 
-    JR    NZ,$2CDA                  ;[2CFA] 
+    CP    ','                       ;[2CF8] 
+    JR    NZ,RSEN                   ;[2CFA] 
     LD    (HL),A                    ;[2CFC] 
     INC   HL                        ;[2CFD] 
     CALL  RP                        ;[2CFE] 
-    JR    $2CE2                     ;[2D01] 
+    JR    RSE4                      ;[2D01] 
+RSE7:
     CALL  VALIDATE_VAR              ;[2D03] 
-    JR    $2CAD                     ;[2D06] 
+    JR    RSE8                      ;[2D06] 
 
 ;
 ; Save HL, Call P$TK
@@ -7019,12 +7044,14 @@ BASIC_FN_VAL:
 BASIC_FN_LEN:
     LD    HL,SYSVAR_STRBUF          ;[2D14] 
     LD    B,$FF                     ;[2D17] 
+FLEN1:
     INC   B                         ;[2D19] 
     LD    A,(HL)                    ;[2D1A] 
     INC   HL                        ;[2D1B] 
     CP    $0D                       ;[2D1C] 
-    JR    NZ,$2D19                  ;[2D1E] 
+    JR    NZ,FLEN1                  ;[2D1E] 
     LD    L,B                       ;[2D20] 
+FASC1:
     LD    H,$00                     ;[2D21] 
     JP    INTFP                     ;[2D23] 
 
@@ -7034,15 +7061,20 @@ BASIC_FN_LEN:
 BASIC_FN_ASC:
     LD    HL,SYSVAR_STRBUF          ;[2D26] 
     LD    L,(HL)                    ;[2D29] 
-    JR    $2D21                     ;[2D2A] 
-    CALL  $2D67                     ;[2D2C] 
+    JR    FASC1                     ;[2D2A] 
+
+;
+; String array
+;
+VRPTSA:
+    CALL  VRPTSP                    ;[2D2C] 
     PUSH  IX                        ;[2D2F] 
     DEC   HL                        ;[2D31] 
     PUSH  HL                        ;[2D32] 
-    INC   B                         ;[2D33] 
-    PUSH  BC                        ;[2D34] 
+    INC   B                         ;[2D33] B=length of string store
+    PUSH  BC                        ;[2D34] area per element-1
     INC   DE                        ;[2D35] 
-    CALL  SUB_LINE_ANALYSIS2        ;[2D36] 
+    CALL  SEINT                     ;[2D36] 
     INC   DE                        ;[2D39] 
     POP   BC                        ;[2D3A] 
     PUSH  DE                        ;[2D3B] 
@@ -7061,8 +7093,9 @@ BASIC_FN_ASC:
     CALL  C,ERR_SUBS_OUT_RANGE      ;[2D4C] 
     LD    E,L                       ;[2D4F] 
     LD    D,H                       ;[2D50] 
+VRSA2:
     ADD   HL,DE                     ;[2D51] 
-    DJNZ  $2D51                     ;[2D52] 
+    DJNZ  VRSA2                     ;[2D52] 
     POP   DE                        ;[2D54] 
     POP   BC                        ;[2D55] 
     ADD   HL,BC                     ;[2D56] 
@@ -7076,16 +7109,18 @@ BASIC_FN_ASC:
 ;
 VRPTS:
     LD    A,(DE)                    ;[2D5C] 
-    INC   DE                        ;[2D5D] 
-    INC   DE                        ;[2D5E] 
+    INC   DE                        ;[2D5D] B=max length of string
+    INC   DE                        ;[2D5E] HL points to first char of string
     LD    C,A                       ;[2D5F] 
     LD    A,(DE)                    ;[2D60] 
     CP    $28                       ;[2D61] 
     LD    A,C                       ;[2D63] 
-    JP    Z,$2D2C                   ;[2D64] 
-    SUB   $41                       ;[2D67] 
+    JP    Z,VRPTSA                  ;[2D64] 
+VRPTSP:
+    SUB   'A'                       ;[2D67] 
     RLCA                            ;[2D69] 
     RLCA                            ;[2D6A] 
+VRPTS1:
     LD    HL,(SYSVAR_STBL)          ;[2D6B] 
     LD    C,A                       ;[2D6E] 
     LD    B,$00                     ;[2D6F] 
@@ -7095,7 +7130,7 @@ VRPTS:
     INC   HL                        ;[2D74] 
     OR    (HL)                      ;[2D75] 
     LD    A,$10                     ;[2D76] 
-    JR    Z,$2D84                   ;[2D78] 
+    JR    Z,VRPTS2                  ;[2D78] 
     LD    (SYSVAR_STORE),HL         ;[2D7A] 
     LD    A,(HL)                    ;[2D7D] 
     DEC   HL                        ;[2D7E] 
@@ -7105,12 +7140,15 @@ VRPTS:
     INC   HL                        ;[2D82] 
     RET                             ;[2D83] 
 
-    LD    BC,$2D6B                  ;[2D84] 
+VRPTS2:
+    LD    BC,VRPTS1                 ;[2D84] 
     PUSH  BC                        ;[2D87] 
+EDMSUB:
     LD    BC,(SYSVAR_TOV)           ;[2D88] 
     LD    (HL),B                    ;[2D8C] 
     DEC   HL                        ;[2D8D] 
     LD    (HL),C                    ;[2D8E] 
+EDMARS:
     LD    (BC),A                    ;[2D8F] 
     LD    L,A                       ;[2D90] 
     LD    H,$00                     ;[2D91] 
@@ -7126,6 +7164,7 @@ VRPTS:
     EX    AF,AF'                    ;[2DA2] 
     RET                             ;[2DA3] 
 
+EDMAR:
     PUSH  BC                        ;[2DA4] 
     PUSH  HL                        ;[2DA5] 
     INC   DE                        ;[2DA6] 
@@ -7137,12 +7176,13 @@ VRPTS:
     LD    (IX+$01),L                ;[2DAD] 
     LD    (IX+$02),H                ;[2DB0] 
     POP   BC                        ;[2DB3] 
-    JR    Z,$2DC9                   ;[2DB4] 
+    JR    Z,EDMAR2                  ;[2DB4] 
     LD    A,B                       ;[2DB6] 
+EDMAR1:
     PUSH  AF                        ;[2DB7] 
     PUSH  HL                        ;[2DB8] 
     LD    BC,(SYSVAR_TOV)           ;[2DB9] 
-    CALL  $2D8F                     ;[2DBD] 
+    CALL  EDMARS                    ;[2DBD] 
     POP   HL                        ;[2DC0] 
     POP   AF                        ;[2DC1] 
     LD    C,A                       ;[2DC2] 
@@ -7150,7 +7190,8 @@ VRPTS:
     LD    A,H                       ;[2DC4] 
     OR    L                         ;[2DC5] 
     LD    A,C                       ;[2DC6] 
-    JR    NZ,$2DB7                  ;[2DC7] 
+    JR    NZ,EDMAR1                 ;[2DC7] 
+EDMAR2:
     LD    A,(DE)                    ;[2DC9] 
     RET                             ;[2DCA] 
 
@@ -7159,7 +7200,7 @@ VRPTS:
 ;
 BASIC_COM_DIM:
     CALL  VALID_VAR_TEST            ;[2DCB] 
-    JR    NZ,$2E0A                  ;[2DCE] 
+    JR    NZ,EDIM3                  ;[2DCE] 
     LD    A,(DE)                    ;[2DD0] 
     INC   DE                        ;[2DD1] 
     INC   DE                        ;[2DD2] 
@@ -7178,7 +7219,7 @@ BASIC_COM_DIM:
     LD    B,L                       ;[2DE6] 
     POP   AF                        ;[2DE7] 
     PUSH  DE                        ;[2DE8] 
-    SUB   $41                       ;[2DE9] 
+    SUB   'A'                       ;[2DE9] 
     RLCA                            ;[2DEB] 
     RLCA                            ;[2DEC] 
     LD    E,A                       ;[2DED] 
@@ -7194,26 +7235,27 @@ BASIC_COM_DIM:
     POP   HL                        ;[2DFC] 
     POP   DE                        ;[2DFD] 
     LD    A,(DE)                    ;[2DFE] 
-    CP    $28                       ;[2DFF] 
-    CALL  Z,$2DA4                   ;[2E01] 
-    CP    $2C                       ;[2E04] 
+    CP    '('                       ;[2DFF] 
+    CALL  Z,EDMAR                   ;[2E01] 
+    CP    ','                       ;[2E04] 
     INC   DE                        ;[2E06] 
     JR    Z,BASIC_COM_DIM           ;[2E07] 
     RET                             ;[2E09] 
 
-    CALL  $1E0F                     ;[2E0A] 
+EDIM3:
+    CALL  $1E0F                     ;[2E0A] Get pointers
     LD    A,(IX+$00)                ;[2E0D] 
     OR    (IX+$01)                  ;[2E10] 
     CALL  NZ,ERR_REDIM_ARRAY        ;[2E13] 
     LD    A,$F0                     ;[2E16] 
-    AND   H                         ;[2E18] 
+    AND   H                         ;[2E18] Check for more than 1k elements
     CALL  NZ,ERR_OVERFLOW           ;[2E19] 
     PUSH  DE                        ;[2E1C] 
     LD    DE,(SYSVAR_TOV)           ;[2E1D] 
     LD    (IX+$02),L                ;[2E21] 
     LD    (IX+$03),H                ;[2E24] 
-    INC   HL                        ;[2E27] 
-    PUSH  HL                        ;[2E28] 
+    INC   HL                        ;[2E27] First element is 0
+    PUSH  HL                        ;[2E28] Save no elements
     LD    C,L                       ;[2E29] 
     LD    B,H                       ;[2E2A] 
     ADD   HL,HL                     ;[2E2B] 
@@ -7224,7 +7266,7 @@ BASIC_COM_DIM:
     AND   H                         ;[2E31] 
     CALL  Z,ERR_OVERFLOW            ;[2E32] 
     EX    DE,HL                     ;[2E35] 
-    LD    HL,$0000                  ;[2E36] 
+    LD    HL,0                      ;[2E36] 
     ADD   HL,SP                     ;[2E39] 
     DEC   H                         ;[2E3A] 
     SBC   HL,DE                     ;[2E3B] 
@@ -7234,19 +7276,20 @@ BASIC_COM_DIM:
     LD    (IX+$01),B                ;[2E47] 
     LD    (SYSVAR_TOV),DE           ;[2E4A] 
     LD    L,C                       ;[2E4E] 
-    LD    H,B                       ;[2E4F] 
-    POP   BC                        ;[2E50] 
-    LD    DE,$0005                  ;[2E51] 
+    LD    H,B                       ;[2E4F] Hl=start of array
+    POP   BC                        ;[2E50] Bc=no. elements
+    LD    DE,5                      ;[2E51] De=length of element
     INC   HL                        ;[2E54] 
+EDIM1:
     LD    (HL),$FF                  ;[2E55] 
     ADD   HL,DE                     ;[2E57] 
     DEC   BC                        ;[2E58] 
     LD    A,B                       ;[2E59] 
     OR    C                         ;[2E5A] 
-    JR    NZ,$2E55                  ;[2E5B] 
+    JR    NZ,EDIM1                  ;[2E5B] 
     POP   DE                        ;[2E5D] 
     LD    A,(DE)                    ;[2E5E] 
-    CP    $2C                       ;[2E5F] 
+    CP    ','                       ;[2E5F] 
     INC   DE                        ;[2E61] 
     JP    Z,BASIC_COM_DIM           ;[2E62] 
     RET                             ;[2E65] 
@@ -7263,6 +7306,7 @@ VALIDATE_DIM:
     LD    (HL),A                    ;[2E72] 
     CP    $0D                       ;[2E73] 
     RET   Z                         ;[2E75] 
+IDIM1:
     INC   HL                        ;[2E76] 
     RST   $20                       ;[2E77] 
     INC   L                         ;[2E78] 
@@ -7284,8 +7328,13 @@ VALIDATE_DIM:
     INC   DE                        ;[2E8F] 
     RST   $10                       ;[2E90] 
     JR    VALIDATE_DIM              ;[2E91] 
-    LD    A,(SYSVAR_ZFLAG)          ;[2E93] Numeric output routine.
-    BIT   0,A                       ;[2E96] 
+
+;
+; ROUND
+;
+ROUND:
+    LD    A,(SYSVAR_ZFLAG)          ;[2E93] 
+    BIT   0,A                       ;[2E96] Round if bit 0 of zflag set
     RET   Z                         ;[2E98] 
     LD    A,(SYSVAR_WRA1)           ;[2E99] 
     AND   $7F                       ;[2E9C] 
@@ -7294,18 +7343,20 @@ VALIDATE_DIM:
     LD    HL,SYSVAR_WRA1+$04        ;[2EA1] 
     LD    A,(HL)                    ;[2EA4] 
     CP    $50                       ;[2EA5] 
-    LD    (HL),$00                  ;[2EA7] 
-    RET   C                         ;[2EA9] 
+    LD    (HL),$00                  ;[2EA7] Zero last 2 digits
+    RET   C                         ;[2EA9] Exit if <$50
     SCF                             ;[2EAA] 
     LD    B,$03                     ;[2EAB] 
     PUSH  DE                        ;[2EAD] 
+RD1:
     DEC   HL                        ;[2EAE] 
     LD    A,$00                     ;[2EAF] 
     ADC   A,(HL)                    ;[2EB1] 
     DAA                             ;[2EB2] 
     LD    (HL),A                    ;[2EB3] 
-    DJNZ  $2EAE                     ;[2EB4] 
+    DJNZ  RD1                       ;[2EB4] 
     CALL  ALIGN                     ;[2EB6] 
+RDX:
     POP   DE                        ;[2EB9] 
     RET                             ;[2EBA] 
 
@@ -10052,7 +10103,8 @@ SUB_DIM:
     INC   HL                        ;[3FDE] 
     LD    (HL),$00                  ;[3FDF] 
     POP   HL                        ;[3FE1] 
-    JP    $2D88                     ;[3FE2] 
+    JP    EDMSUB                    ;[3FE2] 
+PATCH6:
     LD    A,B                       ;[3FE5] Set to FF and not used.
     OR    A                         ;[3FE6] 
     RET   Z                         ;[3FE7] 
