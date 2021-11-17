@@ -4346,7 +4346,7 @@ READY_MSG:
 ; Data 'Ready!'.
 ;
 RDYMSG:
-    DB    'Ready!',NEWLINE,CEL,0    ;[1F13] 
+    DB    "Ready!",NEWLINE,CEL,0    ;[1F13] 
 
 ;
 ; Test for a full return stack
