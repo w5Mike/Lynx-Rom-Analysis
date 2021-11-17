@@ -4108,16 +4108,23 @@ PN:
     LD    B,$08                     ;[1DB1] 
     CALL  $1CD6                     ;[1DB3] 
     JR    $1D99                     ;[1DB6] 
+
+;
+; Find array element given subscript in HL and 
+; entry in array table pointed to by IX
+;
+FIND_ARRAY:
     PUSH  HL                        ;[1DB8] 
     LD    C,(IX+$02)                ;[1DB9] 
     LD    B,(IX+$03)                ;[1DBC] 
     OR    A                         ;[1DBF] 
     LD    A,L                       ;[1DC0] 
     OR    H                         ;[1DC1] 
-    JR    Z,$1DCA                   ;[1DC2] 
+    JR    Z,FNDAR1                  ;[1DC2] 
     DEC   HL                        ;[1DC4] 
     SBC   HL,BC                     ;[1DC5] 
     CALL  NC,ERR_SUBS_OUT_RANGE     ;[1DC7] 
+FNDAR1:
     POP   HL                        ;[1DCA] 
     LD    C,L                       ;[1DCB] 
     LD    B,H                       ;[1DCC] 
@@ -4129,16 +4136,20 @@ PN:
     ADD   HL,BC                     ;[1DD6] 
     RET                             ;[1DD7] 
 
+;
+; Find array subroutine
+;
+FARR:
     PUSH  DE                        ;[1DD8] 
     CALL  CSW1                      ;[1DD9] 
     DEC   IY                        ;[1DDC] 
     LD    A,(IY+$00)                ;[1DDE] 
-    CALL  $1E23                     ;[1DE1] 
+    CALL  ARLOC2                    ;[1DE1] 
     LD    A,(IX+$00)                ;[1DE4] 
     OR    (IX+$01)                  ;[1DE7] 
     CALL  Z,ERR_UNDEFINED_VAR       ;[1DEA] 
     CALL  FPINT                     ;[1DED] 
-    CALL  $1DB8                     ;[1DF0] 
+    CALL  FIND_ARRAY                ;[1DF0] 
     INC   HL                        ;[1DF3] 
     LD    A,(HL)                    ;[1DF4] 
     INC   A                         ;[1DF5] 
@@ -4148,25 +4159,37 @@ PN:
     POP   DE                        ;[1DFD] 
     RET                             ;[1DFE] 
 
+;
+; Variable pointer array
+;
+VPTA:
     POP   AF                        ;[1DFF] 
-    CALL  $1E13                     ;[1E00] 
+    CALL  ARLOC1                    ;[1E00] 
     LD    A,(IX+$00)                ;[1E03] 
     OR    (IX+$01)                  ;[1E06] 
     CALL  Z,ERR_UNDEFINED_VAR       ;[1E09] 
-    JP    $1DB8                     ;[1E0C] 
+    JP    FIND_ARRAY                ;[1E0C] 
+
+;
+; Array locate. IX point to entry in array table.
+; HL has value of subscript. DE points to first byte after variable.
+;
+ARRAY_LOCATE:
     CALL  TEST_UPPER_LOW            ;[1E0F] 
     INC   DE                        ;[1E12] 
+ARLOC1:
     PUSH  AF                        ;[1E13] 
     INC   DE                        ;[1E14] 
     RST   $28                       ;[1E15] 
     LD    A,(DE)                    ;[1E16] 
-    CP    $29                       ;[1E17] 
+    CP    ')'                       ;[1E17] 
     CALL  NZ,ERR_MISSING_BRACKET    ;[1E19] 
     INC   DE                        ;[1E1C] 
     PUSH  DE                        ;[1E1D] 
     CALL  FPINT                     ;[1E1E] 
     POP   DE                        ;[1E21] 
     POP   AF                        ;[1E22] 
+ARLOC2:
     LD    IX,(SYSVAR_ATBL)          ;[1E23] 
     RLCA                            ;[1E27] 
     RLA                             ;[1E28] 
@@ -4183,7 +4206,7 @@ BASIC_COM_STOP:
     LD    A,(IX+$00)                ;[1E33] 
     CP    $80                       ;[1E36] 
     CALL  Z,ERR_WRONG_MODE          ;[1E38] 
-    CALL  SKIP_TO_LINE_END          ;[1E3B] 
+    CALL  NEXT_LINE                 ;[1E3B] 
 BASIC_COM_STOP1:
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
     LD    HL,DATA_STOPPED           ;[1E42] 
@@ -4316,15 +4339,14 @@ ESC:
 ; Routine to print 'Ready!'.
 ;
 READY_MSG:
-    LD    HL,DATA_READY_MSG         ;[1F0D] 
+    LD    HL,RDYMSG                 ;[1F0D] 
     JP    PLINE                     ;[1F10] 
 
 ;
 ; Data 'Ready!'.
 ;
-DATA_READY_MSG:
-    DB $52,$65,$61,$64,$79,$21,$0D,$1E      ;[1F13]  Ready!..
-    DB $00                                  ;[1F1B]  .
+RDYMSG:
+    DB    'Ready!',NEWLINE,CEL,0    ;[1F13] 
 
 ;
 ; Test for a full return stack
@@ -4518,7 +4540,8 @@ DO_WHILE:
 BASIC_COM_UNTIL:
     PUSH  DE                        ;[1FFA] 
     CALL  POP_A_RSTACK              ;[1FFB] 
-    CP    $38                       ;[1FFE] 
+    CP    REPEAT                    ;[1FFE] 
+EUNT1:
     CALL  NZ,ERR_UNTIL_NO_REPEAT    ;[2000] 
     CALL  POP_HL_RSTACK             ;[2003] 
     POP   DE                        ;[2006] 
@@ -4536,7 +4559,7 @@ BASIC_COM_UNTIL:
 BASIC_COM_REPEAT:
     LD    HL,(SYSVAR_CURRLP)        ;[2013] 
     CALL  PUSH_HL_RSTACK            ;[2016] 
-    LD    A,$38                     ;[2019] 
+    LD    A,REPEAT                  ;[2019] 
     JP    PUSH_A_RSTACK             ;[201B] 
 
 ;
@@ -4546,13 +4569,14 @@ BASIC_FN_GETN:
     CALL  KEY                       ;[201E] 
     OR    A                         ;[2021] 
     JR    Z,BASIC_FN_GETN           ;[2022] 
-    JR    $2029                     ;[2024] 
+    JR    FINKY1                    ;[2024] 
 
 ;
 ; KEYN.
 ;
 BASIC_FN_KEYN:
     CALL  KEY                       ;[2026] 
+FINKY1:
     LD    L,A                       ;[2029] 
     LD    H,$00                     ;[202A] 
     JP    INTFP                     ;[202C] 
@@ -4616,14 +4640,16 @@ BASIC_COM_CALL:
     RST   $18                       ;[205F] 
     PUSH  HL                        ;[2060] 
     LD    A,(DE)                    ;[2061] 
-    CP    $0D                       ;[2062] 
-    JR    Z,$2068                   ;[2064] 
+    CP    CR                        ;[2062] 
+    JR    Z,ECALL1                  ;[2064] 
     INC   DE                        ;[2066] 
     RST   $18                       ;[2067] 
+ECALL1:
     POP   IX                        ;[2068] 
-    LD    BC,$2070                  ;[206A] 
+    LD    BC,ECALL2                 ;[206A] 
     PUSH  BC                        ;[206D] 
     JP    (IX)                      ;[206E] 
+ECALL2:
     LD    (SYSVAR_HLSTORE),HL       ;[2070] Save the value in HL at 61F4.
     RET                             ;[2073] 
 
@@ -4632,8 +4658,9 @@ BASIC_COM_CALL:
 ;
 BASIC_COM_RETURN:
     CALL  POP_A_RSTACK              ;[2074] 
-    CP    $11                       ;[2077] 
+    CP    GOSUB                     ;[2077] 
     CALL  NZ,ERR_RETURN_NO_GOSUB    ;[2079] 
+EEPRN1:
     CALL  POP_HL_RSTACK             ;[207C] 
     LD    (SYSVAR_CURRLP),HL        ;[207F] 
     RET                             ;[2082] 
@@ -4651,14 +4678,15 @@ BASIC_COM_NEW:
 ;
 BASIC_COM_INPUT:
     CP    $22                       ;[2094] 
-    JR    NZ,$209D                  ;[2096] 
+    JR    NZ,EIPT1                  ;[2096] 
     CALL  PRINT_STRING              ;[2098] 
     INC   DE                        ;[209B] 
     INC   DE                        ;[209C] 
+EIPT1:
     PUSH  DE                        ;[209D] 
-    LD    A,$3F                     ;[209E] 
+    LD    A,'?'                     ;[209E] 
     RST   $08                       ;[20A0] 
-    LD    A,$20                     ;[20A1] 
+    LD    A,' '                     ;[20A1] 
     RST   $08                       ;[20A3] 
     CALL  SUB_INPUT_IS_ESC          ;[20A4] 
     LD    A,$0F                     ;[20A7] 
@@ -4666,83 +4694,97 @@ BASIC_COM_INPUT:
     LD    DE,INPBUF                 ;[20AA] 
     EXX                             ;[20AD] 
     POP   DE                        ;[20AE] 
-    CALL  $20B5                     ;[20AF] 
-    JR    C,$209D                   ;[20B2] 
+    CALL  EIPTS                     ;[20AF] 
+    JR    C,EIPT1                   ;[20B2] 
     RET                             ;[20B4] 
 
+EIPTS:
     EXX                             ;[20B5] Input buffer analysis.
     LD    A,(DE)                    ;[20B6] 
-    CP    $0D                       ;[20B7] 
+    CP    CR                        ;[20B7] 
     EXX                             ;[20B9] 
     SCF                             ;[20BA] 
     RET   Z                         ;[20BB] 
-    CALL  $2113                     ;[20BC] 
+    CALL  VPTR_IS_STR               ;[20BC] 
     PUSH  DE                        ;[20BF] 
     PUSH  HL                        ;[20C0] 
-    JR    C,$20E4                   ;[20C1] 
+    JR    C,EIPT4                   ;[20C1] 
     EXX                             ;[20C3] 
     LD    HL,(SYSVAR_POLBUF)        ;[20C4] 
     CALL  RP                        ;[20C7] 
-    CP    $2C                       ;[20CA] 
-    JR    Z,$20D1                   ;[20CC] 
+    CP    ','                       ;[20CA] 
+    JR    Z,EIPT3                   ;[20CC] 
     RST   $20                       ;[20CE] 
-    DEC   C                         ;[20CF] 
+    DB    CR                        ;[20CF] 
     DEC   DE                        ;[20D0] 
+EIPT3:
     EXX                             ;[20D1] 
     LD    DE,(SYSVAR_POLBUF)        ;[20D2] 
     RST   $28                       ;[20D6] 
     POP   HL                        ;[20D7] 
     EX    DE,HL                     ;[20D8] 
     CALL  WRA1_TO_DE                ;[20D9] 
+EIPT5:
     POP   DE                        ;[20DC] 
     LD    A,(DE)                    ;[20DD] 
-    CP    $0D                       ;[20DE] 
+    CP    CR                        ;[20DE] 
     RET   Z                         ;[20E0] 
     INC   DE                        ;[20E1] 
-    JR    $20B5                     ;[20E2] 
+    JR    EIPTS                     ;[20E2] 
+EIPT4:
     EXX                             ;[20E4] 
     POP   HL                        ;[20E5] 
     DEC   HL                        ;[20E6] 
     LD    B,(HL)                    ;[20E7] 
     INC   HL                        ;[20E8] 
-    CALL  $20F1                     ;[20E9] 
+    CALL  RDST1                     ;[20E9] 
     EXX                             ;[20EC] 
-    JR    $20DC                     ;[20ED] 
+    JR    EIPT5                     ;[20ED] 
+
+;
+; Read string.
+;
+READ_STRING:
     LD    B,$10                     ;[20EF] 
-    CALL  TEST_END_CHAR             ;[20F1] 
-    JR    Z,$2103                   ;[20F4] 
+RDST1:
+    CALL  RDSTS                     ;[20F1] 
+    JR    Z,RDST3                   ;[20F4] 
     LD    (HL),A                    ;[20F6] 
     INC   HL                        ;[20F7] 
     INC   DE                        ;[20F8] 
-    DJNZ  $20F1                     ;[20F9] 
-    CALL  TEST_END_CHAR             ;[20FB] 
-    JR    Z,$2103                   ;[20FE] 
+    DJNZ  RDST1                     ;[20F9] 
+    CALL  RDSTS                     ;[20FB] 
+RDST2:
+    JR    Z,RDST3                   ;[20FE] 
     INC   DE                        ;[2100] 
     JR    $20FB                     ;[2101] 
-    LD    (HL),$0D                  ;[2103] 
+RDST3:
+    LD    (HL),SZ                   ;[2103] 
     RET   C                         ;[2105] 
     INC   DE                        ;[2106] 
     RET                             ;[2107] 
 
-;
-; Test what DE points to for a comma, a " or a CR.
-;
-TEST_END_CHAR:
-    LD    A,(DE)                    ;[2108] 
+RDSTS:
+    LD    A,(DE)                    ;[2108] Test what DE points to for a comma, a " or a CR.
     CP    $22                       ;[2109] 
     RET   Z                         ;[210B] 
-    CP    $2C                       ;[210C] 
+    CP    ','                       ;[210C] 
     RET   Z                         ;[210E] 
-    CP    $0D                       ;[210F] 
+    CP    CR                        ;[210F] 
     SCF                             ;[2111] 
     RET                             ;[2112] 
 
-    CALL  VALID_VAR_TEST            ;[2113] 
-    JR    Z,$211D                   ;[2116] 
+;
+; Variable pointer C if string
+;
+VPTR_IS_STR:
+    CALL  TEST_FOR_STRING           ;[2113] 
+    JR    Z,VARP1                   ;[2116] 
     CALL  GET_VAR_ADDR              ;[2118] 
     OR    A                         ;[211B] 
     RET                             ;[211C] 
 
+VARP1:
     CALL  SYSVAR_VRPTS              ;[211D] 
     SCF                             ;[2120] 
     RET                             ;[2121] 
@@ -4752,12 +4794,14 @@ TEST_END_CHAR:
 ;
 BASIC_COM_PAUSE:
     RST   $18                       ;[2122] 
+EPAUSE1:
     DEC   HL                        ;[2123] 
     LD    B,$1A                     ;[2124] 
-    DJNZ  $2126                     ;[2126] 
+EPAUSE2:
+    DJNZ  EPAUSE2                   ;[2126] 
     LD    A,L                       ;[2128] 
     OR    H                         ;[2129] 
-    JR    NZ,$2123                  ;[212A] 
+    JR    NZ,EPAUSE1                ;[212A] 
     RET                             ;[212C] 
 
 ;
@@ -4765,6 +4809,7 @@ BASIC_COM_PAUSE:
 ;
 BASIC_COM_PROTECT:
     RST   $18                       ;[212D] 
+EPROT1:
     LD    (SYSVAR_PROTST),A         ;[212E] 
     RET                             ;[2131] 
 
@@ -4785,14 +4830,14 @@ ETEXT:
     LD    A,$04                     ;[2141] 
     RST   $08                       ;[2143] 
     LD    A,$03                     ;[2144] 
-    JR    $212E                     ;[2146] 
+    JR    EPROT1                    ;[2146] 
 
 ;
 ; LET.
 ;
 BASIC_COM_LET:
-    CALL  VALID_VAR_TEST            ;[2148] 
-    JR    Z,$2161                   ;[214B] 
+    CALL  TEST_FOR_STRING           ;[2148] 
+    JR    Z,ELET1                   ;[214B] 
     CALL  GET_VAR_ADDR              ;[214D] 
     INC   DE                        ;[2150] 
     PUSH  HL                        ;[2151] 
@@ -4802,13 +4847,15 @@ BASIC_COM_LET:
     PUSH  HL                        ;[2155] 
     CALL  WRA1_TO_DE                ;[2156] 
     POP   DE                        ;[2159] 
+ELET7:
     LD    A,(DE)                    ;[215A] 
-    CP    $0D                       ;[215B] 
+    CP    CR                        ;[215B] 
     RET   Z                         ;[215D] 
     INC   DE                        ;[215E] 
     JR    BASIC_COM_LET             ;[215F] 
+ELET1:
     LD    IY,SYSVAR_CSTACK          ;[2161] 
-    CALL  SYSVAR_VRPTS              ;[2165] 
+    CALL  SYSVAR_VRPTS              ;[2165] String pointer
     INC   DE                        ;[2168] 
     PUSH  HL                        ;[2169] 
     PUSH  BC                        ;[216A] 
@@ -4816,9 +4863,11 @@ BASIC_COM_LET:
     POP   BC                        ;[216E] 
     POP   IX                        ;[216F] 
     LD    HL,SYSVAR_STRBUF          ;[2171] 
+ELET2:
     CALL  STRING_SEEK_END           ;[2174] 
-    LD    (IX+$00),$0D              ;[2177] 
-    JR    $215A                     ;[217B] 
+ELET3:
+    LD    (IX+$00),SZ               ;[2177] 
+    JR    ELET7                     ;[217B] 
 
 ;
 ; RESTORE.
@@ -4833,15 +4882,19 @@ BASIC_COM_RESTORE:
     LD    (SYSVAR_DATAP),IX         ;[218B] 
     RET                             ;[218F] 
 
-    LD    A,(IX+$00)                ;[2190] Search BASIC file for token in C.
+;
+; Find token? Search BASIC file for token in C.
+;
+FTL:
+    LD    A,(IX+$00)                ;[2190] 
     CP    $80                       ;[2193] 
     SCF                             ;[2195] 
     RET   Z                         ;[2196] 
     LD    A,(IX+$06)                ;[2197] 
     CP    C                         ;[219A] 
     RET   Z                         ;[219B] 
-    CALL  SKIP_TO_LINE_END          ;[219C] 
-    JR    $2190                     ;[219F] 
+    CALL  NEXT_LINE                 ;[219C] 
+    JR    FTL                       ;[219F] 
 
 ;
 ; WHILE subroutine.
@@ -4849,27 +4902,31 @@ BASIC_COM_RESTORE:
 SUB_WHILE:
     LD    A,$FF                     ;[21A1] 
     EX    AF,AF'                    ;[21A3] 
+FTLD1:
     LD    A,(IX+$00)                ;[21A4] 
     CP    $80                       ;[21A7] 
     SCF                             ;[21A9] 
     RET   Z                         ;[21AA] 
     LD    A,(IX+$06)                ;[21AB] 
     CP    B                         ;[21AE] 
-    JR    Z,$21C0                   ;[21AF] 
+    JR    Z,FTLD3                   ;[21AF] 
     CP    C                         ;[21B1] 
-    JR    Z,$21B9                   ;[21B2] 
-    CALL  SKIP_TO_LINE_END          ;[21B4] 
-    JR    $21A4                     ;[21B7] 
+    JR    Z,FTLD4                   ;[21B2] 
+FTLD2:
+    CALL  NEXT_LINE                 ;[21B4] 
+    JR    FTLD1                     ;[21B7] 
+FTLD4:
     EX    AF,AF'                    ;[21B9] 
     OR    A                         ;[21BA] 
     RET   Z                         ;[21BB] 
     DEC   A                         ;[21BC] 
     EX    AF,AF'                    ;[21BD] 
-    JR    $21B4                     ;[21BE] 
+    JR    FTLD2                     ;[21BE] 
+FTLD3:
     EX    AF,AF'                    ;[21C0] 
     INC   A                         ;[21C1] 
     EX    AF,AF'                    ;[21C2] 
-    JR    $21B4                     ;[21C3] 
+    JR    FTLD2                     ;[21C3] 
 
 ;
 ; READ.
@@ -4878,60 +4935,64 @@ BASIC_COM_READ:
     EXX                             ;[21C5] 
     LD    DE,(SYSVAR_DATAP)         ;[21C6] 
     EXX                             ;[21CA] 
-    CALL  $20B5                     ;[21CB] 
-    JR    C,$21D6                   ;[21CE] 
+ERD1:
+    CALL  EIPTS                     ;[21CB] 
+    JR    C,ERD2                    ;[21CE] 
     EXX                             ;[21D0] 
     LD    (SYSVAR_DATAP),DE         ;[21D1] 
     RET                             ;[21D5] 
 
+ERD2:
     EXX                             ;[21D6] 
     INC   DE                        ;[21D7] 
     PUSH  DE                        ;[21D8] 
     POP   IX                        ;[21D9] 
-    LD    C,$19                     ;[21DB] 
-    CALL  $2190                     ;[21DD] 
+    LD    C,DATA                    ;[21DB] 
+    CALL  FTL                       ;[21DD] 
     CALL  C,ERR_OUT_OF_DATA         ;[21E0] 
     CALL  SKIP_LNUM                 ;[21E3] 
     INC   DE                        ;[21E6] 
     EXX                             ;[21E7] 
-    JR    $21CB                     ;[21E8] 
+    JR    ERD1                      ;[21E8] 
 
 ;
-; Test for a valid variable.
+; Test for string.
 ;
-VALID_VAR_TEST:
+TEST_FOR_STRING:
     LD    A,(DE)                    ;[21EA] 
-    CP    $41                       ;[21EB] CHR$($41) = 'A' letter
+    CP    'A'                       ;[21EB] CHR$($41) = 'A' letter
     RET   C                         ;[21ED] 
     INC   DE                        ;[21EE] 
     LD    A,(DE)                    ;[21EF] 
-    CP    $24                       ;[21F0] CHR$($24) = Dollar Sign
+    CP    '$'                       ;[21F0] CHR$($24) = Dollar Sign
     DEC   DE                        ;[21F2] 
     RET                             ;[21F3] 
 
 ;
-; Variable validation routine.
+; Read string variable into HL
 ;
-VALIDATE_VAR:
+READ_STRING_VAR:
     LD    A,(DE)                    ;[21F4] 
-    CP    $41                       ;[21F5] 
+    CP    'A'                       ;[21F5] Buffer from DE buffer
     CALL  C,ERR_SYNTAX              ;[21F7] 
-    CP    $5B                       ;[21FA] 
+    CP    'Z'+1                     ;[21FA] 
     CALL  NC,ERR_SYNTAX             ;[21FC] 
+RDSV1:
     LD    (HL),A                    ;[21FF] 
     INC   HL                        ;[2200] 
-    LD    (HL),$24                  ;[2201] 
+    LD    (HL),'$'                  ;[2201] 
     INC   HL                        ;[2203] 
     INC   DE                        ;[2204] 
     INC   DE                        ;[2205] 
+DMSR:
     RST   $10                       ;[2206] 
-    CP    $28                       ;[2207] 
+    CP    '('                       ;[2207] 
     RET   NZ                        ;[2209] 
     LD    (HL),A                    ;[220A] 
     INC   HL                        ;[220B] 
     INC   DE                        ;[220C] 
     CALL  RP                        ;[220D] 
-    CP    $29                       ;[2210] 
+    CP    ')'                       ;[2210] 
     CALL  NZ,ERR_MISSING_BRACKET    ;[2212] 
     LD    (HL),A                    ;[2215] 
     INC   HL                        ;[2216] 
@@ -4945,9 +5006,10 @@ GET_VAR_ADDR:
     INC   DE                        ;[221B] 
     PUSH  AF                        ;[221C] 
     LD    A,(DE)                    ;[221D] 
-    CP    $28                       ;[221E] 
-    JP    Z,$1DFF                   ;[2220] 
+    CP    '('                       ;[221E] 
+    JP    Z,VPTA                    ;[2220] 
     POP   AF                        ;[2223] 
+VTPTR:
     LD    L,A                       ;[2224] 
     LD    H,$00                     ;[2225] 
     PUSH  DE                        ;[2227] 
@@ -5030,18 +5092,20 @@ BASIC_COM_CONT:
     JP    EXEC_BASIC                ;[227D] 
 
 ;
-; RUN.
+; RUN. (aka ERUN)
 ;
 BASIC_COM_RUN:
     PUSH  DE                        ;[2280] 
-    CALL  ZERO_MEM                  ;[2281] 
+    CALL  ZERO_MEM                  ;[2281] Pre-run module
     POP   DE                        ;[2284] 
     LD    IX,(SYSVAR_SOB)           ;[2285] 
     LD    A,(DE)                    ;[2289] 
-    CP    $0D                       ;[228A] 
-    JR    Z,$2292                   ;[228C] 
+    CP    CR                        ;[228A] 
+    JR    Z,EGT1                    ;[228C] 
+EGT2:
     RST   $28                       ;[228E] Evaluate expression
     CALL  FINDLN                    ;[228F] 
+EGT1:
     POP   BC                        ;[2292] 
     JP    RUN_BASIC_PROG            ;[2293] 
 
@@ -5051,21 +5115,22 @@ BASIC_COM_RUN:
 BASIC_COM_GOSUB:
     LD    HL,(SYSVAR_CURRLP)        ;[2296] 
     CALL  PUSH_HL_RSTACK            ;[2299] 
-    LD    A,$11                     ;[229C] 
+    LD    A,GOSUB                   ;[229C] 
     CALL  PUSH_A_RSTACK             ;[229E] 
     LD    A,(DE)                    ;[22A1] 
 
 BASIC_COM_GOTO:
-    CP    $D8                       ;[22A2] 
-    JR    NZ,$228E                  ;[22A4] 
-    LD    C,$2F                     ;[22A6] 
+    CP    OLABEL                    ;[22A2] 
+    JR    NZ,EGT2                   ;[22A4] 
+    LD    C,LABEL                   ;[22A6] 
     INC   DE                        ;[22A8] 
     LD    IX,(SYSVAR_SOB)           ;[22A9] 
+EGT3:
     PUSH  DE                        ;[22AD] 
-    CALL  $2190                     ;[22AE] 
+    CALL  FTL                       ;[22AE] 
     CALL  C,ERR_NOT_FOUND           ;[22B1] 
     PUSH  IX                        ;[22B4] 
-    LD    DE,$0007                  ;[22B6] 
+    LD    DE,7                      ;[22B6] 
     ADD   IX,DE                     ;[22B9] 
     PUSH  IX                        ;[22BB] 
     POP   HL                        ;[22BD] 
@@ -5073,10 +5138,11 @@ BASIC_COM_GOTO:
     POP   DE                        ;[22C0] 
     PUSH  DE                        ;[22C1] 
     CALL  STRING_CMP                ;[22C2] 
-    JR    Z,$22CD                   ;[22C5] 
-    CALL  SKIP_TO_LINE_END          ;[22C7] 
+    JR    Z,EGT4                    ;[22C5] 
+    CALL  NEXT_LINE                 ;[22C7] 
     POP   DE                        ;[22CA] 
-    JR    NZ,$22AD                  ;[22CB] 
+    JR    NZ,EGT3                   ;[22CB] 
+EGT4:
     POP   BC                        ;[22CD] 
     LD    (SYSVAR_CURRLP),IX        ;[22CE] 
     RET                             ;[22D2] 
@@ -5088,56 +5154,65 @@ STRING_CMP:
     LD    A,(DE)                    ;[22D3] 
     CP    (HL)                      ;[22D4] 
     RET   NZ                        ;[22D5] 
-    CP    $28                       ;[22D6] 
+    CP    '('                       ;[22D6] 
     RET   Z                         ;[22D8] 
-    CP    $0D                       ;[22D9] 
+    CP    CR                        ;[22D9] 
     RET   Z                         ;[22DB] 
     INC   HL                        ;[22DC] 
     INC   DE                        ;[22DD] 
     JR    STRING_CMP                ;[22DE] 
-    LD    IX,(SYSVAR_SOB)           ;[22E0] LIST (in part)
+
+;
+; LIST (in part)
+;
+ELIST2:
+    LD    IX,(SYSVAR_SOB)           ;[22E0] 
     LD    DE,$FFFF                  ;[22E4] 
-    JR    $230A                     ;[22E7] 
+    JR    ELIST1                    ;[22E7] 
 
 BASIC_COM_LIST:
-    CP    $0D                       ;[22E9] 
-    LD    A,$00                     ;[22EB] 
+    CP    CR                        ;[22E9] 
+    LD    A,0                       ;[22EB] 
     LD    (SYSVAR_SBC),A            ;[22ED] 
-    JR    Z,$22E0                   ;[22F0] 
+    JR    Z,ELIST2                  ;[22F0] 
     RST   $28                       ;[22F2] 
     PUSH  DE                        ;[22F3] 
     CALL  FNDLN_WRA1                ;[22F4] 
     POP   DE                        ;[22F7] 
     LD    A,(DE)                    ;[22F8] 
-    CP    $0D                       ;[22F9] 
+    CP    CR                        ;[22F9] 
     PUSH  IX                        ;[22FB] 
-    JR    Z,$2304                   ;[22FD] 
+    JR    Z,ELIST3                  ;[22FD] 
     INC   DE                        ;[22FF] 
     RST   $28                       ;[2300] 
     CALL  FNDLN_WRA1                ;[2301] 
+ELIST3:
     PUSH  IX                        ;[2304] 
     POP   DE                        ;[2306] 
     POP   IX                        ;[2307] 
     INC   DE                        ;[2309] 
+ELIST1:
     LD    A,(IX+$00)                ;[230A] 
     CP    $80                       ;[230D] 
-    JR    Z,$2332                   ;[230F] 
+    JR    Z,ELIST4                  ;[230F] 
     PUSH  DE                        ;[2311] 
     CALL  SYSVAR_DBASLN             ;[2312] 
     LD    (SYSVAR_CURRLP),IX        ;[2315] 
+ELIST9:
     CALL  ESC                       ;[2319] 
-    JR    Z,$2332                   ;[231C] 
-    LD    BC,$0080                  ;[231E] 
+    JR    Z,ELIST4                  ;[231C] 
+    LD    BC,PORT                   ;[231E] 
     IN    A,(C)                     ;[2321] 
     RLCA                            ;[2323] 
-    JR    NC,$2319                  ;[2324] 
-    CALL  SKIP_TO_LINE_END          ;[2326] 
+    JR    NC,ELIST9                 ;[2324] 
+    CALL  NEXT_LINE                 ;[2326] 
     POP   DE                        ;[2329] 
     PUSH  IX                        ;[232A] 
     POP   HL                        ;[232C] 
     CALL  CHLDE                     ;[232D] 
-    JR    C,$230A                   ;[2330] 
-    LD    A,$1E                     ;[2332] 
+    JR    C,ELIST1                  ;[2330] 
+ELIST4:
+    LD    A,CEL                     ;[2332] 
     RST   $08                       ;[2334] 
     JP    TO_CMDLINE                ;[2335] 
 
@@ -5164,7 +5239,7 @@ BASIC_COM_DEL:
     JR    Z,$2351                   ;[234B] 
     RST   $28                       ;[234D] 
     CALL  FINDLN                    ;[234E] 
-    CALL  SKIP_TO_LINE_END          ;[2351] 
+    CALL  NEXT_LINE                 ;[2351] 
     PUSH  IX                        ;[2354] 
     POP   BC                        ;[2356] 
     POP   HL                        ;[2357] 
@@ -5343,7 +5418,7 @@ BASIC_COM_IF:
     POP   BC                        ;[2435] 
     JP    $24A6                     ;[2436] 
     LD    IX,(SYSVAR_CURRLP)        ;[2439] 
-    CALL  SKIP_TO_LINE_END          ;[243D] 
+    CALL  NEXT_LINE                 ;[243D] 
     LD    A,(IX+$00)                ;[2440] 
     CP    $80                       ;[2443] 
     RET   Z                         ;[2445] 
@@ -5451,7 +5526,7 @@ EXEC_LINE_LOOP:
     JP    (HL)                      ;[24BD] Execute basic command.
 EXEC_LINE_RETURN:
     LD    IX,(SYSVAR_CURRLP)        ;[24BE] 
-    CALL  SKIP_TO_LINE_END          ;[24C2] 
+    CALL  NEXT_LINE                 ;[24C2] 
 RUN_BASIC_PROG:
     LD    (SYSVAR_CURRLP),IX        ;[24C5] 
     LD    A,(IX+$00)                ;[24C9] 
@@ -5553,9 +5628,9 @@ LINP_ANLYS:
     JP    ZERO_MEM                  ;[255B] 
 
 ;
-; Add line length to IX.
+; Next line. IX points to next line.
 ;
-SKIP_TO_LINE_END:
+NEXT_LINE:
     PUSH  DE                        ;[255E] 
     LD    E,(IX+$05)                ;[255F] 
     LD    D,$00                     ;[2562] 
@@ -5745,7 +5820,7 @@ VALIDATE_INPUT:
     CP    $80                       ;[263E] 
     CALL  Z,ERR_WRONG_MODE          ;[2640] 
     POP   HL                        ;[2643] 
-    CALL  VALID_VAR_TEST            ;[2644] 
+    CALL  TEST_FOR_STRING           ;[2644] 
     JR    Z,$2657                   ;[2647] 
     CALL  VALIDATE_READ             ;[2649] 
     LD    (HL),A                    ;[264C] 
@@ -5757,7 +5832,7 @@ VALIDATE_INPUT:
     INC   DE                        ;[2653] 
     RST   $10                       ;[2654] 
     JR    $2639                     ;[2655] 
-    CALL  VALIDATE_VAR              ;[2657] 
+    CALL  READ_STRING_VAR           ;[2657] 
     RST   $10                       ;[265A] 
     JR    $264C                     ;[265B] 
 
@@ -5799,7 +5874,7 @@ VALIDATE_CALL:
 ; Validation routine for LET.
 ;
 VALIDATE_LET:
-    CALL  VALID_VAR_TEST            ;[267C] 
+    CALL  TEST_FOR_STRING           ;[267C] 
     JR    Z,$2696                   ;[267F] 
     CALL  VALIDATE_READ             ;[2681] 
     CP    $3D                       ;[2684] 
@@ -5811,7 +5886,7 @@ VALIDATE_LET:
     CP    $2C                       ;[268F] 
     JR    Z,$267A                   ;[2691] 
     JP    VALIDATE_MON              ;[2693] 
-    CALL  VALIDATE_VAR              ;[2696] 
+    CALL  READ_STRING_VAR           ;[2696] 
     RST   $10                       ;[2699] 
     RST   $20                       ;[269A] 
     DEC   A                         ;[269B] 
@@ -6297,7 +6372,7 @@ BASIC_COM_PROC:
     POP   IX                        ;[2917] 
     CALL  Z,$293F                   ;[2919] 
     LD    C,$02                     ;[291C] 
-    CALL  $22AD                     ;[291E] 
+    CALL  EGT3                      ;[291E] 
     CP    $0D                       ;[2921] 
     RET   Z                         ;[2923] 
     LD    A,(DE)                    ;[2924] 
@@ -6321,7 +6396,7 @@ BASIC_COM_PROC:
     POP   DE                        ;[293C] 
     JR    $2924                     ;[293D] 
     LD    IX,(SYSVAR_SOB)           ;[293F] 
-    CALL  $2190                     ;[2943] 
+    CALL  FTL                       ;[2943] 
     CALL  C,ERR_NOT_FOUND           ;[2946] 
     LD    (SYSVAR_PROCST),IX        ;[2949] 
     RET                             ;[294D] 
@@ -6381,7 +6456,7 @@ BASIC_COM_ENDPROC:
     CALL  POP_A_RSTACK              ;[2988] 
     CP    $04                       ;[298B] 
     CALL  NZ,ERR_ENDPROC_NO_PROC    ;[298D] 
-    JP    $207C                     ;[2990] 
+    JP    EEPRN1                    ;[2990] 
 
 ;
 ; Part of the PRINT routine.
@@ -6617,7 +6692,7 @@ BASIC_COM_RENUM:
     POP   DE                        ;[2AE6] 
     CALL  WRA1_TO_DE                ;[2AE7] 
     POP   IX                        ;[2AEA] 
-    CALL  SKIP_TO_LINE_END          ;[2AEC] 
+    CALL  NEXT_LINE                 ;[2AEC] 
     JR    $2A89                     ;[2AEF] 
     LD    IX,(SYSVAR_SOB)           ;[2AF1] 
     LD    HL,SYSVAR_AUTOST          ;[2AF5] 
@@ -6633,7 +6708,7 @@ BASIC_COM_RENUM:
     CALL  LNUM2                     ;[2B0B] 
     CALL  ADD                       ;[2B0E] 
     POP   IX                        ;[2B11] 
-    CALL  SKIP_TO_LINE_END          ;[2B13] 
+    CALL  NEXT_LINE                 ;[2B13] 
     JR    $2AFB                     ;[2B16] 
 
 ;
@@ -6671,7 +6746,7 @@ FNDLN_WRA1:
 
     POP   BC                        ;[2B42] 
     INC   BC                        ;[2B43] 
-    CALL  SKIP_TO_LINE_END          ;[2B44] 
+    CALL  NEXT_LINE                 ;[2B44] 
     JR    $2B26                     ;[2B47] 
     OR    A                         ;[2B49] 
     RET                             ;[2B4A] 
@@ -6683,7 +6758,7 @@ TEST_FOR_STR_EXP:
     RST   $10                       ;[2B4B] 
     CP    $22                       ;[2B4C] 
     RET   Z                         ;[2B4E] 
-    CALL  VALID_VAR_TEST            ;[2B4F] 
+    CALL  TEST_FOR_STRING           ;[2B4F] 
     RET   Z                         ;[2B52] 
     PUSH  DE                        ;[2B53] 
     CALL  TKSL                      ;[2B54] 
@@ -6816,7 +6891,7 @@ ESE1:
     LD    A,(DE)                    ;[2BE5] 
     CP    $22                       ;[2BE6] 
     JR    Z,ESE2                    ;[2BE8] 
-    CALL  VALID_VAR_TEST            ;[2BEA] 
+    CALL  TEST_FOR_STRING           ;[2BEA] 
     JR    Z,ESE3                    ;[2BED] 
     LD    A,(DE)                    ;[2BEF] 
     INC   DE                        ;[2BF0] 
@@ -6943,7 +7018,7 @@ STRING_SEEK_END:
 ; String expr upper case?
 ;
 RSEUPC:
-    CALL  VALIDATE_VAR              ;[2C8F] 
+    CALL  READ_STRING_VAR           ;[2C8F] 
     RST   $10                       ;[2C92] 
     CP    ')'                       ;[2C93] 
     LD    (HL),A                    ;[2C95] 
@@ -6956,7 +7031,7 @@ RSEUPC:
 ; Read string expression (aka RSE)
 ;
 READ_STRING_EXPR:
-    CALL  VALID_VAR_TEST            ;[2C9D] 
+    CALL  TEST_FOR_STRING           ;[2C9D] 
     JR    Z,RSE7                    ;[2CA0] 
     CALL  TKSL                      ;[2CA2] 
     LD    (HL),A                    ;[2CA5] 
@@ -6991,10 +7066,10 @@ RSE1:
     CP    RIGHT                     ;[2CD2] 
     CALL  NZ,ERR_SOMETHG_MISSG      ;[2CD4] 
 RSE5:
-    CALL  VALID_VAR_TEST            ;[2CD7] 
+    CALL  TEST_FOR_STRING           ;[2CD7] 
 RSEN:
     CALL  NZ,ERR_SYNTAX             ;[2CDA] 
-    CALL  VALIDATE_VAR              ;[2CDD] 
+    CALL  READ_STRING_VAR           ;[2CDD] 
     RST   $10                       ;[2CE0] 
     INC   DE                        ;[2CE1] 
 RSE4:
@@ -7007,9 +7082,9 @@ RSE2:
     CALL  $2731                     ;[2CE9] 
     JR    RSE6                      ;[2CEC] 
 RSE3:
-    CALL  VALID_VAR_TEST            ;[2CEE] 
+    CALL  TEST_FOR_STRING           ;[2CEE] 
     JR    NZ,RSEN                   ;[2CF1] 
-    CALL  VALIDATE_VAR              ;[2CF3] 
+    CALL  READ_STRING_VAR           ;[2CF3] 
     RST   $10                       ;[2CF6] 
     INC   DE                        ;[2CF7] 
     CP    ','                       ;[2CF8] 
@@ -7019,7 +7094,7 @@ RSE3:
     CALL  RP                        ;[2CFE] 
     JR    RSE4                      ;[2D01] 
 RSE7:
-    CALL  VALIDATE_VAR              ;[2D03] 
+    CALL  READ_STRING_VAR           ;[2D03] 
     JR    RSE8                      ;[2D06] 
 
 ;
@@ -7199,7 +7274,7 @@ EDMAR2:
 ; DIM.
 ;
 BASIC_COM_DIM:
-    CALL  VALID_VAR_TEST            ;[2DCB] 
+    CALL  TEST_FOR_STRING           ;[2DCB] 
     JR    NZ,EDIM3                  ;[2DCE] 
     LD    A,(DE)                    ;[2DD0] 
     INC   DE                        ;[2DD1] 
@@ -7243,7 +7318,7 @@ BASIC_COM_DIM:
     RET                             ;[2E09] 
 
 EDIM3:
-    CALL  $1E0F                     ;[2E0A] Get pointers
+    CALL  ARRAY_LOCATE              ;[2E0A] Get pointers
     LD    A,(IX+$00)                ;[2E0D] 
     OR    (IX+$01)                  ;[2E10] 
     CALL  NZ,ERR_REDIM_ARRAY        ;[2E13] 
@@ -7298,10 +7373,10 @@ EDIM1:
 ; Validation for DIM.
 ;
 VALIDATE_DIM:
-    CALL  VALID_VAR_TEST            ;[2E66] 
+    CALL  TEST_FOR_STRING           ;[2E66] 
     JR    NZ,$2E7C                  ;[2E69] VALIDATE_DIM+$16
-    CALL  VALIDATE_VAR              ;[2E6B] 
-    CALL  $2206                     ;[2E6E] VALIDATE_VAR+$12
+    CALL  READ_STRING_VAR           ;[2E6B] 
+    CALL  DMSR                      ;[2E6E] VALIDATE_VAR+$12
     RST   $10                       ;[2E71] 
     LD    (HL),A                    ;[2E72] 
     CP    $0D                       ;[2E73] 
