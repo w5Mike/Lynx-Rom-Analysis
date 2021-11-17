@@ -1,17 +1,18 @@
 Camputers Lynx 48k ROM disassembly (version L014)
 =================================================
 
-Reconstructed from Lynx 48k eprom memory images and supplemented with information 
-from Lynx User Magazine Issue 1 (Camputers, June 1983, pages 16-18) and Nilug News
-(Issue 6) by R.B.Poate. Some of the labels and symbols arise from original 
-documents, and others are my own inventions/variations for clarity. A database 
-and custom script was used to create the disassembly listing.
+Originally, this assembly code was reconstructed from Lynx 48k eprom memory images, and supplemented with information from Lynx User Magazine Issue 1 (Camputers, June 1983, pages 16-18) and Nilug News (Issue 6) by R.B.Poate. Some of the labels and symbols arise from Lynx User and Nilug News, and others are my own creations for clarity. A rough database and script was used to create the disassembly listing.
 
-Disclaimer: this is just my interpretation of the ROMs - *not* the original source
-code (whereabouts are unknown). The analysis is incomplete, and may change, but 
-hopefully it is a useful starting point.
+This code can be assembled (eg. using Z88dk) to produce a 16k ROM which is an exact replica of the original L014 ROMs (2x8k) that were supplied with the Lynx computer.
 
-Disassembly, analysis and mistakes by: Mike Panter 10/10/2021
+17/11/2021: The code has now been enhanced with information from some original source code dated Apr-1984 (kindly supplied by Russell Davis and Pete Todd - see below). The 1984 source code was written using Macro-80 Assembler and (most likely) originates from Camputers themselves. However the code is different in some ways, and looks to be an enhanced version of the original ROM (ie. a post L014 version). I refer to this code as the "Mark II source code", as it was probably targetting the later 96k and 128k Lynx models. Nevertheless it contains many of the original rom routines. Subsequently, labels, comments, and symbols from the Mark II listing have been incorporated back into my L014 assembly, for consistency and clarity, where possible.
+
+I am unsure if the Mark II code ever made it to production. At the time of writing, an online archive of the complete Mark II source code can be found at Pete Todd's website, here: http://www.retrogubbins.co.uk/downloads/summary/20-lynx-rom-source-code
+
+Finally: this is just my *interpretation* of the ROMs - *not* the original source
+code. The analysis is incomplete, and may change. It's purpose is to aid understanding.
+
+Disassembly, analysis and mistakes by: Mike Panter 17/11/2021
 
 Credit to: 
  - DAVIS (the original author of the Lynx ROMs @ Camputers)
