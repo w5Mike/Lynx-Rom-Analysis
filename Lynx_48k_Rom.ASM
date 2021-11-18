@@ -1956,7 +1956,7 @@ SUB_INPUT_IS_ESC:
     POP   DE                        ;[0DFB] 
     POP   BC                        ;[0DFC] 
     LD    IX,(SYSVAR_CURRLP)        ;[0DFD] Current BASIC line
-    JP    BASIC_COM_STOP1           ;[0E01] 
+    JP    STOP1                     ;[0E01] 
     RST   $38                       ;[0E04] 
 
 ;
@@ -3275,17 +3275,17 @@ TOKEN_TO_WORD_FIND:
 ; Line analysis subroutine.
 ;
 SP1:
-    CP    $C2                       ;[189B] 
+    CP    FN0                       ;[189B] 
     RET   NC                        ;[189D] 
-    CP    $BF                       ;[189E] 
+    CP    PARENS                    ;[189E] 
     RET   C                         ;[18A0] 
     POP   IX                        ;[18A1] Get return address
     JR    SP21                      ;[18A3] 
 SP2:
     POP   IX                        ;[18A5] Get return address
-    CP    $C5                       ;[18A7] Right range?
+    CP    POWER                     ;[18A7] Right range?
     JR    C,SP2E                    ;[18A9] 
-    CP    $D0                       ;[18AB] Put a b$spac in front
+    CP    ORQ                       ;[18AB] Put a b$spac in front
     JR    C,SP21                    ;[18AD] AND, OR, etc.
     LD    HL,$2020                  ;[18AF] 
     PUSH  HL                        ;[18B2] 
@@ -3301,7 +3301,7 @@ SP22:
     PUSH  AF                        ;[18BE] Save char
     JR    Z,SP22                    ;[18BF] 
     LD    A,C                       ;[18C1] 
-    CP    $D0                       ;[18C2] 
+    CP    ORQ                       ;[18C2] 
     JR    C,SP2E                    ;[18C4] 
     LD    A,' '                     ;[18C6] Put B$SPAC after and, or, etc.
     PUSH  AF                        ;[18C8] 
@@ -3328,60 +3328,60 @@ PSX:
 ;
 PP:
     XOR   A                         ;[18D7] 
-    PUSH  AF                        ;[18D8] 
-    LD    IY,SYSVAR_SYNL            ;[18D9] 
+    PUSH  AF                        ;[18D8] marker
+    LD    IY,SYSVAR_SYNL            ;[18D9] Storage area
 PP1:
-    LD    A,(DE)                    ;[18DD] 
-    CP    $7F                       ;[18DE] 
+    LD    A,(DE)                    ;[18DD] Get chr
+    CP    EOP                       ;[18DE] Exit if end of polish
     JP    Z,PPX                     ;[18E0] 
-    CP    $BF                       ;[18E3] 
-    JR    C,PP5                     ;[18E5] 
-    LD    A,$29                     ;[18E7] 
+    CP    PARENS                    ;[18E3] Operand or operator
+    JR    C,PP5                     ;[18E5] Jp if operand
+    LD    A,')'                     ;[18E7] Paren suffix
     CALL  Z,PUTCHAR                 ;[18E9] 
-    CALL  ADV                       ;[18EC] 
+    CALL  ADV                       ;[18EC] Advance pointer
     JR    PP1                       ;[18EF] 
 PP5:
-    LD    (IY+$00),$00              ;[18F1] 
-    LD    L,E                       ;[18F5] 
+    LD    (IY+$00),$00              ;[18F1] Level=0
+    LD    L,E                       ;[18F5] Restart=scanning pointer
     LD    H,D                       ;[18F6] 
 PP2:
-    INC   (IY+$00)                  ;[18F7] 
+    INC   (IY+$00)                  ;[18F7] Check if level >=0
     DEC   (IY+$00)                  ;[18FA] 
-    JP    M,PP6                     ;[18FD] 
-    CALL  ADV                       ;[1900] 
-    LD    A,(DE)                    ;[1903] 
-    CP    $7F                       ;[1904] 
-    JR    Z,PP6                     ;[1906] 
-    CP    $BF                       ;[1908] 
-    JP    NC,PP3                    ;[190A] 
-    INC   (IY+$00)                  ;[190D] 
+    JP    M,PP6                     ;[18FD] Jp if <0
+    CALL  ADV                       ;[1900] Advance pointer
+    LD    A,(DE)                    ;[1903] Get chr
+    CP    EOP                       ;[1904] Display out stacked operators
+    JR    Z,PP6                     ;[1906] and operand
+    CP    PARENS                    ;[1908] 
+    JP    NC,PP3                    ;[190A] Operand
+    INC   (IY+$00)                  ;[190D] Level := level+1
     JR    PP2                       ;[1910] 
 PP3:
-    CP    $C3                       ;[1912] 
-    JR    C,PP4                     ;[1914] 
-    DEC   (IY+$00)                  ;[1916] 
+    CP    FN1                       ;[1912] Binary or unary
+    JR    C,PP4                     ;[1914] Jp if unary
+    DEC   (IY+$00)                  ;[1916] Level := level-1
 PP4:
-    EXX                             ;[1919] 
-    INC   (IY+$00)                  ;[191A] 
+    EXX                             ;[1919] Save pointers
+    INC   (IY+$00)                  ;[191A] Check if 0
     DEC   (IY+$00)                  ;[191D] 
-    CALL  Z,SP1                     ;[1920] 
-    INC   (IY+$00)                  ;[1923] 
-    PUSH  AF                        ;[1926] 
-    DEC   (IY+$00)                  ;[1927] 
-    POP   AF                        ;[192A] 
-    CALL  Z,SP2                     ;[192B] 
-    EXX                             ;[192E] 
+    CALL  Z,SP1                     ;[1920] Prefix1
+    INC   (IY+$00)                  ;[1923] Check if -1
+    PUSH  AF                        ;[1926] Save flags
+    DEC   (IY+$00)                  ;[1927] Restor value
+    POP   AF                        ;[192A] Unsave flags
+    CALL  Z,SP2                     ;[192B] Prefix2
+    EXX                             ;[192E] Restor pointers
     JP    PP2                       ;[192F] 
 PP6:
-    CALL  PS                        ;[1932] 
-    LD    E,L                       ;[1935] 
+    CALL  PS                        ;[1932] Display stack contents
+    LD    E,L                       ;[1935] Scanning := restart
     LD    D,H                       ;[1936] 
-    LD    A,(DE)                    ;[1937] 
-    CALL  PNAME                     ;[1938] 
-    CALL  ADV                       ;[193B] 
+    LD    A,(DE)                    ;[1937] Get chr
+    CALL  PNAME                     ;[1938] Display its name
+    CALL  ADV                       ;[193B] Advance pointer
     JP    PP1                       ;[193E] 
 PPX:
-    POP   AF                        ;[1941] 
+    POP   AF                        ;[1941] Get top of stack marker
     RET                             ;[1942] 
 
 ;
@@ -3447,7 +3447,7 @@ TKSUB:
     OR    $80                       ;[197F] Set bit 7
     CP    $C0                       ;[1981] Not alpha if C
     RET   C                         ;[1983] 
-    AND   $DF                       ;[1984] 
+    AND   %11011111                 ;[1984] 
     RET                             ;[1986] Upper case
 
 ;
@@ -3462,16 +3462,16 @@ NPSTR:
     INC   HL                        ;[1992] 
     CALL  READ_STRING_EXPR          ;[1993] 
     RST   $10                       ;[1996] 
-    CP    $3D                       ;[1997] 
+    CP    '='                       ;[1997] 
     JR    Z,NPSTR1                  ;[1999] 
-    CP    $3E                       ;[199B] 
+    CP    '>'                       ;[199B] 
     CALL  NZ,ERR_SOMETHG_MISSG      ;[199D] 
 NPSTR1:
     LD    (HL),A                    ;[19A0] 
     INC   HL                        ;[19A1] 
     INC   DE                        ;[19A2] 
     CALL  READ_STRING_EXPR          ;[19A3] 
-    LD    (HL),$7B                  ;[19A6] 
+    LD    (HL),EOS                  ;[19A6] 
     INC   HL                        ;[19A8] 
     POP   BC                        ;[19A9] 
     POP   IX                        ;[19AA] 
@@ -3488,78 +3488,82 @@ NPSTR1:
 ;
 NTPS:
     XOR   A                         ;[19BE] 
-    PUSH  AF                        ;[19BF] 
-    LD    IX,SYSVAR_SYNL            ;[19C0] 
+    PUSH  AF                        ;[19BF] Save top of stack code
+    LD    IX,SYSVAR_SYNL            ;[19C0] Init syntax checking
     LD    (IX+$00),$04              ;[19C4] 
     LD    (IX+$01),$04              ;[19C8] 
     LD    (IX+$02),$FF              ;[19CC] 
 NP1:
-    XOR   A                         ;[19D0] 
+    XOR   A                         ;[19D0] Remember last type of operator
 NP2:
-    LD    (SYSVAR_NPM),A            ;[19D1] 
-    CALL  SYNTAX                    ;[19D4] 
-    RST   $10                       ;[19D7] 
-    CALL  TEST_FOR_STR_EXP          ;[19D8] 
+    LD    (SYSVAR_NPM),A            ;[19D1] Or operand read (used by neg)
+    CALL  SYNTAX                    ;[19D4] Check syntax
+    RST   $10                       ;[19D7] Go past spaces
+    CALL  TEST_FOR_STR_EXP          ;[19D8] Test for string expression
     JR    Z,NPSTR                   ;[19DB] 
     LD    A,(DE)                    ;[19DD] 
-    CP    '-'                       ;[19DE] 
-    JP    Z,NOS                     ;[19E0] 
+    CP    '-'                       ;[19DE] Neg or Sub
+    JP    Z,NOS                     ;[19E0] Sort out which
     CP    '('                       ;[19E3] 
     JP    Z,NP3                     ;[19E5] 
     CP    ')'                       ;[19E8] 
     JP    Z,NP4                     ;[19EA] 
-    CALL  TKSL                      ;[19ED] 
+    CALL  TKSL                      ;[19ED] See if tokenable
     JP    NC,NP5                    ;[19F0] 
-    CALL  TEST_ALPHA                ;[19F3] 
+    CALL  TEST_ALPHA                ;[19F3] Test for letter
     JP    NC,NP6                    ;[19F6] 
-    CALL  TEST_DIGIT                ;[19F9] 
+    CALL  TEST_DIGIT                ;[19F9] Test for digit
     JP    NC,NP7                    ;[19FC] 
     CP    '&'                       ;[19FF] 
-    JP    Z,NP7H                    ;[1A01] 
-    CP    '.'                       ;[1A04] 
+    JP    Z,NP7H                    ;[1A01] Hex
+    CP    '.'                       ;[1A04] Could be .01 etc
     JP    Z,NP7                     ;[1A06] 
-    LD    (IX+$01),$08              ;[1A09] 
-    CALL  SYNTAX                    ;[1A0D] 
-    POP   AF                        ;[1A10] 
-    OR    A                         ;[1A11] 
-    JR    Z,$1A20                   ;[1A12] 
-    CP    $28                       ;[1A14] 
+NP9:
+    LD    (IX+$01),$08              ;[1A09] Command
+    CALL  SYNTAX                    ;[1A0D] See if correct syntax
+NP92:
+    POP   AF                        ;[1A10] Get op.
+    OR    A                         ;[1A11] If top of stack
+    JR    Z,NP91                    ;[1A12] Then exit
+    CP    '('                       ;[1A14] If ( on stack then error
     CALL  Z,ERR_MISSING_BRACKET     ;[1A16] 
-    LD    (HL),A                    ;[1A19] 
+    LD    (HL),A                    ;[1A19] Store op.
     INC   HL                        ;[1A1A] 
-    CALL  DSC                       ;[1A1B] 
-    JR    $1A10                     ;[1A1E] 
-    LD    (HL),$7F                  ;[1A20] 
-    INC   HL                        ;[1A22] 
-    XOR   A                         ;[1A23] 
-    OR    (IX+$02)                  ;[1A24] 
-    CALL  NZ,ERR_SOMETHG_MISSG      ;[1A27] 
+    CALL  DSC                       ;[1A1B] Dec syntax counter if nec.
+    JR    NP92                      ;[1A1E] Check next
+NP91:
+    LD    (HL),EOP                  ;[1A20] Store end of polish marker
+    INC   HL                        ;[1A22] Inc pointer
+    XOR   A                         ;[1A23] Clear a
+    OR    (IX+$02)                  ;[1A24] Check if count back to zero
+    CALL  NZ,ERR_SOMETHG_MISSG      ;[1A27] Missing operator/operand
     RET                             ;[1A2A] 
 
 NP5:
-    LD    (SYSVAR_NPM),A            ;[1A2B] 
-    CP    $C0                       ;[1A2E] 
+    LD    (SYSVAR_NPM),A            ;[1A2B] Store possible command
+    CP    NOT                       ;[1A2E] Process separately
     JP    Z,NOS1                    ;[1A30] 
-    CP    $D7                       ;[1A33] 
-    JR    NC,$1A09                  ;[1A35] 
-    CP    $BF                       ;[1A37] 
+    CP    THEN                      ;[1A33] Check if a command
+    JR    NC,NP9                    ;[1A35] Exit if command
+    CP    PARENS                    ;[1A37] Arithmetic
     JP    NC,NP10                   ;[1A39] 
-    LD    (HL),A                    ;[1A3C] 
-    INC   HL                        ;[1A3D] 
-    INC   (IX+$02)                  ;[1A3E] 
-    LD    B,$C3                     ;[1A41] 
-    LD    C,$03                     ;[1A43] 
-    CP    $9B                       ;[1A45] 
-    JR    NC,$1A89                  ;[1A47] 
+    LD    (HL),A                    ;[1A3C] Store fn as operand
+    INC   HL                        ;[1A3D] Inc pointer
+    INC   (IX+$02)                  ;[1A3E] Inc syntax counter
+    LD    B,$C3                     ;[1A41] Push either fn1 or fn0
+    LD    C,$03                     ;[1A43] Fn1 in syntax table
+    CP    SIN                       ;[1A45]  depending on the function
+    JR    NC,NP12                   ;[1A47] 
     LD    B,$C2                     ;[1A49] 
-    INC   (IX+$02)                  ;[1A4B] 
-    LD    (IX+$03),$00              ;[1A4E] 
-    CP    $85                       ;[1A52] 
-    JR    Z,$1A5E                   ;[1A54] 
-    CP    $87                       ;[1A56] 
-    JR    Z,$1A5E                   ;[1A58] 
-    CP    $86                       ;[1A5A] 
-    JR    NZ,$1A87                  ;[1A5C] 
+    INC   (IX+$02)                  ;[1A4B] Will be deced later
+    LD    (IX+$03),$00              ;[1A4E] Npm := 0
+    CP    LEN                       ;[1A52] 
+    JR    Z,NP52                    ;[1A54] 
+    CP    ASC                       ;[1A56] 
+    JR    Z,NP52                    ;[1A58] 
+    CP    VAL                       ;[1A5A] 
+    JR    NZ,NP53                   ;[1A5C] 
+NP52:
     PUSH  BC                        ;[1A5E] 
     CALL  TEST_FOR_STR_EXP          ;[1A5F] 
     CALL  NZ,ERR_TYPE_MISMATCH      ;[1A62] 
@@ -3576,48 +3580,51 @@ NP5:
     LD    (IX+$02),B                ;[1A7A] 
     RST   $10                       ;[1A7D] 
     RST   $20                       ;[1A7E] 
-    ADD   HL,HL                     ;[1A7F] 
+    DB    ')'                       ;[1A7F] 
     LD    (HL),A                    ;[1A80] 
     INC   HL                        ;[1A81] 
     INC   DE                        ;[1A82] 
-    LD    (HL),$7B                  ;[1A83] 
+    LD    (HL),EOS                  ;[1A83] 
     INC   HL                        ;[1A85] 
     POP   BC                        ;[1A86] 
-    LD    C,$02                     ;[1A87] 
-    LD    (IX+$01),C                ;[1A89] 
-    JP    NP103                     ;[1A8C] 
+NP53:
+    LD    C,2                       ;[1A87] Fn0 in syn tbl
+NP12:
+    LD    (IX+$01),C                ;[1A89] Save command
+    JP    NP103                     ;[1A8C] Sort out stack
 NP3:
-    PUSH  AF                        ;[1A8F] 
-    INC   DE                        ;[1A90] 
-    LD    A,(SYSVAR_SYNL)           ;[1A91] 
-    CP    $01                       ;[1A94] 
-    JR    NZ,NP31                   ;[1A96] 
-    POP   BC                        ;[1A98] 
-    LD    A,$C4                     ;[1A99] 
+    PUSH  AF                        ;[1A8F] Save open bracket on stack
+    INC   DE                        ;[1A90] Inc pointer
+    LD    A,(SYSVAR_SYNL)           ;[1A91] See if last chr was a
+    CP    1                         ;[1A94]  variable
+    JR    NZ,NP31                   ;[1A96]  else cont.
+    POP   BC                        ;[1A98] Get (
+    LD    A,$C4                     ;[1A99] Push array
     PUSH  AF                        ;[1A9B] 
     PUSH  BC                        ;[1A9C] 
-    DEC   HL                        ;[1A9D] 
+    DEC   HL                        ;[1A9D] Define as array
     SET   6,(HL)                    ;[1A9E] 
     INC   HL                        ;[1AA0] 
 NP31:
-    LD    (IX+$01),$04              ;[1AA1] 
+    LD    (IX+$01),$04              ;[1AA1] ( in sn tbl
     JP    NP1                       ;[1AA5] 
 NP4:
-    POP   AF                        ;[1AA8] 
-    CP    $28                       ;[1AA9] 
-    JR    Z,$1AB8                   ;[1AAB] 
-    OR    A                         ;[1AAD] 
-    JP    Z,$1A20                   ;[1AAE] 
-    LD    (HL),A                    ;[1AB1] 
+    POP   AF                        ;[1AA8] Close bracket, get operator
+    CP    '('                       ;[1AA9] If open bracket then exit
+    JR    Z,NP41                    ;[1AAB] 
+    OR    A                         ;[1AAD] If top of stack then
+    JP    Z,NP91                    ;[1AAE] 
+    LD    (HL),A                    ;[1AB1] Otherwise store op.
     INC   HL                        ;[1AB2] 
-    CALL  DSC                       ;[1AB3] 
-    JR    NP4                       ;[1AB6] 
-    LD    A,$BF                     ;[1AB8] 
-    INC   DE                        ;[1ABA] 
-    LD    (HL),A                    ;[1ABB] 
-    INC   HL                        ;[1ABC] 
-    LD    (IX+$01),$05              ;[1ABD] 
-    JP    NP2                       ;[1AC1] 
+    CALL  DSC                       ;[1AB3] Dec syntax counter
+    JR    NP4                       ;[1AB6] Try next
+NP41:
+    LD    A,PARENS                  ;[1AB8] Store a parens marker
+    INC   DE                        ;[1ABA] In pointer
+    LD    (HL),A                    ;[1ABB] Store
+    INC   HL                        ;[1ABC] Inc pointer
+    LD    (IX+$01),5                ;[1ABD] ) in sn tbl
+    JP    NP2                       ;[1AC1] Subt could follow
 NP6:
     CALL  TEST_UPPER_LOW            ;[1AC4] A:=token of letter
     LD    (HL),A                    ;[1AC7] Store it
@@ -3639,7 +3646,7 @@ NP71:
     PUSH  DE                        ;[1AE0] Save pointer
     EX    DE,HL                     ;[1AE1] DE to polish line
     LD    HL,SYSVAR_WRA1            ;[1AE2] HL to work area
-    LD    BC,$0005                  ;[1AE5] 
+    LD    BC,5                      ;[1AE5] 
     LDIR                            ;[1AE8] Move number
     EX    DE,HL                     ;[1AEA] Swap back
     POP   DE                        ;[1AEB] Get input line pointer
@@ -3692,11 +3699,11 @@ NP101:
 ; Decrement syntax counter
 ;
 DSC:
-    CP    $C1                       ;[1B32] 
+    CP    NEGATE                    ;[1B32] 
     RET   Z                         ;[1B34] 
-    CP    $BF                       ;[1B35] 
+    CP    PARENS                    ;[1B35] 
     RET   Z                         ;[1B37] 
-    CP    $C0                       ;[1B38] 
+    CP    NOT                       ;[1B38] 
     RET   Z                         ;[1B3A] 
     DEC   (IX+$02)                  ;[1B3B] Decrement counter
     CALL  M,ERR_SOMETHG_MISSG       ;[1B3E] Missing operator/operand
@@ -3773,286 +3780,338 @@ SYNTBL:
 ;
 RDN:
     LD    A,(DE)                    ;[1B98] 
-    CP    $45                       ;[1B99] 
-    JR    Z,$1BC6                   ;[1B9B] 
-    CP    $26                       ;[1B9D] 
-    JR    NZ,$1BCC                  ;[1B9F] 
+    CP    'E'                       ;[1B99] 
+    JR    Z,RDNMZ                   ;[1B9B] 
+    CP    '&'                       ;[1B9D] 
+    JR    NZ,RDNUM1                 ;[1B9F] 
     LD    HL,$0000                  ;[1BA1] 
+RDNUM2:
     INC   DE                        ;[1BA4] 
     LD    A,(DE)                    ;[1BA5] 
-    SUB   $30                       ;[1BA6] 
-    JR    C,$1BC0                   ;[1BA8] 
+    SUB   '0'                       ;[1BA6] 
+    JR    C,RDNMX                   ;[1BA8] 
     CP    $0A                       ;[1BAA] 
-    JR    C,$1BB8                   ;[1BAC] 
+    JR    C,RDNUM3                  ;[1BAC] 
     SUB   $07                       ;[1BAE] 
     CP    $0A                       ;[1BB0] 
-    JR    C,$1BC0                   ;[1BB2] 
+    JR    C,RDNMX                   ;[1BB2] 
     CP    $10                       ;[1BB4] 
-    JR    NC,$1BC0                  ;[1BB6] 
+    JR    NC,RDNMX                  ;[1BB6] 
+RDNUM3:
     ADD   HL,HL                     ;[1BB8] 
     ADD   HL,HL                     ;[1BB9] 
     ADD   HL,HL                     ;[1BBA] 
     ADD   HL,HL                     ;[1BBB] 
     ADD   A,L                       ;[1BBC] 
     LD    L,A                       ;[1BBD] 
-    JR    $1BA4                     ;[1BBE] 
+    JR    RDNUM2                    ;[1BBE] 
+RDNMX:
     PUSH  DE                        ;[1BC0] 
     CALL  INTFP                     ;[1BC1] 
     POP   DE                        ;[1BC4] 
     RET                             ;[1BC5] 
 
+RDNMZ:
     PUSH  DE                        ;[1BC6] 
     CALL  LZERO                     ;[1BC7] 
     POP   DE                        ;[1BCA] 
     RET                             ;[1BCB] 
 
-    LD    C,$C0                     ;[1BCC] 
-    CALL  ZWRA1                     ;[1BCE] 
-    LD    A,(DE)                    ;[1BD1] 
-    CP    $2D                       ;[1BD2] 
-    EX    AF,AF'                    ;[1BD4] 
-    LD    A,(DE)                    ;[1BD5] 
-    CP    $2D                       ;[1BD6] 
-    JR    NZ,$1BDD                  ;[1BD8] 
+RDNUM1:
+    LD    C,$C0                     ;[1BCC] C=positive # & positive exponent
+    CALL  ZWRA1                     ;[1BCE] Zero contents of wra1
+    LD    A,(DE)                    ;[1BD1] Get chr
+    CP    MINUS                     ;[1BD2] Save sign in z
+    EX    AF,AF'                    ;[1BD4] Swap
+    LD    A,(DE)                    ;[1BD5] Get first byte
+    CP    MINUS                     ;[1BD6] If minus then change c
+    JR    NZ,RDN1                   ;[1BD8] 
     RES   7,C                       ;[1BDA] 
-    INC   DE                        ;[1BDC] 
-    LD    A,(DE)                    ;[1BDD] 
-    CP    $30                       ;[1BDE] 
-    JR    Z,$1BDC                   ;[1BE0] 
-    CP    $2E                       ;[1BE2] 
-    JR    Z,$1C3D                   ;[1BE4] 
-    SUB   $30                       ;[1BE6] 
-    CP    $0A                       ;[1BE8] 
-    JR    NC,$1C17                  ;[1BEA] 
-    LD    B,$08                     ;[1BEC] 
-    DEC   C                         ;[1BEE] 
-    LD    A,(DE)                    ;[1BEF] 
-    CP    $2E                       ;[1BF0] 
-    JR    Z,$1C47                   ;[1BF2] 
-    SUB   $30                       ;[1BF4] 
-    CP    $0A                       ;[1BF6] 
-    JR    NC,$1C12                  ;[1BF8] 
-    INC   C                         ;[1BFA] 
-    CALL  RL1A                      ;[1BFB] 
-    INC   DE                        ;[1BFE] 
-    DJNZ  $1BEF                     ;[1BFF] 
-    DEC   DE                        ;[1C01] 
-    DEC   C                         ;[1C02] 
-    LD    A,(DE)                    ;[1C03] 
-    CP    $2E                       ;[1C04] 
-    JR    Z,$1C54                   ;[1C06] 
-    SUB   $30                       ;[1C08] 
-    CP    $0A                       ;[1C0A] 
-    JR    NC,$1C17                  ;[1C0C] 
-    INC   DE                        ;[1C0E] 
-    INC   C                         ;[1C0F] 
-    JR    $1C03                     ;[1C10] 
-    CALL  RL10                      ;[1C12] 
-    DJNZ  $1C12                     ;[1C15] 
-    LD    A,(SYSVAR_WRA1)           ;[1C17] 
-    OR    C                         ;[1C1A] 
-    PUSH  AF                        ;[1C1B] 
-    CALL  $1C5E                     ;[1C1C] 
-    POP   AF                        ;[1C1F] 
-    ADD   A,L                       ;[1C20] 
-    BIT   7,A                       ;[1C21] 
-    JR    Z,$1C2B                   ;[1C23] 
-    EX    AF,AF'                    ;[1C25] 
-    CALL  Z,ERR_OVERFLOW            ;[1C26] 
-    JR    $1C2F                     ;[1C29] 
-    EX    AF,AF'                    ;[1C2B] 
-    CALL  NZ,ERR_OVERFLOW           ;[1C2C] 
-    EX    AF,AF'                    ;[1C2F] 
-    LD    (SYSVAR_WRA1),A           ;[1C30] 
-    LD    A,(SYSVAR_WRA1+$01)       ;[1C33] 
-    OR    A                         ;[1C36] 
-    PUSH  DE                        ;[1C37] 
-    CALL  Z,LZERO                   ;[1C38] 
+RDN2:
+    INC   DE                        ;[1BDC] Inc pointer
+RDN1:
+    LD    A,(DE)                    ;[1BDD] Get byte
+    CP    '0'                       ;[1BDE] Go past leading zeros
+    JR    Z,RDN2                    ;[1BE0] 
+    CP    '.'                       ;[1BE2] See if <1
+    JR    Z,RDND1                   ;[1BE4] If yes goto decimal section
+    SUB   '0'                       ;[1BE6] Put in range of 0-9
+    CP    10                        ;[1BE8] See if number
+    JR    NC,NOTNM2                 ;[1BEA] If not jp
+    LD    B,$08                     ;[1BEC] B= no. of digits
+    DEC   C                         ;[1BEE] Comensate for following
+RDN3:
+    LD    A,(DE)                    ;[1BEF] Get byte
+    CP    '.'                       ;[1BF0] Decimal point?
+    JR    Z,RDND3                   ;[1BF2] Yes do decimal bit
+    SUB   '0'                       ;[1BF4] Put in 0-9 range
+    CP    10                        ;[1BF6] Number?
+    JR    NC,NOTNM                  ;[1BF8] Jp if not
+    INC   C                         ;[1BFA] Inc exponent
+    CALL  RL1A                      ;[1BFB] Rotate digit into wra1
+    INC   DE                        ;[1BFE] Inc pointer
+    DJNZ  RDN3                      ;[1BFF] Continue
+    DEC   DE                        ;[1C01] Put pointer back 1
+    DEC   C                         ;[1C02] Put exp count back 1
+RDN4:
+    LD    A,(DE)                    ;[1C03] Get byte
+    CP    '.'                       ;[1C04] Decimal point?
+    JR    Z,RDND4                   ;[1C06] Jp if yes
+    SUB   '0'                       ;[1C08] Put in 0-9 range
+    CP    10                        ;[1C0A] Number?
+    JR    NC,NOTNM2                 ;[1C0C] Jp if no
+    INC   DE                        ;[1C0E] Inc pointer
+    INC   C                         ;[1C0F] Inc exponent
+    JR    RDN4                      ;[1C10] Continue
+NOTNM:
+    CALL  RL10                      ;[1C12] Rotate a 0 in wra1
+    DJNZ  NOTNM                     ;[1C15] Do for remaining digits
+NOTNM2:
+    LD    A,(SYSVAR_WRA1)           ;[1C17] Get exponent
+    OR    C                         ;[1C1A] Or with calculated exp
+    PUSH  AF                        ;[1C1B] Save
+    CALL  REXP                      ;[1C1C] Read e part if there
+    POP   AF                        ;[1C1F] Unsave
+    ADD   A,L                       ;[1C20] Add with e part
+    BIT   7,A                       ;[1C21] Test sign
+    JR    Z,NNM5                    ;[1C23] Jp if neg
+    EX    AF,AF'                    ;[1C25] Get original sign
+    CALL  Z,ERR_OVERFLOW            ;[1C26] Error if changed
+    JR    NNM6                      ;[1C29] 
+NNM5:
+    EX    AF,AF'                    ;[1C2B] Get original sign
+    CALL  NZ,ERR_OVERFLOW           ;[1C2C] Error if changed
+NNM6:
+    EX    AF,AF'                    ;[1C2F] Get a
+NOTNM3:
+    LD    (SYSVAR_WRA1),A           ;[1C30] Store exp
+    LD    A,(SYSVAR_WRA1+$01)       ;[1C33] Get top two digits
+    OR    A                         ;[1C36] If they are zero then
+    PUSH  DE                        ;[1C37] The number read must be zero
+    CALL  Z,LZERO                   ;[1C38] So store a zero
     POP   DE                        ;[1C3B] 
-    RET                             ;[1C3C] 
-
-    INC   DE                        ;[1C3D] Number analysis.
-    LD    A,(DE)                    ;[1C3E] 
-    DEC   C                         ;[1C3F] 
-    CP    $30                       ;[1C40] 
-    JR    Z,$1C3D                   ;[1C42] 
-    LD    B,$08                     ;[1C44] 
-    DEC   DE                        ;[1C46] 
-    INC   DE                        ;[1C47] 
-    LD    A,(DE)                    ;[1C48] 
-    SUB   $30                       ;[1C49] 
-    CP    $0A                       ;[1C4B] 
-    JR    NC,$1C12                  ;[1C4D] 
-    CALL  RL1A                      ;[1C4F] 
-    DJNZ  $1C47                     ;[1C52] 
-    INC   DE                        ;[1C54] 
-    LD    A,(DE)                    ;[1C55] 
-    SUB   $30                       ;[1C56] 
-    CP    $0A                       ;[1C58] 
-    JR    C,$1C54                   ;[1C5A] 
-    JR    $1C17                     ;[1C5C] 
-    LD    L,$00                     ;[1C5E] 
-    LD    A,(DE)                    ;[1C60] 
-    CP    $45                       ;[1C61] 
-    RET   NZ                        ;[1C63] 
-    INC   DE                        ;[1C64] 
-    LD    A,(DE)                    ;[1C65] 
-    CP    $2D                       ;[1C66] 
-    JR    Z,$1C91                   ;[1C68] 
-    CP    $2B                       ;[1C6A] 
-    INC   DE                        ;[1C6C] 
-    JR    Z,$1C77                   ;[1C6D] 
-    DEC   DE                        ;[1C6F] 
-    CALL  TEST_DIGIT                ;[1C70] 
-    JR    NC,$1C77                  ;[1C73] 
-    DEC   DE                        ;[1C75] 
-    RET                             ;[1C76] 
-
-    LD    A,(DE)                    ;[1C77] 
-    SUB   $30                       ;[1C78] 
-    CP    $0A                       ;[1C7A] 
-    RET   NC                        ;[1C7C] 
-    LD    L,A                       ;[1C7D] 
-    INC   DE                        ;[1C7E] 
-    LD    A,(DE)                    ;[1C7F] 
-    SUB   $30                       ;[1C80] 
-    CP    $0A                       ;[1C82] 
-    RET   NC                        ;[1C84] 
-    PUSH  AF                        ;[1C85] 
-    LD    A,L                       ;[1C86] 
-    RLCA                            ;[1C87] 
-    RLCA                            ;[1C88] 
-    ADD   A,L                       ;[1C89] 
-    RLCA                            ;[1C8A] 
-    LD    L,A                       ;[1C8B] 
-    POP   AF                        ;[1C8C] 
-    ADD   A,L                       ;[1C8D] 
-    LD    L,A                       ;[1C8E] 
-    INC   DE                        ;[1C8F] 
-    RET                             ;[1C90] 
-
-    INC   DE                        ;[1C91] 
-    CALL  $1C77                     ;[1C92] 
-    LD    A,L                       ;[1C95] 
-    NEG                             ;[1C96] 
-    LD    L,A                       ;[1C98] 
-    RET                             ;[1C99] 
+    RET                             ;[1C3C] Return to caller
 
 ;
-; Displays binary number in HL without leading zeros. 
+; Decimal part.
+;
+RDND1:
+    INC   DE                        ;[1C3D] 
+    LD    A,(DE)                    ;[1C3E] Get byte
+    DEC   C                         ;[1C3F] Dec exp
+    CP    '0'                       ;[1C40] 
+    JR    Z,RDND1                   ;[1C42] 
+    LD    B,8                       ;[1C44] 8 digits max.
+    DEC   DE                        ;[1C46] Compensate for next command
+RDND3:
+    INC   DE                        ;[1C47] Inc pointer
+RDND2:
+    LD    A,(DE)                    ;[1C48] Get byte
+    SUB   '0'                       ;[1C49] Put in range 0-9
+    CP    10                        ;[1C4B] Number?
+    JR    NC,NOTNM                  ;[1C4D] Jp if not
+    CALL  RL1A                      ;[1C4F] Rotate in wra1
+    DJNZ  RDND3                     ;[1C52] Do again
+RDND4:
+    INC   DE                        ;[1C54] Inc pointer
+    LD    A,(DE)                    ;[1C55] Get byte
+    SUB   '0'                       ;[1C56] Range 0-9
+    CP    10                        ;[1C58] Number?
+    JR    C,RDND4                   ;[1C5A] Jp if not
+    JR    NOTNM2                    ;[1C5C] Exit thru notnm
+
+;
+; Exponent part?
+;
+REXP:
+    LD    L,$00                     ;[1C5E] 
+    LD    A,(DE)                    ;[1C60] Get byte
+    CP    'E'                       ;[1C61] See if it is e format
+    RET   NZ                        ;[1C63] Return if not
+    INC   DE                        ;[1C64] Inc past 'e'
+    LD    A,(DE)                    ;[1C65] Get byte
+    CP    MINUS                     ;[1C66] Compare with minus
+    JR    Z,RXP2                    ;[1C68] Jp if yes
+    CP    '+'                       ;[1C6A] If +
+    INC   DE                        ;[1C6C] Past +
+    JR    Z,RXP1                    ;[1C6D] 
+    DEC   DE                        ;[1C6F] Restor pointer
+    CALL  TEST_DIGIT                ;[1C70] Test digit
+    JR    NC,RXP1                   ;[1C73] 
+    DEC   DE                        ;[1C75] Point to 'e'
+    RET                             ;[1C76] 
+
+RXP1:
+    LD    A,(DE)                    ;[1C77] 
+    SUB   '0'                       ;[1C78] Range 0-9
+    CP    10                        ;[1C7A] Number?
+    RET   NC                        ;[1C7C] Return if not
+    LD    L,A                       ;[1C7D] Put it in l
+    INC   DE                        ;[1C7E] Inc pointer
+    LD    A,(DE)                    ;[1C7F] Get byte
+    SUB   '0'                       ;[1C80] Range 0-9
+    CP    10                        ;[1C82] Number?
+    RET   NC                        ;[1C84] Return if not
+    PUSH  AF                        ;[1C85] Save a
+    LD    A,L                       ;[1C86] Put in a
+    RLCA                            ;[1C87] *2
+    RLCA                            ;[1C88] *4
+    ADD   A,L                       ;[1C89] *5
+    RLCA                            ;[1C8A] *10
+    LD    L,A                       ;[1C8B] Put in l
+    POP   AF                        ;[1C8C] Get digit back
+    ADD   A,L                       ;[1C8D] Add
+    LD    L,A                       ;[1C8E] Put in l
+    INC   DE                        ;[1C8F] Inc pointer
+    RET                             ;[1C90] Return
+
+RXP2:
+    INC   DE                        ;[1C91] Negative exponent
+    CALL  RXP1                      ;[1C92] Read exponent
+    LD    A,L                       ;[1C95] Put in a
+    NEG                             ;[1C96] A=-a
+    LD    L,A                       ;[1C98] Put in l
+    RET                             ;[1C99] Return
+
+;
+; Displays binary number in HL without leading zeros. (rewritten in Mark II code)
 ;
 PHL:
     PUSH  IY                        ;[1C9A] 
-    CALL  $1CA2                     ;[1C9C] 
+    CALL  PHL1                      ;[1C9C] 
     POP   IY                        ;[1C9F] 
     RET                             ;[1CA1] 
 
-    LD    IY,$1CCC                  ;[1CA2] 
+PHL1:
+    LD    IY,DECTBL                 ;[1CA2] 
     LD    D,$00                     ;[1CA6] 
+PHL2:
     XOR   A                         ;[1CA8] 
     LD    B,(IY+$01)                ;[1CA9] 
     LD    C,(IY+$00)                ;[1CAC] 
     OR    A                         ;[1CAF] 
+PHL2A:
     SBC   HL,BC                     ;[1CB0] 
-    JR    C,$1CB7                   ;[1CB2] 
+    JR    C,PHL4                    ;[1CB2] 
     INC   A                         ;[1CB4] 
-    JR    $1CB0                     ;[1CB5] 
+    JR    PHL2A                     ;[1CB5] 
+PHL4:
     ADD   HL,BC                     ;[1CB7] 
     OR    A                         ;[1CB8] 
-    JR    Z,$1CBC                   ;[1CB9] 
+    JR    Z,PHL5                    ;[1CB9] 
     DEC   D                         ;[1CBB] 
+PHL5:
     BIT   7,D                       ;[1CBC] 
-    JR    Z,$1CC3                   ;[1CBE] 
-    ADD   A,$30                     ;[1CC0] 
+    JR    Z,PHL6                    ;[1CBE] 
+    ADD   A,'0'                     ;[1CC0] 
     RST   $08                       ;[1CC2] 
+PHL6:
     BIT   0,C                       ;[1CC3] 
     RET   NZ                        ;[1CC5] 
     INC   IY                        ;[1CC6] 
     INC   IY                        ;[1CC8] 
-    JR    $1CA8                     ;[1CCA] 
-    DJNZ  $1CF5                     ;[1CCC] 
-    RET   PE                        ;[1CCE] 
-    INC   BC                        ;[1CCF] 
-    LD    H,H                       ;[1CD0] 
-    NOP                             ;[1CD1] 
-    LD    A,(BC)                    ;[1CD2] 
-    NOP                             ;[1CD3] 
-    LD    BC,$CD00                  ;[1CD4] 
-    JP    PO,$2B1C                  ;[1CD7] 
-    CALL  $1CEE                     ;[1CDA] 
-    CP    $2E                       ;[1CDD] 
-    RET   Z                         ;[1CDF] 
-    INC   HL                        ;[1CE0] 
-    RET                             ;[1CE1] 
+    JR    PHL2                      ;[1CCA] 
+DECTBL:
+    DW    10000                     ;[1CCC] 
+    DW    1000                      ;[1CCE] 
+    DW    100                       ;[1CD0] 
+    DW    10                        ;[1CD2] 
+    DW    1                         ;[1CD4] 
+PHL3:
+    CALL  PN1                       ;[1CD6] Load B digits into (HL)
+    DEC   HL                        ;[1CD9] Dec to last digit
+    CALL  PN5                       ;[1CDA] Take off trailing zeros
+    CP    '.'                       ;[1CDD] If last was a '.' then
+    RET   Z                         ;[1CDF] Return
+    INC   HL                        ;[1CE0] Else was a digit so inc past
+    RET                             ;[1CE1] It and return
 
+;
+; Rotate top digit into lower 4 bits of A, zap top bits
+;
+PN1:
     CALL  RL1A                      ;[1CE2] 
-    AND   $0F                       ;[1CE5] 
-    ADD   A,$30                     ;[1CE7] 
-    LD    (HL),A                    ;[1CE9] 
-    INC   HL                        ;[1CEA] 
-    DJNZ  $1CE2                     ;[1CEB] 
-    RET                             ;[1CED] 
+    AND   $0F                       ;[1CE5] Bits of a, zap top bits
+    ADD   A,'0'                     ;[1CE7] Put in range '0'-'9'
+    LD    (HL),A                    ;[1CE9] Store in buffer
+    INC   HL                        ;[1CEA] Inc pointer
+    DJNZ  PN1                       ;[1CEB] Repeat b times
+    RET                             ;[1CED] Return
 
+PN5:
     PUSH  BC                        ;[1CEE] 
-    LD    B,$08                     ;[1CEF] 
-    LD    A,(SYSVAR_ZFLAG)          ;[1CF1] 
+    LD    B,8                       ;[1CEF] 
+    LD    A,(SYSVAR_ZFLAG)          ;[1CF1] Rotate top digit into lower 4
     BIT   1,A                       ;[1CF4] 
-    JR    Z,$1CFE                   ;[1CF6] 
-    LD    B,$03                     ;[1CF8] 
+    JR    Z,PN53                    ;[1CF6] Put in range '0'-'9'
+    LD    B,3                       ;[1CF8] 
     BIT   0,A                       ;[1CFA] 
-    JR    Z,$1D01                   ;[1CFC] 
-    CALL  $1D05                     ;[1CFE] 
+    JR    Z,PN54                    ;[1CFC] 
+PN53:
+    CALL  PN51                      ;[1CFE] 
+PN54:
     POP   BC                        ;[1D01] 
     LD    A,(HL)                    ;[1D02] 
     RET                             ;[1D03] 
 
+PN52:
     DEC   HL                        ;[1D04] 
+PN51:
     LD    A,(HL)                    ;[1D05] 
-    CP    $30                       ;[1D06] 
+    CP    '0'                       ;[1D06] 
     RET   NZ                        ;[1D08] 
-    DJNZ  $1D04                     ;[1D09] 
+    DJNZ  PN52                      ;[1D09] 
     RET                             ;[1D0B] 
 
-    LD    B,$01                     ;[1D0C] 
-    CALL  $1CE2                     ;[1D0E] 
-    LD    (HL),$2E                  ;[1D11] 
-    INC   HL                        ;[1D13] 
-    LD    B,$07                     ;[1D14] 
-    CALL  $1CD6                     ;[1D16] 
-    LD    (HL),$45                  ;[1D19] 
-    INC   HL                        ;[1D1B] 
-    LD    (HL),$00                  ;[1D1C] 
-    LD    HL,SYSVAR_PRTBUF          ;[1D1E] 
+PN7:
+    LD    B,1                       ;[1D0C] Load first digit into buffer
+    CALL  PN1                       ;[1D0E] 
+    LD    (HL),'.'                  ;[1D11] Store a '.'
+    INC   HL                        ;[1D13] Inc pointer
+    LD    B,7                       ;[1D14] Read 7 more digits in buffer
+    CALL  PHL3                      ;[1D16] Backup over zeros
+    LD    (HL),'E'                  ;[1D19] Store a 'e'
+    INC   HL                        ;[1D1B] Followed by a
+    LD    (HL),0                    ;[1D1C]  0
+    LD    HL,SYSVAR_PRTBUF          ;[1D1E] disp buffer contents
     CALL  PLINE                     ;[1D21] 
-    LD    HL,SYSVAR_WRA1            ;[1D24] 
-    BIT   6,(HL)                    ;[1D27] 
-    LD    A,$2D                     ;[1D29] 
-    JR    Z,$1D2F                   ;[1D2B] 
-    LD    A,$2B                     ;[1D2D] 
-    RST   $08                       ;[1D2F] 
+    LD    HL,SYSVAR_WRA1            ;[1D24] Hl points to wra1
+    BIT   6,(HL)                    ;[1D27] sign
+    LD    A,'-'                     ;[1D29] 
+    JR    Z,PN8                     ;[1D2B] 
+    LD    A,'+'                     ;[1D2D] 
+PN8:
+    RST   $08                       ;[1D2F] disp sign
     LD    A,(HL)                    ;[1D30] 
-    JR    NZ,$1D35                  ;[1D31] 
+    JR    NZ,PN9                    ;[1D31] 
     NEG                             ;[1D33] 
+PN9:
     AND   $3F                       ;[1D35] 
-    LD    L,A                       ;[1D37] 
+    LD    L,A                       ;[1D37] Print exponent
     LD    H,$00                     ;[1D38] 
     JP    PHL                       ;[1D3A] 
-    LD    A,$30                     ;[1D3D] 
+
+;
+; Display zero
+;
+PZERO:
+    LD    A,'0'                     ;[1D3D] 
     RST   $08                       ;[1D3F] 
     LD    A,(SYSVAR_ZFLAG)          ;[1D40] 
     BIT   1,A                       ;[1D43] 
-    RET   Z                         ;[1D45] 
-    PUSH  AF                        ;[1D46] 
-    LD    A,$2E                     ;[1D47] 
+    RET   Z                         ;[1D45] Trailing off
+    PUSH  AF                        ;[1D46] Save zflag
+    LD    A,'.'                     ;[1D47] 
     RST   $08                       ;[1D49] 
     POP   AF                        ;[1D4A] 
-    LD    B,$07                     ;[1D4B] 
+    LD    B,7                       ;[1D4B] 
     BIT   0,A                       ;[1D4D] 
-    JR    Z,$1D53                   ;[1D4F] 
+    JR    Z,PZ1                     ;[1D4F] Round off
     LD    B,$05                     ;[1D51] 
-    LD    A,$30                     ;[1D53] 
+PZ1:
+    LD    A,'0'                     ;[1D53] 
     RST   $08                       ;[1D55] 
-    DJNZ  $1D53                     ;[1D56] 
+    DJNZ  PZ1                       ;[1D56] 
     RET                             ;[1D58] 
 
 ;
@@ -4060,54 +4119,65 @@ PHL:
 ;
 PN:
     CALL  ROUND                     ;[1D59] 
-    LD    A,(SYSVAR_WRA1)           ;[1D5C] 
-    LD    HL,SYSVAR_PRTBUF          ;[1D5F] 
-    BIT   7,A                       ;[1D62] 
-    JR    NZ,$1D69                  ;[1D64] 
-    LD    (HL),$2D                  ;[1D66] 
-    INC   HL                        ;[1D68] 
-    AND   $7F                       ;[1D69] 
-    JR    Z,$1D3D                   ;[1D6B] 
-    SUB   $3E                       ;[1D6D] 
-    CP    $0A                       ;[1D6F] 
-    JR    NC,$1D0C                  ;[1D71] 
-    CP    $02                       ;[1D73] 
-    JR    C,$1DA1                   ;[1D75] 
-    LD    A,(SYSVAR_WRA1)           ;[1D77] 
+    LD    A,(SYSVAR_WRA1)           ;[1D5C] Get exponent
+    LD    HL,SYSVAR_PRTBUF          ;[1D5F] Hl points to buffer
+    BIT   7,A                       ;[1D62] Jp if positive
+    JR    NZ,PN6                    ;[1D64] 
+    LD    (HL),'-'                  ;[1D66] Else store a '-'
+    INC   HL                        ;[1D68] Inc pointer
+PN6:
+    AND   $7F                       ;[1D69] Zap sign
+    JR    Z,PZERO                   ;[1D6B] If zero disp a '0'
+    SUB   $40-2                     ;[1D6D] See if in range .01-1e9
+    CP    10                        ;[1D6F] 
+    JR    NC,PN7                    ;[1D71] If not 'e' format
+    CP    2                         ;[1D73] 
+    JR    C,PDEC                    ;[1D75] If .01-1 decimal
+    LD    A,(SYSVAR_WRA1)           ;[1D77] Get exp.
+PN11:
     AND   $0F                       ;[1D7A] 
-    INC   A                         ;[1D7C] 
-    LD    B,A                       ;[1D7D] 
-    PUSH  AF                        ;[1D7E] 
-    CALL  $1CE2                     ;[1D7F] 
-    POP   AF                        ;[1D82] 
-    SUB   $08                       ;[1D83] 
+    INC   A                         ;[1D7C] No digits stored
+    LD    B,A                       ;[1D7D] Put in b
+    PUSH  AF                        ;[1D7E] Save it
+    CALL  PN1                       ;[1D7F] Load into buffer
+    POP   AF                        ;[1D82] Unsave it
+    SUB   8                         ;[1D83] Calculate remaining digits
     NEG                             ;[1D85] 
-    LD    (HL),$2E                  ;[1D87] 
-    JR    Z,$1D91                   ;[1D89] 
-    LD    B,A                       ;[1D8B] 
-    INC   HL                        ;[1D8C] 
-    CALL  $1CE2                     ;[1D8D] 
-    DEC   HL                        ;[1D90] 
-    CALL  $1CEE                     ;[1D91] 
-    CP    $2E                       ;[1D94] 
-    JR    Z,$1D99                   ;[1D96] 
+    LD    (HL),'.'                  ;[1D87] Store a decimal point
+    JR    Z,PN12                    ;[1D89] Nothing to do
+    LD    B,A                       ;[1D8B] B=no digits
+    INC   HL                        ;[1D8C] Inc pointer
+    CALL  PN1                       ;[1D8D] Read digits
+    DEC   HL                        ;[1D90] Dec to last digit
+PN12:
+    CALL  PN5                       ;[1D91] Back up on trailing zeros
+    CP    '.'                       ;[1D94] Check if '.'
+    JR    Z,PN13                    ;[1D96] Don't inc pointer if it is
     INC   HL                        ;[1D98] 
-    LD    (HL),$00                  ;[1D99] 
-    LD    HL,SYSVAR_PRTBUF          ;[1D9B] 
+PN13:
+    LD    (HL),$00                  ;[1D99] Store a 0
+    LD    HL,SYSVAR_PRTBUF          ;[1D9B] disp buffer contents
     JP    PLINE                     ;[1D9E] 
-    LD    (HL),$30                  ;[1DA1] 
+
+;
+; Store a zero
+;
+PDEC:
+    LD    (HL),'0'                  ;[1DA1] 
     INC   HL                        ;[1DA3] 
-    LD    (HL),$2E                  ;[1DA4] 
+    LD    (HL),'.'                  ;[1DA4] Store a .
     INC   HL                        ;[1DA6] 
-    SUB   $01                       ;[1DA7] 
-    JR    Z,$1DB1                   ;[1DA9] 
-    LD    (HL),$30                  ;[1DAB] 
-    INC   HL                        ;[1DAD] 
-    INC   A                         ;[1DAE] 
-    JR    NZ,$1DAB                  ;[1DAF] 
-    LD    B,$08                     ;[1DB1] 
-    CALL  $1CD6                     ;[1DB3] 
-    JR    $1D99                     ;[1DB6] 
+    SUB   1                         ;[1DA7] No. of zeros
+    JR    Z,PD1                     ;[1DA9] Jp if none
+PD2:
+    LD    (HL),'0'                  ;[1DAB] Else store a zero
+    INC   HL                        ;[1DAD] Inc pointer
+    INC   A                         ;[1DAE] Inc '0' count
+    JR    NZ,PD2                    ;[1DAF] Do until 0
+PD1:
+    LD    B,8                       ;[1DB1] 8 digits
+    CALL  PHL3                      ;[1DB3] Load into buffer etc
+    JR    PN13                      ;[1DB6] disp number & return
 
 ;
 ; Find array element given subscript in HL and 
@@ -4207,19 +4277,19 @@ BASIC_COM_STOP:
     CP    $80                       ;[1E36] 
     CALL  Z,ERR_WRONG_MODE          ;[1E38] 
     CALL  NEXT_LINE                 ;[1E3B] 
-BASIC_COM_STOP1:
+STOP1:
     LD    (SYSVAR_CONTLP),IX        ;[1E3E] 
-    LD    HL,DATA_STOPPED           ;[1E42] 
+STOP2:
+    LD    HL,STOPPED_MSG            ;[1E42] 
     CALL  PLINE                     ;[1E45] 
-    CALL  SUB_JUMP_TO_CMDLINE1      ;[1E48] 
+    CALL  ERRLN                     ;[1E48] 
     JP    TO_CMDLINE                ;[1E4B] 
 
 ;
-; Data 'Stopped' message.
+; 'Stopped' message.
 ;
-DATA_STOPPED:
-    DB $0D,$53,$74,$6F,$70,$70,$65,$64      ;[1E4E]  .Stopped
-    DB $00                                  ;[1E56]  .
+STOPPED_MSG:
+    DB    NEWLINE,"Stopped",0       ;[1E4E] 
 
 ;
 ; RND.
@@ -4237,7 +4307,7 @@ BASIC_FN_RND:
 ;
 BASIC_FN_MEM:
     LD    BC,(SYSVAR_TOV)           ;[1E69] 
-    LD    HL,$0000                  ;[1E6D] 
+    LD    HL,0                      ;[1E6D] 
     ADD   HL,SP                     ;[1E70] 
     SBC   HL,BC                     ;[1E71] 
     JP    INTFP                     ;[1E73] 
@@ -4249,17 +4319,18 @@ SUB_JUMP_TO_CMDLINE:
     LD    HL,FLOAT_ZERO             ;[1E76] 
     LD    (SYSVAR_CURRLP),HL        ;[1E79] 
     JP    SUB_LINK_OFF              ;[1E7C] 
-SUB_JUMP_TO_CMDLINE1:
+
+ERRLN:
     LD    HL,(SYSVAR_CURRLP)        ;[1E7F] 
     LD    A,(HL)                    ;[1E82] 
     CP    $80                       ;[1E83] 
-    JR    Z,SUB_JUMP_TO_CMDLINE2    ;[1E85] 
-    LD    HL,DATA_IN_LINE           ;[1E87] 
+    JR    Z,ERLN1                   ;[1E85] 
+    LD    HL,IN_LINE_ERMSG          ;[1E87] 
     CALL  PLINE                     ;[1E8A] 
     LD    HL,(SYSVAR_CURRLP)        ;[1E8D] 
     CALL  LNUM1                     ;[1E90] 
     CALL  PN                        ;[1E93] 
-SUB_JUMP_TO_CMDLINE2:
+ERLN1:
     LD    A,$1E                     ;[1E96] 
     RST   $08                       ;[1E98] 
     LD    A,$0D                     ;[1E99] 
@@ -4269,30 +4340,31 @@ SUB_JUMP_TO_CMDLINE2:
 ;
 ; String 'in line'. Used to display msg "Stopped in line [nnnn]", etc.
 ;
-DATA_IN_LINE:
-    DB $20,$69,$6E,$20,$6C,$69,$6E,$65      ;[1E9F]  .in.line
-    DB $20,$00                              ;[1EA7]  ..
+IN_LINE_ERMSG:
+    DB    " in line ",0             ;[1E9F] 
 
 ;
-; Main process loop for BASIC
+; BASIC Error Recovery
 ;
-BASIC:
+ERR_RECOVERY:
     LD    IX,(SYSVAR_CURRLP)        ;[1EA9] 
     LD    A,(IX+$00)                ;[1EAD] 
     CP    $80                       ;[1EB0] 
-    JR    Z,$1ECA                   ;[1EB2] 
+    JR    Z,ERR_RECOVERY1           ;[1EB2] 
     LD    A,(IX+$06)                ;[1EB4] 
-    CP    $25                       ;[1EB7] 
-    JR    NZ,$1ECA                  ;[1EB9] 
+    CP    INPUT                     ;[1EB7] 
+    JR    NZ,ERR_RECOVERY1          ;[1EB9] 
     LD    A,$0D                     ;[1EBB] 
     RST   $08                       ;[1EBD] 
     LD    BC,EXC2                   ;[1EBE] 
+ERR_RECOVERY2:
     POP   HL                        ;[1EC1] 
     OR    A                         ;[1EC2] 
     SBC   HL,BC                     ;[1EC3] 
-    JR    NZ,$1EC1                  ;[1EC5] 
+    JR    NZ,ERR_RECOVERY2          ;[1EC5] 
     JP    EXEC_LINE_LOOP            ;[1EC7] 
-    CALL  SUB_JUMP_TO_CMDLINE1      ;[1ECA] 
+ERR_RECOVERY1:
+    CALL  ERRLN                     ;[1ECA] 
     JP    JUMP_TO_CMDLINE           ;[1ECD] 
 
 ;
@@ -4308,23 +4380,24 @@ FRNDS:
     LD    A,(SYSVAR_RNDNO)          ;[1EDC] 
     RLA                             ;[1EDF] 
     LD    B,A                       ;[1EE0] 
-    LD    DE,($61F1)                ;[1EE1] 
+    LD    DE,(SYSVAR_RNDNO+1)       ;[1EE1] 
     RL    E                         ;[1EE5] 
     RL    D                         ;[1EE7] 
     RES   7,D                       ;[1EE9] 
     LD    HL,(SYSVAR_RNDNO)         ;[1EEB] 
     ADD   HL,BC                     ;[1EEE] 
     LD    (SYSVAR_RNDNO),HL         ;[1EEF] 
-    LD    HL,($61F2)                ;[1EF2] 
+    LD    HL,(SYSVAR_RNDNO+2)       ;[1EF2] 
     ADC   HL,DE                     ;[1EF5] 
     RES   7,H                       ;[1EF7] 
-    LD    ($61F2),HL                ;[1EF9] 
+    LD    (SYSVAR_RNDNO+2),HL       ;[1EF9] 
     RET   P                         ;[1EFC] 
     LD    HL,SYSVAR_RNDNO           ;[1EFD] 
+FRND1:
     INC   (HL)                      ;[1F00] 
     RET   NZ                        ;[1F01] 
     INC   HL                        ;[1F02] 
-    JR    $1F00                     ;[1F03] 
+    JR    FRND1                     ;[1F03] 
 
 ;
 ; Sets Z flag to zero if ESC key is currently pressed (negative logic)
@@ -5553,7 +5626,7 @@ EXC5:
     JR    Z,TO_CMDLINE              ;[24CE] 
     LD    (SYSVAR_CONTLP),IX        ;[24D0] 
     CALL  ESC                       ;[24D4] 
-    JP    Z,$1E42                   ;[24D7] 
+    JP    Z,STOP2                   ;[24D7] 
     JR    EXEC_LINE_LOOP            ;[24DA] 
 
 ;
@@ -9426,7 +9499,7 @@ ERROR_PRINT:
     DEC   C                         ;[3B5B] 
     JR    NZ,ERROR_PRINT            ;[3B5C] If C is zero, message found.
     CALL  PLINE                     ;[3B5E] 
-    JP    BASIC                     ;[3B61] 
+    JP    ERR_RECOVERY              ;[3B61] 
 
 ;
 ; MONitor.
