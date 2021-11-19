@@ -312,15 +312,15 @@ VIDEO_XPOS:
     ADD   HL,BC                     ;[0104] 
     LD    A,(SYSVAR_CURSORX)        ;[0105] 
     AND   $03                       ;[0108] 
-    JR    Z,JUMP_XPOS1              ;[010A] Choose one of three xpos1/2/3 routines based on X pos.
+    JR    Z,JP_VID1                 ;[010A] Choose one of three xpos1/2/3 routines based on X pos.
     DEC   A                         ;[010C] 
-    JR    Z,JUMP_XPOS2              ;[010D] 
+    JR    Z,JP_VID2                 ;[010D] 
     DEC   A                         ;[010F] 
-    JR    Z,CALL_XPOS3              ;[0110] 
+    JR    Z,VID3                    ;[0110] 
     JR    CALL_XPOS4                ;[0112] 
-JUMP_XPOS2:
+JP_VID2:
     JP    VIDEO_XPOS2               ;[0114] 
-JUMP_XPOS1:
+JP_VID1:
     JP    VIDEO_XPOS1               ;[0117] 
 CALL_XPOS4:
     PUSH  HL                        ;[011A] 
@@ -330,7 +330,7 @@ CALL_XPOS4:
     POP   HL                        ;[0120] 
     INC   HL                        ;[0121] 
     JP    VIDEO_XPOS4B              ;[0122] 
-CALL_XPOS3:
+VID3:
     PUSH  HL                        ;[0125] 
     PUSH  DE                        ;[0126] 
     CALL  VIDEO_XPOS3               ;[0127] 
@@ -428,7 +428,7 @@ VIDEO_XPOS4A:
 
 VIDEO_XPOS3B:
     LD    B,$0A                     ;[019E] 
-VIDEO_XPOS3C:
+XX4:
     PUSH  BC                        ;[01A0] 
     LD    A,(SYSVAR_MASK)           ;[01A1] 
     OR    $3F                       ;[01A4] 
@@ -442,7 +442,7 @@ VIDEO_XPOS3C:
     ADD   HL,BC                     ;[01B3] 
     INC   DE                        ;[01B4] 
     POP   BC                        ;[01B5] 
-    DJNZ  VIDEO_XPOS3C              ;[01B6] 
+    DJNZ  XX4                       ;[01B6] 
     RET                             ;[01B8] 
 
 ;
@@ -842,7 +842,7 @@ SCREEN_CR:
 SCREEN_TAB:
     LD    A,(SYSVAR_CURSORX)        ;[07A2] 
     INC   A                         ;[07A5] 
-    LD    HL,$07BB                  ;[07A6] 
+    LD    HL,TBLE1-1                ;[07A6] 
 SCREEN_TAB1:
     INC   HL                        ;[07A9] 
     CP    (HL)                      ;[07AA] 
@@ -858,11 +858,12 @@ SCREEN_TAB12:
     CP    H                         ;[07B8] 
     RET   NC                        ;[07B9] 
     JR    SCREEN_TAB12              ;[07BA] 
-    DEC   DE                        ;[07BC] 
-    INC   SP                        ;[07BD] 
-    LD    C,E                       ;[07BE] 
-    LD    H,E                       ;[07BF] 
-    RST   $38                       ;[07C0] 
+
+;
+; TAB table
+;
+TBLE1:
+    DB    27,51,75,99,255           ;[07BC] 
 
 ;
 ; Clears to end of line (VDU 30)
