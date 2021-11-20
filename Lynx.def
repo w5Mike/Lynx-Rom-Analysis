@@ -92,40 +92,11 @@ GOPC        EQU TRAPPC+2        ;[=$61B2]
 BRKPST      EQU GOPC+3          ;[=$61B5] 
 MONST       EQU BRKPST+3        ;[=$61B8] Store used in M,L,W etc
 MONSP       EQU MONST+2         ;[=$61BA] SP Store
-; LXFLAG      EQU MONSP+2         ;[=$61BC] CTRL chars on printer
-; NLFLAG      EQU LXFLAG+4        ;[=$61C0] Whether char causes new line
-; BUFSIZ      EQU NLFLAG+1        ;[=$61C1] Printer buffer size
-; BUFCT       EQU BUFSIZ+1        ;[=$61C2] # of chars in buffer
-; BUFDLY      EQU BUFCT+1         ;[=$61C3] *** OLD SPRINT ROUTINE ONLY ***
-; PRTDLY      EQU BUFDLY+1        ;[=$61C4] 
-; FFDLY       EQU PRTDLY+1        ;[=$61C5] 
-; NXFRPG      EQU FFDLY+1         ;[=$61C6] Next free page
-; KFILE       EQU NXFRPG+1        ;[=$61C7] Current data store
-; KNXFIL      EQU KFILE+1         ;[=$61C8] Next one in chain
-; KFSTPG      EQU KNXFIL+1        ;[=$61C9] First page
-; KWRPTR      EQU KFSTPG+1        ;[=$61CA] Write pointer
-; KRDPTR      EQU KWRPTR+2        ;[=$61CC] Read pointer
-; KFILEN      EQU KRDPTR+2        ;[=$61CE] Length of store
-; ERRVR       EQU KFILEN+2        ;[=$61D0] Addr of error variable
-; EXECSP      EQU ERRVR+2         ;[=$61D2] Save SP on EXEC
-; LPOFFS      EQU EXECSP+2        ;[=$61D4] Lightpen offset
-; QTFLG       EQU LPOFFS+1        ;[=$61D5] For PP
-; BRKRAM      EQU QTFLG+1         ;[=$61D6] <BREAK> key routine
-; CLSRAM      EQU BRKRAM+3        ;[=$61D9] 
-; CELRAM      EQU CLSRAM+3        ;[=$61DC] Clear to end of line
-; AGBNK       EQU CELRAM+3        ;[=$61DF] 
-; MODST       EQU AGBNK+2         ;[=$61E1] High/low res mode
-; CURINC      EQU MODST+1         ;[=$61E2] Inc of CURSRX per char
-; INTFLG      EQU CURINC+1        ;[=$61E3] Whether allow EI
-; PORT80      EQU INTFLG+1        ;[=$61E4] Preserve status of port 80
-; PORT82      EQU PORT80+1        ;[=$61E5] 
-; EXTRAM      EQU PORT82+1        ;[=$61E6] 4 addresses for EXT
 
 ;
 ; Lynx system variables as listed in "Lynx User" 1 magazine (June 1983):
 ;
-SYSVAR_STACK    EQU $61EE            ;[=$61EE] Stores address of Basic stack pointer (STACK) + 2 HIMEM.
-; SYSVAR_STACK    EQU EXTRAM+8            ;[=$61EE] Stores address of Basic stack pointer (STACK) + 2 HIMEM.
+SYSVAR_STACK    EQU $61EE               ;[=$61EE] Stores address of Basic stack pointer (STACK) + 2 HIMEM.
 SYSVAR_RNDNO    EQU SYSVAR_STACK+2      ;[=$61F0] 31 bit random number seed.
 SYSVAR_HLSTORE  EQU SYSVAR_RNDNO+4      ;[=$61F4] Used to store HL after a CALL.
 SYSVAR_CURRLP   EQU SYSVAR_HLSTORE+2    ;[=$61F6] Pointer to first byte of line Basic is currently executing.
