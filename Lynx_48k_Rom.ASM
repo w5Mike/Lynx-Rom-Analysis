@@ -9508,12 +9508,13 @@ ERROR_PRINT:
 BASIC_COM_MON:
     EX    (SP),HL                   ;[3B64] 
     DEC   HL                        ;[3B65] 
-    LD    ($61B0),HL                ;[3B66] 
+    LD    (TRAPPC),HL               ;[3B66] 
     EX    (SP),HL                   ;[3B69] 
     INC   SP                        ;[3B6A] 
     INC   SP                        ;[3B6B] 
-    LD    ($61AE),SP                ;[3B6C] 
-    LD    SP,$61AE                  ;[3B70] 
+TRAP1:
+    LD    (TRAPSP),SP               ;[3B6C] 
+    LD    SP,TRAPSP                 ;[3B70] 
     PUSH  IY                        ;[3B73] 
     PUSH  IX                        ;[3B75] 
     EXX                             ;[3B77] 
@@ -9528,29 +9529,32 @@ BASIC_COM_MON:
     PUSH  DE                        ;[3B80] 
     PUSH  HL                        ;[3B81] 
     PUSH  AF                        ;[3B82] 
-    LD    ($61BA),SP                ;[3B83] 
+MONENT:
+    LD    (MONSP),SP                ;[3B83] 
     LD    A,$C3                     ;[3B87] 
-    LD    ($61B2),A                 ;[3B89] 
-    CALL  MONITOR_X1                ;[3B8C] 
+    LD    (GOPC),A                  ;[3B89] 
+    CALL  PREG                      ;[3B8C] 
     LD    A,$0E                     ;[3B8F] 
     RST   $08                       ;[3B91] 
-    JR    $3B9E                     ;[3B92] 
-    LD    SP,($61BA)                ;[3B94] 
-    LD    HL,$3BC8                  ;[3B98] 
+    JR    MONBUG                    ;[3B92] 
+MONERR:
+    LD    SP,(MONSP)                ;[3B94] 
+    LD    HL,MONERM                 ;[3B98] 
     CALL  PLINE                     ;[3B9B] 
+MONBUG:
     LD    A,$2A                     ;[3B9E] 
     RST   $08                       ;[3BA0] 
     CALL  SYSVAR_LINP               ;[3BA1] 
     LD    DE,INPBUF                 ;[3BA4] 
     LD    A,(DE)                    ;[3BA7] 
-    CALL  TEST_MON_LETTER           ;[3BA8] 
+    CALL  LUCC                      ;[3BA8] 
     SUB   $41                       ;[3BAB] 
-    JR    C,$3B94                   ;[3BAD] 
+    JR    C,MONERR                  ;[3BAD] 
     CP    $1A                       ;[3BAF] 
-    JR    NC,$3B94                  ;[3BB1] 
+    JR    NC,MONERR                 ;[3BB1] 
     RLCA                            ;[3BB3] 
     INC   DE                        ;[3BB4] 
-    LD    BC,$3BCF                  ;[3BB5] 
+    LD    BC,MONTBL                 ;[3BB5] 
     LD    L,A                       ;[3BB8] 
     LD    H,$00                     ;[3BB9] 
     ADD   HL,BC                     ;[3BBB] 
@@ -9558,7 +9562,7 @@ BASIC_COM_MON:
     INC   HL                        ;[3BBD] 
     LD    H,(HL)                    ;[3BBE] 
     LD    L,A                       ;[3BBF] 
-    LD    BC,$3B9E                  ;[3BC0] 
+    LD    BC,MONBUG                 ;[3BC0] 
     PUSH  BC                        ;[3BC3] 
     RST   $10                       ;[3BC4] 
     CP    $0D                       ;[3BC5] 
@@ -9567,195 +9571,201 @@ BASIC_COM_MON:
 ;
 ; Data ?????'. Monitor error message.
 ;
-    DB $3F,$3F,$3F,$3F,$0D,$1E,$00  ;[3BC8]  ????...
+MONERM:
+    DB    "????",NEWLINE,CEL,0      ;[3BC8] 
 
-    ADC   A,E                       ;[3BCF] Two byte addresses for the monitor commands A-Z
-    DEC   A                         ;[3BD0] 
-    EX    AF,AF'                    ;[3BD1] 
-    INC   A                         ;[3BD2] 
-    LD    (HL),B                    ;[3BD3] 
-    DEC   A                         ;[3BD4] 
-    CALL  M,$D43E                   ;[3BD5] 
-    LD    A,$CC                     ;[3BD8] 
-    DEC   A                         ;[3BDA] 
-    OR    $3D                       ;[3BDB] 
-    LD    (HL),H                    ;[3BDD] 
-    INC   A                         ;[3BDE] 
-    LD    A,B                       ;[3BDF] 
-    DEC   A                         ;[3BE0] 
-    RET   PE                        ;[3BE1] 
-    JR    C,$3B78                   ;[3BE2] 
-    DEC   SP                        ;[3BE4] 
-    LD    HL,($663E)                ;[3BE5] 
-    INC   A                         ;[3BE8] 
-    SUB   H                         ;[3BE9] 
-    DEC   SP                        ;[3BEA] 
-    EX    DE,HL                     ;[3BEB] 
-    DEC   A                         ;[3BEC] 
-    RRA                             ;[3BED] 
-    INC   A                         ;[3BEE] 
-    SBC   A,$3D                     ;[3BEF] 
-    LD    L,D                       ;[3BF1] 
-    CCF                             ;[3BF2] 
-    INC   BC                        ;[3BF3] 
-    INC   A                         ;[3BF4] 
-    LD    H,B                       ;[3BF5] 
-    DEC   A                         ;[3BF6] 
-    LD    L,(HL)                    ;[3BF7] 
-    LD    A,$44                     ;[3BF8] 
-    LD    A,$00                     ;[3BFA] 
-    LD    A,$8E                     ;[3BFC] 
-    LD    A,$94                     ;[3BFE] 
-    DEC   SP                        ;[3C00] 
-    CP    E                         ;[3C01] 
-    INC   A                         ;[3C02] 
+;
+; Two byte addresses for the monitor commands A-Z
+;
+MONTBL:
+    DW    ARTHM                     ;[3BCF] 
+    DW    BRKPT                     ;[3BD1] B
+    DW    COPY                      ;[3BD3] C
+    DW    DUMP                      ;[3BD5] D
+    DW    EXECUT                    ;[3BD7] E
+    DW    FILL                      ;[3BD9] F
+    DW    GO                        ;[3BDB] G
+    DW    HEX                       ;[3BDD] H
+    DW    INTELL                    ;[3BDF] I
+    DW    JUMP_TO_CMDLINE           ;[3BE1] J
+    DW    MONERR                    ;[3BE3] K
+    DW    LOCAT                     ;[3BE5] L
+    DW    MODFY                     ;[3BE7] M
+    DW    MONERR                    ;[3BE9] N
+    DW    MOUT                      ;[3BEB] O
+    DW    PCINC                     ;[3BED] P
+    DW    QUERY                     ;[3BEF] Q
+    DW    RTAPE                     ;[3BF1] R
+    DW    MONCLS                    ;[3BF3] S
+    DW    TYPE                      ;[3BF5] T
+    DW    UPDAT                     ;[3BF7] U
+    DW    COMPAR                    ;[3BF9] V
+    DW    WORD                      ;[3BFB] W
+    DW    PREG                      ;[3BFD] X
+    DW    MONERR                    ;[3BFF] Y
+    DW    REGIST                    ;[3C01] Z
 
 ;
 ; Monitor S command.
 ;
-MONITOR_S:
+MONCLS:
     LD    A,$04                     ;[3C03] 
     JP    PUTCHAR                   ;[3C05] 
 
 ;
 ; Monitor B command.
 ;
-MONITOR_B:
-    JR    Z,$3C17                   ;[3C08] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3C0A] 
-    LD    ($61B6),HL                ;[3C0D] 
+BRKPT:
+    JR    Z,BRKPT1                  ;[3C08] 
+    CALL  RDHXZ                     ;[3C0A] 
+    LD    (BRKPST+1),HL             ;[3C0D] 
     LD    A,(HL)                    ;[3C10] 
-    LD    ($61B5),A                 ;[3C11] 
-    LD    (HL),$F7                  ;[3C14] 
+    LD    (BRKPST),A                ;[3C11] 
+    LD    (HL),BRKRST               ;[3C14] 
     RET                             ;[3C16] 
 
-    LD    HL,($61B6)                ;[3C17] 
-    LD    A,($61B5)                 ;[3C1A] 
+BRKPT1:
+    LD    HL,(BRKPST+1)             ;[3C17] 
+    LD    A,(BRKPST)                ;[3C1A] 
     LD    (HL),A                    ;[3C1D] 
     RET                             ;[3C1E] 
 
 ;
 ; Monitor P command.
 ;
-MONITOR_P:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3C1F] 
-    LD    DE,($61B0)                ;[3C22] 
+PCINC:
+    CALL  RDHXZ                     ;[3C1F] 
+    LD    DE,(TRAPPC)               ;[3C22] 
     ADD   HL,DE                     ;[3C26] 
-    LD    ($61B0),HL                ;[3C27] 
-    JP    MONITOR_X1                ;[3C2A] 
+    LD    (TRAPPC),HL               ;[3C27] 
+    JP    PREG                      ;[3C2A] 
 
 ;
-; TBD
+; Modify subroutines
 ;
-SUB_TBD_3C2D:
+MODFY5:
     DEC   BC                        ;[3C2D] 
     DEC   BC                        ;[3C2E] 
+MODFY6:
     INC   BC                        ;[3C2F] 
+MODFY2:
     LD    L,C                       ;[3C30] 
     LD    H,B                       ;[3C31] 
-    LD    ($61B8),HL                ;[3C32] 
+    LD    (MONST),HL                ;[3C32] 
     PUSH  BC                        ;[3C35] 
-    CALL  DISPLAY_HL                ;[3C36] 
-    LD    A,$3C                     ;[3C39] 
+    CALL  PRINT_HEX_HL              ;[3C36] 
+    LD    A,'<'                     ;[3C39] 
     RST   $08                       ;[3C3B] 
     LD    A,(HL)                    ;[3C3C] 
     CALL  PRINT_HEX_A               ;[3C3D] 
-    LD    A,$3E                     ;[3C40] 
+    LD    A,'>'                     ;[3C40] 
     RST   $08                       ;[3C42] 
     CALL  OUTPUT_SPACE              ;[3C43] 
     CALL  SYSVAR_LINP               ;[3C46] 
     POP   BC                        ;[3C49] 
     LD    DE,INPBUF                 ;[3C4A] 
     LD    A,(DE)                    ;[3C4D] 
-    CP    $0D                       ;[3C4E] 
-    JR    Z,$3C2F                   ;[3C50] 
-    CP    $2F                       ;[3C52] 
-    JR    Z,SUB_TBD_3C2D            ;[3C54] 
-    CP    $2E                       ;[3C56] 
+    CP    CR                        ;[3C4E] 
+    JR    Z,MODFY6                  ;[3C50] 
+    CP    '/'                       ;[3C52] 
+    JR    Z,MODFY5                  ;[3C54] 
+    CP    '.'                       ;[3C56] 
     RET   Z                         ;[3C58] 
+MODFY1:
     RST   $10                       ;[3C59] 
-    CP    $0D                       ;[3C5A] 
-    JR    Z,$3C30                   ;[3C5C] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3C5E] 
+    CP    CR                        ;[3C5A] 
+    JR    Z,MODFY2                  ;[3C5C] 
+    CALL  RDHXZ                     ;[3C5E] 
     LD    A,L                       ;[3C61] 
     LD    (BC),A                    ;[3C62] 
     INC   BC                        ;[3C63] 
-    JR    $3C59                     ;[3C64] 
+    JR    MODFY1                    ;[3C64] 
 
 ;
 ; Monitor M command.
 ;
-MONITOR_M:
-    JR    NZ,$3C6D                  ;[3C66] 
-    LD    HL,($61B8)                ;[3C68] 
-    JR    $3C70                     ;[3C6B] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3C6D] 
+MODFY:
+    JR    NZ,MODFY3                 ;[3C66] 
+    LD    HL,(MONST)                ;[3C68] 
+    JR    MODFY4                    ;[3C6B] 
+MODFY3:
+    CALL  RDHXZ                     ;[3C6D] 
+MODFY4:
     LD    C,L                       ;[3C70] 
     LD    B,H                       ;[3C71] 
-    JR    $3C59                     ;[3C72] 
+    JR    MODFY1                    ;[3C72] 
 
 ;
 ; Monitor H command.
 ;
-MONITOR_H:
-    JR    NZ,$3C7B                  ;[3C74] 
-    LD    HL,($61B8)                ;[3C76] 
-    JR    $3C7E                     ;[3C79] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3C7B] 
+HEX:
+    JR    NZ,HEX5                   ;[3C74] 
+    LD    HL,(MONST)                ;[3C76] 
+    JR    HEX3                      ;[3C79] 
+HEX5:
+    CALL  RDHXZ                     ;[3C7B] 
+HEX3:
     LD    B,$10                     ;[3C7E] 
+HEX2:
     PUSH  BC                        ;[3C80] 
-    CALL  $3CA5                     ;[3C81] 
+    CALL  HEXSUB                    ;[3C81] 
     CALL  OUTPUT_SPACE              ;[3C84] 
     LD    B,$08                     ;[3C87] 
+HEX4:
     LD    A,(HL)                    ;[3C89] 
     INC   HL                        ;[3C8A] 
-    CALL  $3D55                     ;[3C8B] 
-    DJNZ  $3C89                     ;[3C8E] 
-    LD    A,$1E                     ;[3C90] 
+    CALL  DSPASC                    ;[3C8B] 
+    DJNZ  HEX4                      ;[3C8E] 
+    LD    A,CEL                     ;[3C90] 
     RST   $08                       ;[3C92] 
-    LD    A,$1F                     ;[3C93] 
+    LD    A,XCRLF                   ;[3C93] 
     RST   $08                       ;[3C95] 
     CALL  ESC                       ;[3C96] 
     POP   BC                        ;[3C99] 
-    JR    Z,$3CA1                   ;[3C9A] 
-    DJNZ  $3C80                     ;[3C9C] 
-    LD    ($61B8),HL                ;[3C9E] 
-    LD    A,$1E                     ;[3CA1] 
+    JR    Z,HEXXX                   ;[3C9A] 
+    DJNZ  HEX2                      ;[3C9C] 
+    LD    (MONST),HL                ;[3C9E] 
+HEXXX:
+    LD    A,CEL                     ;[3CA1] 
     RST   $08                       ;[3CA3] 
     RET                             ;[3CA4] 
 
-    CALL  DISPLAY_HL                ;[3CA5] 
+HEXSUB:
+    CALL  PRINT_HEX_HL              ;[3CA5] 
     CALL  OUTPUT_SPACE              ;[3CA8] 
-    LD    B,$08                     ;[3CAB] 
+    LD    B,8                       ;[3CAB] 
     PUSH  HL                        ;[3CAD] 
+HEX1:
     LD    A,(HL)                    ;[3CAE] 
     INC   HL                        ;[3CAF] 
-    CALL  $3D12                     ;[3CB0] 
-    DJNZ  $3CAE                     ;[3CB3] 
+    CALL  MPHXA                     ;[3CB0] 
+    DJNZ  HEX1                      ;[3CB3] 
     POP   HL                        ;[3CB5] 
     RET                             ;[3CB6] 
 
 ;
 ; Print carriage-return char
 ;
-SUB_PRINT_CR:
-    LD    A,$0D                     ;[3CB7] 
+CRLF:
+    LD    A,CR                      ;[3CB7] 
     RST   $08                       ;[3CB9] 
     RET                             ;[3CBA] 
 
 ;
 ; Monitor Z command.
 ;
-MONITOR_Z:
-    LD    IX,DATA_MONITOR           ;[3CBB] 
-    LD    DE,$619A                  ;[3CBF] 
-    LD    B,$0C                     ;[3CC2] 
+REGIST:
+    LD    IX,REGMSG                 ;[3CBB] 
+    LD    DE,TRAPREGS               ;[3CBF] 
+    LD    B,12                      ;[3CC2] 
+REGST1:
     PUSH  BC                        ;[3CC4] 
-    LD    B,$03                     ;[3CC5] 
+    LD    B,3                       ;[3CC5] 
+REGST2:
     LD    A,(IX+$00)                ;[3CC7] 
     RST   $08                       ;[3CCA] 
     INC   IX                        ;[3CCB] 
-    DJNZ  $3CC7                     ;[3CCD] 
+    DJNZ  REGST2                    ;[3CCD] 
     CALL  OUTPUT_SPACE              ;[3CCF] 
     LD    A,(DE)                    ;[3CD2] 
     LD    L,A                       ;[3CD3] 
@@ -9763,60 +9773,64 @@ MONITOR_Z:
     LD    A,(DE)                    ;[3CD5] 
     LD    H,A                       ;[3CD6] 
     INC   DE                        ;[3CD7] 
-    CALL  $3CA5                     ;[3CD8] 
-    LD    A,$1E                     ;[3CDB] 
+    CALL  HEXSUB                    ;[3CD8] 
+    LD    A,CEL                     ;[3CDB] 
     RST   $08                       ;[3CDD] 
-    LD    A,$1F                     ;[3CDE] 
+    LD    A,XCRLF                   ;[3CDE] 
     RST   $08                       ;[3CE0] 
     POP   BC                        ;[3CE1] 
-    DJNZ  $3CC4                     ;[3CE2] 
-    LD    A,$1E                     ;[3CE4] 
+    DJNZ  REGST1                    ;[3CE2] 
+    LD    A,CEL                     ;[3CE4] 
     RST   $08                       ;[3CE6] 
     RET                             ;[3CE7] 
 
 ;
-; Data for Z command - The register names.
+; Data for Z command - register names.
 ;
-DATA_MONITOR:
-    DB $41,$46,$20,$48,$4C,$20,$44,$45      ;[3CE8]  AF.HL.DE
-    DB $20,$42,$43,$20,$41,$46,$27,$48      ;[3CF0]  .BC.AF'H
-    DB $4C,$27,$44,$45,$27,$42,$43,$27      ;[3CF8]  L'DE'BC'
-    DB $49,$58,$20,$49,$59,$20,$53,$50      ;[3D00]  IX.IY.SP
-    DB $20,$50,$43,$20                      ;[3D08]  .PC.
+REGMSG:
+    DB    "AF HL DE BC "            ;[3CE8] 
+    DB    "AF'HL'DE'BC'"            ;[3CF4] 
+    DB    "IX IY SP PC "            ;[3D00] 
 
 ;
 ; Display HL.
 ;
-DISPLAY_HL:
+PRINT_HEX_HL:
     CALL  PHEXHL                    ;[3D0C] 
+MPHL1:
     JP    OUTPUT_SPACE              ;[3D0F] 
+MPHXA:
     CALL  PRINT_HEX_A               ;[3D12] 
-    JR    $3D0F                     ;[3D15] 
+    JR    MPHL1                     ;[3D15] 
 
 ;
-; Pick up argument into HL.
+; Read 3 hex values store on stack
 ;
-SUB_ARGUMENT_INTO_HL:
-    CALL  $3D24                     ;[3D17] 
+RDHXZ:
+    CALL  READHX                    ;[3D17] 
+RDHX6:
     LD    A,(DE)                    ;[3D1A] 
-    CP    $0D                       ;[3D1B] 
+    CP    CR                        ;[3D1B] 
     RET   Z                         ;[3D1D] 
-    CP    $20                       ;[3D1E] 
+    CP    ' '                       ;[3D1E] 
     RET   Z                         ;[3D20] 
-    JP    $3B94                     ;[3D21] 
-    LD    HL,$0000                  ;[3D24] Subroutine called by routine above.
+    JP    MONERR                    ;[3D21] 
+READHX:
+    LD    HL,0                      ;[3D24] Subroutine called by routine above.
     RST   $10                       ;[3D27] 
+RDHX2:
     LD    A,(DE)                    ;[3D28] 
-    CALL  TEST_MON_LETTER           ;[3D29] 
-    SUB   $30                       ;[3D2C] 
+    CALL  LUCC                      ;[3D29] 
+    SUB   '0'                       ;[3D2C] 
     RET   C                         ;[3D2E] 
-    CP    $0A                       ;[3D2F] 
-    JR    C,$3D3B                   ;[3D31] 
-    SUB   $07                       ;[3D33] 
-    CP    $0A                       ;[3D35] 
+    CP    10                        ;[3D2F] 
+    JR    C,RDHX4                   ;[3D31] 
+    SUB   7                         ;[3D33] 
+    CP    10                        ;[3D35] 
     RET   C                         ;[3D37] 
-    CP    $10                       ;[3D38] 
+    CP    16                        ;[3D38] 
     RET   NC                        ;[3D3A] 
+RDHX4:
     ADD   HL,HL                     ;[3D3B] 
     ADD   HL,HL                     ;[3D3C] 
     ADD   HL,HL                     ;[3D3D] 
@@ -9824,62 +9838,70 @@ SUB_ARGUMENT_INTO_HL:
     ADD   A,L                       ;[3D3F] 
     LD    L,A                       ;[3D40] 
     INC   DE                        ;[3D41] 
-    JR    $3D28                     ;[3D42] 
+    JR    RDHX2                     ;[3D42] 
 
 ;
-; Pick up three arguments.
+; Read 3 hex values stored on stack
 ;
-SUB_ARGUMENT_3:
+READ3H:
     POP   IX                        ;[3D44] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3D46] 
+RD3H1:
+    CALL  RDHXZ                     ;[3D46] Last in BC & HL
     PUSH  HL                        ;[3D49] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3D4A] 
+    CALL  RDHXZ                     ;[3D4A] 
     PUSH  HL                        ;[3D4D] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3D4E] 
+    CALL  RDHXZ                     ;[3D4E] 
     LD    C,L                       ;[3D51] 
     LD    B,H                       ;[3D52] 
     JP    (IX)                      ;[3D53] 
+
+;
+; Display Ascii
+;
+DSPASC:
     AND   $7F                       ;[3D55] 
-    CP    $20                       ;[3D57] 
+    CP    ' '                       ;[3D57] 
     JR    NC,$3D5D                  ;[3D59] 
-    LD    A,$2E                     ;[3D5B] 
+    LD    A,'.'                     ;[3D5B] 
     JP    PUTCHAR                   ;[3D5D] 
 
 ;
-; Monitor T command.
+; Monitor T command. Type into memory
 ;
-MONITOR_T:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3D60] 
+TYPE:
+    CALL  RDHXZ                     ;[3D60] 
     LD    A,(DE)                    ;[3D63] 
     CP    $0D                       ;[3D64] 
     RET   Z                         ;[3D66] 
+TYPE1:
     INC   DE                        ;[3D67] 
     LD    A,(DE)                    ;[3D68] 
     CP    $0D                       ;[3D69] 
     RET   Z                         ;[3D6B] 
     LD    (HL),A                    ;[3D6C] 
     INC   HL                        ;[3D6D] 
-    JR    $3D67                     ;[3D6E] 
+    JR    TYPE1                     ;[3D6E] 
 
 ;
-; Monitor C command.
+; Monitor C command. Copy dumb.
 ;
-MONITOR_C:
-    CALL  SUB_ARGUMENT_3            ;[3D70] 
+COPY:
+    CALL  READ3H                    ;[3D70] 
     POP   DE                        ;[3D73] 
     POP   HL                        ;[3D74] 
+COPY1:
     LDIR                            ;[3D75] 
     RET                             ;[3D77] 
 
 ;
-; Monitor I command.
+; Monitor I command. Copy intelligent.
 ;
-MONITOR_I:
-    CALL  SUB_ARGUMENT_3            ;[3D78] 
+INTELL:
+    CALL  READ3H                    ;[3D78] 
     POP   DE                        ;[3D7B] 
     POP   HL                        ;[3D7C] 
     CALL  CHLDE                     ;[3D7D] 
-    JR    NC,$3D75                  ;[3D80] 
+    JR    NC,COPY1                  ;[3D80] 
     ADD   HL,BC                     ;[3D82] 
     EX    DE,HL                     ;[3D83] 
     ADD   HL,BC                     ;[3D84] 
@@ -9890,23 +9912,23 @@ MONITOR_I:
     RET                             ;[3D8A] 
 
 ;
-; Monitor A command.
+; Monitor A command. Arithmetic.
 ;
-MONITOR_A:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3D8B] 
+ARTHM:
+    CALL  RDHXZ                     ;[3D8B] 
     PUSH  HL                        ;[3D8E] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3D8F] 
+    CALL  RDHXZ                     ;[3D8F] 
     LD    E,L                       ;[3D92] 
     LD    D,H                       ;[3D93] 
     POP   HL                        ;[3D94] 
     PUSH  HL                        ;[3D95] 
     ADD   HL,DE                     ;[3D96] 
-    CALL  DISPLAY_HL                ;[3D97] 
+    CALL  PRINT_HEX_HL              ;[3D97] 
     POP   HL                        ;[3D9A] 
     PUSH  HL                        ;[3D9B] 
     OR    A                         ;[3D9C] 
     SBC   HL,DE                     ;[3D9D] 
-    CALL  DISPLAY_HL                ;[3D9F] 
+    CALL  PRINT_HEX_HL              ;[3D9F] 
     POP   HL                        ;[3DA2] 
     EX    DE,HL                     ;[3DA3] 
     DEC   HL                        ;[3DA4] 
@@ -9914,29 +9936,38 @@ MONITOR_A:
     SBC   HL,DE                     ;[3DA6] 
     LD    A,H                       ;[3DA8] 
     OR    A                         ;[3DA9] 
-    JR    Z,$3DB8                   ;[3DAA] 
+    JR    Z,ARTH1                   ;[3DAA] 
     INC   A                         ;[3DAC] 
-    JR    Z,$3DC2                   ;[3DAD] 
-    LD    HL,DATA_MONITOR_A         ;[3DAF] 
+    JR    Z,ARTH2                   ;[3DAD] 
+ARTH3:
+    LD    HL,ARTHMSG                ;[3DAF] 
     CALL  PLINE                     ;[3DB2] 
-    JP    SUB_PRINT_CR              ;[3DB5] 
+ARTH4:
+    JP    CRLF                      ;[3DB5] 
+ARTH1:
     LD    A,L                       ;[3DB8] 
     CP    $80                       ;[3DB9] 
-    JR    NC,$3DAF                  ;[3DBB] 
-    CALL  $3D12                     ;[3DBD] 
-    JR    $3DB5                     ;[3DC0] 
+    JR    NC,ARTH3                  ;[3DBB] 
+ARTH5:
+    CALL  MPHXA                     ;[3DBD] 
+    JR    ARTH4                     ;[3DC0] 
+ARTH2:
     LD    A,L                       ;[3DC2] 
     CP    $80                       ;[3DC3] 
-    JR    C,$3DAF                   ;[3DC5] 
-    JR    $3DBD                     ;[3DC7] 
+    JR    C,ARTH3                   ;[3DC5] 
+    JR    ARTH5                     ;[3DC7] 
 
 ;
 ; Data '??' used in A comand.
 ;
-DATA_MONITOR_A:
-    DB $3F,$3F,$00                  ;[3DC9]  ??.
+ARTHMSG:
+    DB    "??",0                    ;[3DC9] 
 
-    CALL  SUB_ARGUMENT_3            ;[3DCC] ???? Doesn't seem to be used!!!!
+;
+; Fill from to/with
+;
+FILL:
+    CALL  READ3H                    ;[3DCC] 
     LD    A,L                       ;[3DCF] 
     POP   HL                        ;[3DD0] 
     POP   DE                        ;[3DD1] 
@@ -9952,125 +9983,131 @@ DATA_MONITOR_A:
     RET                             ;[3DDD] 
 
 ;
-; Monitor Q command.
+; Monitor Q command. Query port.
 ;
-MONITOR_Q:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3DDE] 
+QUERY:
+    CALL  RDHXZ                     ;[3DDE] 
     LD    C,L                       ;[3DE1] 
     LD    B,H                       ;[3DE2] 
     IN    A,(C)                     ;[3DE3] 
-    CALL  $3D12                     ;[3DE5] 
-    JP    SUB_PRINT_CR              ;[3DE8] 
+    CALL  MPHXA                     ;[3DE5] 
+    JP    CRLF                      ;[3DE8] 
 
 ;
-; Monitor O command.
+; Monitor O command. Output to port.
 ;
-MONITOR_O:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3DEB] 
+MOUT:
+    CALL  RDHXZ                     ;[3DEB] 
     LD    C,L                       ;[3DEE] 
     LD    B,H                       ;[3DEF] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3DF0] 
+    CALL  RDHXZ                     ;[3DF0] 
     OUT   (C),L                     ;[3DF3] 
     RET                             ;[3DF5] 
 
 ;
-; Monitor B command.
+; Monitor B command. Set Breakpoint
 ;
-MONITOR_B1:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3DF6] 
+GO:
+    CALL  RDHXZ                     ;[3DF6] 
     JP    (HL)                      ;[3DF9] 
 
 ;
-; Test for a Monitor command letter.
+; Lower to upper case conversion
 ;
-TEST_MON_LETTER:
+LUCC:
     CP    $40                       ;[3DFA] 
     RET   C                         ;[3DFC] 
     RES   5,A                       ;[3DFD] 
     RET                             ;[3DFF] 
 
 ;
-; Monitor W command.
+; Monitor W command. Word find.
 ;
-MONITOR_W:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3E00] 
+WORD:
+    CALL  RDHXZ                     ;[3E00] 
     PUSH  HL                        ;[3E03] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3E04] 
+    CALL  RDHXZ                     ;[3E04] 
     LD    E,L                       ;[3E07] 
     LD    D,H                       ;[3E08] 
     POP   HL                        ;[3E09] 
+WORD1:
     LD    A,(HL)                    ;[3E0A] 
     CP    E                         ;[3E0B] 
-    JR    NZ,$3E17                  ;[3E0C] 
+    JR    NZ,WORD2                  ;[3E0C] 
     INC   HL                        ;[3E0E] 
     LD    A,(HL)                    ;[3E0F] 
     DEC   HL                        ;[3E10] 
     CP    D                         ;[3E11] 
-    JR    NZ,$3E17                  ;[3E12] 
-    CALL  SUB_MONITOR_L             ;[3E14] 
+    JR    NZ,WORD2                  ;[3E12] 
+    CALL  WORDSB                    ;[3E14] 
+WORD2:
     CALL  ESC                       ;[3E17] 
     RET   Z                         ;[3E1A] 
     INC   HL                        ;[3E1B] 
     LD    A,L                       ;[3E1C] 
     OR    H                         ;[3E1D] 
-    JR    NZ,$3E0A                  ;[3E1E] 
+    JR    NZ,WORD1                  ;[3E1E] 
     RET                             ;[3E20] 
 
 ;
 ; L command subroutine.
 ;
-SUB_MONITOR_L:
-    CALL  DISPLAY_HL                ;[3E21] 
-    LD    ($61B8),HL                ;[3E24] 
-    JP    SUB_PRINT_CR              ;[3E27] 
+WORDSB:
+    CALL  PRINT_HEX_HL              ;[3E21] 
+    LD    (MONST),HL                ;[3E24] 
+    JP    CRLF                      ;[3E27] 
 
 ;
-; Monitor L command.
+; Monitor L command.  Locate byte.
 ;
-MONITOR_L:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3E2A] 
+LOCAT:
+    CALL  RDHXZ                     ;[3E2A] 
     PUSH  HL                        ;[3E2D] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3E2E] 
+    CALL  RDHXZ                     ;[3E2E] 
     LD    E,L                       ;[3E31] 
     POP   HL                        ;[3E32] 
+LOCAT2:
     LD    A,(HL)                    ;[3E33] 
     CP    E                         ;[3E34] 
-    JR    NZ,$3E3A                  ;[3E35] 
-    CALL  SUB_MONITOR_L             ;[3E37] 
+    JR    NZ,LOCAT1                 ;[3E35] 
+    CALL  WORDSB                    ;[3E37] 
+LOCAT1:
     CALL  ESC                       ;[3E3A] 
     RET   Z                         ;[3E3D] 
     INC   HL                        ;[3E3E] 
     LD    A,L                       ;[3E3F] 
     OR    H                         ;[3E40] 
-    JR    NZ,$3E33                  ;[3E41] 
+    JR    NZ,LOCAT2                 ;[3E41] 
     RET                             ;[3E43] 
 
 ;
-; Monitor V command.
+; Monitor V command. Verify/compare block of memory.
 ;
-MONITOR_V:
-    CALL  SUB_ARGUMENT_3            ;[3E44] 
+COMPAR:
+    CALL  READ3H                    ;[3E44] 
     POP   DE                        ;[3E47] 
     POP   HL                        ;[3E48] 
+COMPR1:
     LD    A,(DE)                    ;[3E49] 
     CP    (HL)                      ;[3E4A] 
-    CALL  NZ,DISPLAY_HL             ;[3E4B] 
+    CALL  NZ,PRINT_HEX_HL           ;[3E4B] 
     INC   DE                        ;[3E4E] 
     INC   HL                        ;[3E4F] 
     PUSH  BC                        ;[3E50] 
     CALL  ESC                       ;[3E51] 
     POP   BC                        ;[3E54] 
-    JR    Z,$3E5C                   ;[3E55] 
+    JR    Z,COMPR4                  ;[3E55] 
     DEC   BC                        ;[3E57] 
     LD    A,B                       ;[3E58] 
     OR    C                         ;[3E59] 
-    JR    NZ,$3E49                  ;[3E5A] 
-    JP    SUB_PRINT_CR              ;[3E5C] 
+    JR    NZ,COMPR1                 ;[3E5A] 
+COMPR4:
+    JP    CRLF                      ;[3E5C] 
 
 ;
 ; Part of U command.
 ;
-SUB_MONITOR_U:
+UPDAT2:
     POP   DE                        ;[3E5F] 
     POP   HL                        ;[3E60] 
     INC   HL                        ;[3E61] 
@@ -10079,96 +10116,97 @@ SUB_MONITOR_U:
     INC   IX                        ;[3E64] 
     INC   IX                        ;[3E66] 
     POP   BC                        ;[3E68] 
-    DJNZ  $3E75                     ;[3E69] 
-    JP    $3B94                     ;[3E6B] 
+    DJNZ  UPDAT0                    ;[3E69] 
+    JP    MONERR                    ;[3E6B] 
 
 ;
-; Monitor U command.
+; Monitor U command. Update register.
 ;
-MONITOR_U:
-    LD    HL,DATA_MONITOR           ;[3E6E] 
-    LD    IX,$619A                  ;[3E71] 
+UPDAT:
+    LD    HL,REGMSG                 ;[3E6E] 
+    LD    IX,TRAPREGS               ;[3E71] 
+UPDAT0:
     PUSH  BC                        ;[3E75] 
     PUSH  HL                        ;[3E76] 
     PUSH  DE                        ;[3E77] 
     LD    B,$03                     ;[3E78] 
+UPDAT1:
     LD    A,(DE)                    ;[3E7A] 
     CP    (HL)                      ;[3E7B] 
     INC   DE                        ;[3E7C] 
     INC   HL                        ;[3E7D] 
-    JR    NZ,SUB_MONITOR_U          ;[3E7E] 
-    DJNZ  $3E7A                     ;[3E80] 
+    JR    NZ,UPDAT2                 ;[3E7E] 
+    DJNZ  UPDAT1                    ;[3E80] 
     POP   BC                        ;[3E82] 
     POP   BC                        ;[3E83] 
     POP   BC                        ;[3E84] 
-
-;
-; Monitor X command.
-;
-MONITOR_X:
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3E85] 
+    CALL  RDHXZ                     ;[3E85] 
     LD    (IX+$00),L                ;[3E88] Display memory starting from where DE points.
     LD    (IX+$01),H                ;[3E8B] 
-MONITOR_X1:
-    LD    DE,$619A                  ;[3E8E] 
-    LD    B,$04                     ;[3E91] 
-    CALL  SUB_FLAGS                 ;[3E93] 
-    LD    A,$1E                     ;[3E96] 
-    RST   $08                       ;[3E98] 
-    LD    A,$1F                     ;[3E99] 
-    RST   $08                       ;[3E9B] 
-    LD    B,$08                     ;[3E9C] 
-    CALL  SUB_FLAGS                 ;[3E9E] 
-    CALL  $3EB6                     ;[3EA1] 
-    LD    A,$1E                     ;[3EA4] 
-    RST   $08                       ;[3EA6] 
-    JP    SUB_PRINT_CR              ;[3EA7] 
 
 ;
-; Display the flags.
+; Monitor X. Display registers.
 ;
-SUB_FLAGS:
-    LD    A,(DE)                    ;[3EAA] 
+PREG:
+    LD    DE,TRAPREGS               ;[3E8E] 
+    LD    B,4                       ;[3E91] 
+    CALL  PREGS                     ;[3E93] 
+    LD    A,CEL                     ;[3E96] 
+    RST   $08                       ;[3E98] 
+    LD    A,XCRLF                   ;[3E99] 
+    RST   $08                       ;[3E9B] 
+    LD    B,8                       ;[3E9C] 
+    CALL  PREGS                     ;[3E9E] 
+    CALL  PFLAG                     ;[3EA1] 
+    LD    A,CEL                     ;[3EA4] 
+    RST   $08                       ;[3EA6] 
+    JP    CRLF                      ;[3EA7] 
+PREGS:
+    LD    A,(DE)                    ;[3EAA] Display the flags.
     LD    L,A                       ;[3EAB] 
     INC   DE                        ;[3EAC] 
     LD    A,(DE)                    ;[3EAD] 
     LD    H,A                       ;[3EAE] 
     INC   DE                        ;[3EAF] 
-    CALL  DISPLAY_HL                ;[3EB0] 
-    DJNZ  SUB_FLAGS                 ;[3EB3] 
+    CALL  PRINT_HEX_HL              ;[3EB0] 
+    DJNZ  PREGS                     ;[3EB3] 
     RET                             ;[3EB5] 
 
-    LD    A,($619A)                 ;[3EB6] 
-    LD    HL,DATA_FLAGS             ;[3EB9] 
+PFLAG:
+    LD    A,(TRAPREGS)              ;[3EB6] 
+    LD    HL,FLGMSG                 ;[3EB9] 
     LD    C,A                       ;[3EBC] 
     SCF                             ;[3EBD] 
+PFLAG1:
     RL    C                         ;[3EBE] 
     RET   Z                         ;[3EC0] 
     LD    A,(HL)                    ;[3EC1] 
-    JR    C,$3EC6                   ;[3EC2] 
-    LD    A,$2E                     ;[3EC4] 
+    JR    C,PFLAG2                  ;[3EC2] 
+    LD    A,'.'                     ;[3EC4] 
+PFLAG2:
     RST   $08                       ;[3EC6] 
     INC   HL                        ;[3EC7] 
     OR    A                         ;[3EC8] 
-    JR    $3EBE                     ;[3EC9] 
+    JR    PFLAG1                    ;[3EC9] 
 
 ;
-; Data. Flags.
+; Flags message.
 ;
-DATA_FLAGS:
-    DB $53,$5A,$31,$48,$31,$50,$4E,$43      ;[3ECB]  SZ1H1PNC
-    DB $00                                  ;[3ED3]  .
+FLGMSG:
+    DB    "SZ1H1PNC",0              ;[3ECB] 
 
 ;
-; Monitor E command.
+; Monitor E command. Execute.
 ;
-MONITOR_E:
-    JR    Z,$3EDB                   ;[3ED4] 
-    CALL  SUB_ARGUMENT_INTO_HL      ;[3ED6] 
-    JR    $3EDE                     ;[3ED9] 
-    LD    HL,($61B0)                ;[3EDB] 
-    LD    ($61B3),HL                ;[3EDE] 
-    LD    SP,($61BA)                ;[3EE1] 
+EXECUT:
+    JR    Z,EXECUT1                 ;[3ED4] 
+    CALL  RDHXZ                     ;[3ED6] 
+    JR    UNTRP1                    ;[3ED9] 
+EXECUT1:
+    LD    HL,(TRAPPC)               ;[3EDB] 
+UNTRP1:
+    LD    (GOPC+1),HL               ;[3EDE] 
+    LD    SP,(MONSP)                ;[3EE1] 
     POP   AF                        ;[3EE5] 
     POP   HL                        ;[3EE6] 
     POP   DE                        ;[3EE7] 
@@ -10183,37 +10221,38 @@ MONITOR_E:
     EX    AF,AF'                    ;[3EF0] 
     POP   IX                        ;[3EF1] 
     POP   IY                        ;[3EF3] 
-    LD    SP,($61AE)                ;[3EF5] 
-    JP    $61B2                     ;[3EF9] 
+    LD    SP,(TRAPSP)               ;[3EF5] 
+    JP    GOPC                      ;[3EF9] 
 
 ;
 ; Monitor D command.
 ;
-MONITOR_D:
-    CALL  SUB_ARGUMENT_3            ;[3EFC] 
+DUMP:
+    CALL  READ3H                    ;[3EFC] 
     PUSH  HL                        ;[3EFF] 
-    CALL  $3F4E                     ;[3F00] 
+    CALL  DUMSUB                    ;[3F00] 
     CALL  WRITE_FNAME               ;[3F03] 
-    POP   DE                        ;[3F06] 
-    POP   HL                        ;[3F07] 
-    POP   BC                        ;[3F08] 
+    POP   DE                        ;[3F06] Transfer address
+    POP   HL                        ;[3F07] End address
+    POP   BC                        ;[3F08] Start address
     PUSH  BC                        ;[3F09] 
     OR    A                         ;[3F0A] 
     SBC   HL,BC                     ;[3F0B] 
     INC   HL                        ;[3F0D] 
     LD    C,L                       ;[3F0E] 
     LD    B,H                       ;[3F0F] 
-    POP   HL                        ;[3F10] 
-    PUSH  DE                        ;[3F11] 
-    CALL  WSYNC                     ;[3F12] 
-    LD    A,$4D                     ;[3F15] 
+    POP   HL                        ;[3F10] Start address
+    PUSH  DE                        ;[3F11] Transfer address
+    CALL  WSYNC                     ;[3F12] Short Sync
+    LD    A,'M'                     ;[3F15] Marker
     CALL  SYSVAR_WBYTE              ;[3F17] 
-    LD    A,C                       ;[3F1A] 
+    LD    A,C                       ;[3F1A] Program length
     CALL  SYSVAR_WBYTE              ;[3F1B] 
-    LD    A,B                       ;[3F1E] 
+    LD    A,B                       ;[3F1E] Program length
     CALL  SYSVAR_WBYTE              ;[3F1F] 
-    CALL  $3F46                     ;[3F22] 
-    LD    E,$00                     ;[3F25] 
+    CALL  W2BYTE                    ;[3F22] 
+    LD    E,0                       ;[3F25] 
+DUMP2:
     LD    A,(HL)                    ;[3F27] 
     CALL  SYSVAR_WBYTE              ;[3F28] 
     INC   HL                        ;[3F2B] 
@@ -10222,29 +10261,32 @@ MONITOR_D:
     DEC   BC                        ;[3F2E] 
     LD    A,B                       ;[3F2F] 
     OR    C                         ;[3F30] 
-    JR    NZ,$3F27                  ;[3F31] 
-    LD    A,E                       ;[3F33] 
+    JR    NZ,DUMP2                  ;[3F31] 
+    LD    A,E                       ;[3F33] Checksum
     CALL  SYSVAR_WBYTE              ;[3F34] 
-    LD    A,$45                     ;[3F37] 
+    LD    A,'E'                     ;[3F37] Marker
     CALL  SYSVAR_WBYTE              ;[3F39] 
-    POP   HL                        ;[3F3C] 
-    CALL  $3F46                     ;[3F3D] 
+    POP   HL                        ;[3F3C] Transfer address
+    CALL  W2BYTE                    ;[3F3D] 
     CALL  SYSVAR_WBYTE              ;[3F40] 
     JP    MOTOFF                    ;[3F43] 
+W2BYTE:
     LD    A,L                       ;[3F46] Write HL to tape.
     CALL  SYSVAR_WBYTE              ;[3F47] 
     LD    A,H                       ;[3F4A] 
     JP    SYSVAR_WBYTE              ;[3F4B] 
+DUMSUB:
     RST   $10                       ;[3F4E] Check for valid file name.
-    CP    $22                       ;[3F4F] 
-    JP    NZ,$3B94                  ;[3F51] 
+    CP    '"'                       ;[3F4F] 
+    JP    NZ,MONERR                 ;[3F51] 
     PUSH  DE                        ;[3F54] 
+DUMP1:
     INC   DE                        ;[3F55] 
     LD    A,(DE)                    ;[3F56] 
-    CP    $0D                       ;[3F57] 
-    JP    Z,$3B94                   ;[3F59] 
-    CP    $22                       ;[3F5C] 
-    JR    NZ,$3F55                  ;[3F5E] 
+    CP    CR                        ;[3F57] 
+    JP    Z,MONERR                  ;[3F59] 
+    CP    '"'                       ;[3F5C] 
+    JR    NZ,DUMP1                  ;[3F5E] 
     POP   DE                        ;[3F60] 
     RET                             ;[3F61] 
 
@@ -10253,25 +10295,27 @@ MONITOR_D:
 ;
 BASIC_COM_MLOAD:
     LD    HL,(SYSVAR_STACK)         ;[3F62] 
-    LD    ($61BA),HL                ;[3F65] 
-    JR    $3F78                     ;[3F68] 
+    LD    (MONSP),HL                ;[3F65] 
+    JR    ELDM1                     ;[3F68] 
 
 ;
-; Monitor P command.
+; Monitor R command.
 ;
-MONITOR_P1:
-    CALL  $3F4E                     ;[3F6A] 
+RTAPE:
+    CALL  DUMSUB                    ;[3F6A] 
     LD    HL,(SYSVAR_POLBUF)        ;[3F6D] 
     PUSH  HL                        ;[3F70] 
     EX    DE,HL                     ;[3F71] 
-    LD    BC,$00FF                  ;[3F72] 
+    LD    BC,255                    ;[3F72] 
     LDIR                            ;[3F75] 
     POP   DE                        ;[3F77] 
+ELDM1:
     CALL  TAPE_READ                 ;[3F78] 
+RTAPE6:
     CALL  RSYNC                     ;[3F7B] 
     CALL  RBYTE                     ;[3F7E] 
-    CP    $4D                       ;[3F81] 
-    JR    NZ,$3FC4                  ;[3F83] 
+    CP    'M'                       ;[3F81] 
+    JR    NZ,RTPERR                 ;[3F83] 
     CALL  RBYTE                     ;[3F85] 
     LD    C,A                       ;[3F88] 
     CALL  RBYTE                     ;[3F89] 
@@ -10280,7 +10324,8 @@ MONITOR_P1:
     LD    L,A                       ;[3F90] 
     CALL  RBYTE                     ;[3F91] 
     LD    H,A                       ;[3F94] 
-    LD    E,$00                     ;[3F95] 
+    LD    E,0                       ;[3F95] 
+RTAPE2:
     CALL  RBYTE                     ;[3F97] 
     LD    (HL),A                    ;[3F9A] 
     INC   HL                        ;[3F9B] 
@@ -10289,13 +10334,13 @@ MONITOR_P1:
     DEC   BC                        ;[3F9E] 
     LD    A,B                       ;[3F9F] 
     OR    C                         ;[3FA0] 
-    JR    NZ,$3F97                  ;[3FA1] 
+    JR    NZ,RTAPE2                 ;[3FA1] 
     CALL  RBYTE                     ;[3FA3] 
     CP    E                         ;[3FA6] 
-    JR    NZ,$3FC4                  ;[3FA7] 
+    JR    NZ,RTPERR                 ;[3FA7] 
     CALL  RBYTE                     ;[3FA9] 
-    CP    $4E                       ;[3FAC] 
-    JR    Z,$3F7B                   ;[3FAE] 
+    CP    'N'                       ;[3FAC] 
+    JR    Z,RTAPE6                  ;[3FAE] 
     CALL  RBYTE                     ;[3FB0] 
     LD    L,A                       ;[3FB3] 
     CALL  RBYTE                     ;[3FB4] 
@@ -10303,22 +10348,20 @@ MONITOR_P1:
     CALL  MOTOFF                    ;[3FB8] 
     LD    A,L                       ;[3FBB] 
     OR    H                         ;[3FBC] 
-    JR    NZ,SUB_MONITOR_R          ;[3FBD] 
-    LD    A,$0D                     ;[3FBF] 
+    JR    NZ,RTAPE5                 ;[3FBD] 
+    LD    A,CR                      ;[3FBF] 
     RST   $08                       ;[3FC1] 
     RET                             ;[3FC2] 
 
-;
-; Part of R routine.
-;
-SUB_MONITOR_R:
+RTAPE5:
     JP    (HL)                      ;[3FC3] 
+RTPERR:
     CALL  MOTOFF                    ;[3FC4] 
     LD    HL,BTMS                   ;[3FC7] 
     CALL  PLINE                     ;[3FCA] 
-    LD    A,$0D                     ;[3FCD] 
+    LD    A,CR                      ;[3FCD] 
     RST   $08                       ;[3FCF] 
-    JP    $3B94                     ;[3FD0] 
+    JP    MONERR                    ;[3FD0] 
 
 ;
 ; Multiply subroutine.
