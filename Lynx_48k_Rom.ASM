@@ -2163,16 +2163,16 @@ BASIC_FN_COLOUR:
     JP    INTFP                     ;[0ED1] 
 
 ;
-; Reads reverse polish until CR or comma reached (unused?)
+; Validate VDU. Reads reverse polish until CR or comma reached.
 ;
-READ_RP:
+VALIDATE_VDU:
     CALL  RP                        ;[0ED4] 
     LD    (HL),A                    ;[0ED7] 
-    CP    $0D                       ;[0ED8] 
+    CP    CR                        ;[0ED8] 
     RET   Z                         ;[0EDA] 
     INC   HL                        ;[0EDB] 
-    CP    $2C                       ;[0EDC] 
-    JR    Z,READ_RP                 ;[0EDE] 
+    CP    ','                       ;[0EDC] 
+    JR    Z,VALIDATE_VDU            ;[0EDE] 
     CALL  ERR_SYNTAX                ;[0EE0] 
 
 ;
@@ -2182,38 +2182,44 @@ BASIC_COM_VDU:
     RST   $18                       ;[0EE3] 
     RST   $08                       ;[0EE4] 
     LD    A,(DE)                    ;[0EE5] 
-    CP    $0D                       ;[0EE6] 
+    CP    CR                        ;[0EE6] 
     RET   Z                         ;[0EE8] 
     INC   DE                        ;[0EE9] 
     JR    BASIC_COM_VDU             ;[0EEA] 
+
+;
+; Validate expression with 6 args?
+;
+VALIDATE_E6CR:
     LD    B,$05                     ;[0EEC] 
-    JR    VALIDATE_WORD_ABCD        ;[0EEE] 
+    JR    VALIDATE_COMMAS_CR        ;[0EEE] 
 
 ;
-; Validation for WINDOW.
+; Validation for cmds with 4 args such as WINDOW.
 ;
-VALIDATE_WINDOW:
+VALIDATE_E4CR:
     LD    B,$03                     ;[0EF0] 
-    JR    VALIDATE_WORD_ABCD        ;[0EF2] 
+    JR    VALIDATE_COMMAS_CR        ;[0EF2] 
 
 ;
-; Validation for PLOT;BEEP;PAINT.
+; Validation for cmds with 3 args eg. PLOT;BEEP.
 ;
-VALIDATE_PLOT:
+VALIDATE_CCCR:
     LD    B,$02                     ;[0EF4] 
 
 ;
-; Validation. Words of the form:- WORD a,b,c,d.
+; Validate commands of the form:- cmd a,b,c,d.
+; where B is the number of args. (aka: CMCR1)
 ;
-VALIDATE_WORD_ABCD:
+VALIDATE_COMMAS_CR:
     PUSH  BC                        ;[0EF6] 
     CALL  RP                        ;[0EF7] 
     RST   $20                       ;[0EFA] 
-    INC   L                         ;[0EFB] 
+    DB    ','                       ;[0EFB] 
     LD    (HL),A                    ;[0EFC] 
     INC   HL                        ;[0EFD] 
     POP   BC                        ;[0EFE] 
-    DJNZ  VALIDATE_WORD_ABCD        ;[0EFF] 
+    DJNZ  VALIDATE_COMMAS_CR        ;[0EFF] 
     JP    VALIDATE_INK              ;[0F01] 
 
 ;
@@ -2221,7 +2227,7 @@ VALIDATE_WORD_ABCD:
 ;
 VALIDATE_PRINT:
     DEC   HL                        ;[0F04] 
-    LD    A,$1D                     ;[0F05] 
+    LD    A,PRINT                   ;[0F05] 
     JP    IL2                       ;[0F07] 
 
 ;
@@ -2232,7 +2238,7 @@ PRINT_BAS_LINE:
     SUB   $08                       ;[0F0D] 
     LD    B,A                       ;[0F0F] 
 PRINT_BAS_LINE_LOOP:
-    CALL  OUTPUT_SPACE              ;[0F10] 
+    CALL  DISPLAY_SPACE             ;[0F10] 
     LD    A,(DE)                    ;[0F13] 
     INC   DE                        ;[0F14] 
     CALL  PRINT_HEX_A               ;[0F15] 
@@ -2919,97 +2925,244 @@ DATA_FTBL:
 ;
 ; Command token table.
 ;
-DATA_XTTBL:
-    DB $4B,$CC,$45,$54,$D6,$44,$55,$C4      ;[1416]  K.ET.DU.
-    DB $45,$46,$50,$52,$4F,$43,$D0,$52      ;[141E]  EFPROC.R
-    DB $4F,$43,$C5,$4E,$44,$50,$52,$4F      ;[1426]  OC.NDPRO
-    DB $43,$CE,$45,$58,$54,$C9,$4E,$4B      ;[142E]  C.EXT.NK
-    DB $D0,$41,$50,$45,$52,$D2,$41,$4E      ;[1436]  .APER.AN
-    DB $44,$4F,$4D,$D6,$45,$52,$49,$46      ;[143E]  DOM.ERIF
-    DB $59,$C4,$50,$4F,$4B,$45,$C4,$4F      ;[1446]  Y.POKE.O
-    DB $54,$D0,$4F,$4B,$45,$C5,$4E,$44      ;[144E]  T.OKE.ND
-    DB $D3,$54,$4F,$50,$C6,$4F,$52,$C7      ;[1456]  .TOP.OR.
-    DB $4F,$54,$4F,$C7,$4F,$53,$55,$42      ;[145E]  OTO.OSUB
-    DB $D2,$45,$54,$55,$52,$4E,$C3,$4C      ;[1466]  .ETURN.L
-    DB $53,$D2,$55,$4E,$C3,$4F,$4E,$54      ;[146E]  S.UN.ONT
-    DB $CF,$55,$54,$D2,$45,$4D,$D2,$45      ;[1476]  .UT.EM.E
-    DB $41,$44,$C4,$41,$54,$41,$CE,$45      ;[147E]  AD.ATA.E
-    DB $57,$C4,$45,$4C,$C1,$55,$54,$4F      ;[1486]  W.EL.UTO
-    DB $D0,$52,$49,$4E,$54,$CC,$4F,$41      ;[148E]  .RINT.OA
-    DB $44,$D3,$41,$56,$45,$D2,$45,$53      ;[1496]  D.AVE.ES
-    DB $54,$4F,$52,$45,$D0,$4C,$4F,$54      ;[149E]  TORE.LOT
-    DB $CD,$4F,$56,$45,$C4,$52,$41,$57      ;[14A6]  .OVE.RAW
-    DB $C3,$41,$4C,$4C,$C9,$4E,$50,$55      ;[14AE]  .ALL.NPU
-    DB $54,$C4,$49,$4D,$C9,$46,$CC,$49      ;[14B6]  T.IM.F.I
-    DB $53,$54,$D7,$49,$4E,$44,$4F,$57      ;[14BE]  ST.INDOW
-    DB $D0,$41,$55,$53,$45,$D2,$4F,$55      ;[14C6]  .AUSE.OU
-    DB $4E,$44,$D4,$52,$41,$49,$4C,$CC      ;[14CE]  ND.RAIL.
-    DB $50,$52,$49,$4E,$54,$CC,$4C,$49      ;[14D6]  PRINT.LI
-    DB $53,$54,$CC,$41,$42,$45,$4C,$C2      ;[14DE]  ST.ABEL.
-    DB $45,$45,$50,$D3,$4F,$55,$4E,$44      ;[14E6]  EEP.OUND
-    DB $C1,$50,$50,$45,$4E,$44,$C3,$4F      ;[14EE]  .PPEND.O
-    DB $44,$45,$CC,$49,$4E,$4B,$D3,$57      ;[14F6]  DE.INK.W
-    DB $41,$50,$D7,$48,$49,$4C,$45,$D7      ;[14FE]  AP.HILE.
-    DB $45,$4E,$44,$D2,$45,$50,$45,$41      ;[1506]  END.EPEA
-    DB $54,$D5,$4E,$54,$49,$4C,$C0,$40      ;[150E]  T.NTIL.@
-    DB $40,$40,$40,$BF,$C5,$4C,$53,$45      ;[1516]  @@@..LSE
-    DB $D2,$45,$53,$45,$52,$56,$45,$CD      ;[151E]  .ESERVE.
-    DB $4F,$4E,$D2,$45,$4E,$55,$4D,$D8      ;[1526]  ON.ENUM.
-    DB $52,$4F,$4D,$C5,$58,$54,$C3,$46      ;[152E]  ROM.XT.F
-    DB $52,$C3,$43,$48,$41,$52,$D4,$52      ;[1536]  R.CHAR.R
-    DB $41,$43,$45,$D3,$50,$45,$45,$44      ;[153E]  ACE.PEED
-    DB $D0,$52,$4F,$54,$45,$43,$54,$C5      ;[1546]  .ROTECT.
-    DB $52,$52,$4F,$52,$D4,$41,$50,$45      ;[154E]  RROR.APE
-    DB $CD,$4C,$4F,$41,$44,$D4,$45,$58      ;[1556]  .LOAD.EX
-    DB $54,$80                              ;[155E]  T.
+XTTBLS:
+    DB    BREAK                     ;[1416] 
+    DB    'L'+S,"ET"                ;[1417] LET
+    DB    'V'+S,"DU"                ;[141A] VDU
+    DB    'D'+S,"EFPROC"            ;[141D] DEFPROC
+    DB    'P'+S,"ROC"               ;[1424] PROC
+    DB    'E'+S,"NDPROC"            ;[1428] ENDPROC
+    DB    'N'+S,"EXT"               ;[142F] NEXT
+    DB    'I'+S,"NK"                ;[1433] INK
+    DB    'P'+S,"APER"              ;[1436] PAPER
+    DB    'R'+S,"ANDOM"             ;[143B] RANDOM
+    DB    'V'+S,"ERIFY"             ;[1441] VERIFY
+    DB    'D'+S,"POKE"              ;[1447] DPOKE
+    DB    'D'+S,"OT"                ;[144C] DOT
+    DB    'P'+S,"OKE"               ;[144F] POKE
+    DB    'E'+S,"ND"                ;[1453] END
+    DB    'S'+S,"TOP"               ;[1456] STOP
+    DB    'F'+S,"OR"                ;[145A] FOR
+    DB    'G'+S,"OTO"               ;[145D] GOTO
+    DB    'G'+S,"OSUB"              ;[1461] GOSUB
+    DB    'R'+S,"ETURN"             ;[1466] RETURN
+    DB    'C'+S,"LS"                ;[146C] CLS
+    DB    'R'+S,"UN"                ;[146F] RUN
+    DB    'C'+S,"ONT"               ;[1472] CONT
+    DB    'O'+S,"UT"                ;[1476] OUT
+    DB    'R'+S,"EM"                ;[1479] REM
+    DB    'R'+S,"EAD"               ;[147C] READ
+    DB    'D'+S,"ATA"               ;[1480] DATA
+    DB    'N'+S,"EW"                ;[1484] NEW
+    DB    'D'+S,"EL"                ;[1487] DELETE
+    DB    'A'+S,"UTO"               ;[148A] AUTO
+    DB    'P'+S,"RINT"              ;[148E] PRINT
+    DB    'L'+S,"OAD"               ;[1493] LOAD
+    DB    'S'+S,"AVE"               ;[1497] SAVE
+    DB    'R'+S,"ESTORE"            ;[149B] RESTORE
+    DB    'P'+S,"LOT"               ;[14A2] PLOT
+    DB    'M'+S,"OVE"               ;[14A6] MOVE
+    DB    'D'+S,"RAW"               ;[14AA] DRAW
+    DB    'C'+S,"ALL"               ;[14AE] CALL
+    DB    'I'+S,"NPUT"              ;[14B2] INPUT
+    DB    'D'+S,"IM"                ;[14B7] DIM
+    DB    'I'+S,"F"                 ;[14BA] IF
+    DB    'L'+S,"IST"               ;[14BC] LIST
+    DB    'W'+S,"INDOW"             ;[14C0] WINDOW
+    DB    'P'+S,"AUSE"              ;[14C6] PAUSE
+    DB    'R'+S,"OUND"              ;[14CB] ROUND
+    DB    'T'+S,"RAIL"              ;[14D0] TRAIL
+    DB    'L'+S,"PRINT"             ;[14D5] LPRINT
+    DB    'L'+S,"LIST"              ;[14DB] LLIST
+    DB    'L'+S,"ABEL"              ;[14E0] LABEL
+    DB    'B'+S,"EEP"               ;[14E5] BEEP
+    DB    'S'+S,"OUND"              ;[14E9] SOUND
+    DB    'A'+S,"PPEND"             ;[14EE] APPEND
+    DB    'C'+S,"ODE"               ;[14F4] CODE
+    DB    'L'+S,"INK"               ;[14F8] LINK
+    DB    'S'+S,"WAP"               ;[14FC] SWAP
+    DB    'W'+S,"HILE"              ;[1500] WHILE
+    DB    'W'+S,"END"               ;[1505] WEND
+    DB    'R'+S,"EPEAT"             ;[1509] REPEAT
+    DB    'U'+S,"NTIL"              ;[150F] UNTIL
+    DB    '@'+S,"@@@@"              ;[1514] 
+    DB    '?'+S                     ;[1519] PRINT ABBREV
+    DB    'E'+S,"LSE"               ;[151A] ELSE
+    DB    'R'+S,"ESERVE"            ;[151E] RESERVE
+    DB    'M'+S,"ON"                ;[1525] MONITOR
+    DB    'R'+S,"ENUM"              ;[1528] RENUM
+    DB    'X'+S,"ROM"               ;[152D] XROM
+    DB    'E'+S,"XT"                ;[1531] EXT
+    DB    'C'+S,"FR"                ;[1534] CURSOR FLASH RATE
+    DB    'C'+S,"CHAR"              ;[1537] CURSOR CHARACTERS
+    DB    'T'+S,"RACE"              ;[153C] TRACE
+    DB    'S'+S,"PEED"              ;[1541] SPEED
+    DB    'P'+S,"ROTECT"            ;[1546] PROTECT
+    DB    'E'+S,"RROR"              ;[154D] ERROR
+    DB    'T'+S,"APE"               ;[1552] TAPE
+    DB    'M'+S,"LOAD"              ;[1556] MLOAD
+    DB    'T'+S,"EXT"               ;[155B] TEXT
+    DB    S                         ;[155F] TERMINATE
 
 ;
 ; Input syntax checking table. Validation routine addresses for BASIC words.
 ;
-DATA_XITBL:
-    DB $7C,$26,$D4,$0E,$6F,$29,$5D,$29      ;[1560]  |&..o)])
-    DB $DB,$26,$D8,$26,$07,$27,$07,$27      ;[1568]  .&.&.'.'
-    DB $DB,$26,$16,$26,$BD,$26,$BD,$26      ;[1570]  .&.&.&.&
-    DB $BD,$26,$DB,$26,$DB,$26,$DF,$26      ;[1578]  .&.&.&.&
-    DB $C3,$26,$C3,$26,$DB,$26,$DB,$26      ;[1580]  .&.&.&.&
-    DB $5D,$26,$DB,$26,$BD,$26,$3C,$27      ;[1588]  ]&.&.&<'
-    DB $39,$26,$3C,$27,$DB,$26,$68,$26      ;[1590]  9&<'.&h&
-    DB $64,$26,$11,$2A,$16,$26,$1D,$26      ;[1598]  d&.*.&.&
-    DB $5D,$26,$F4,$0E,$BD,$26,$BD,$26      ;[15A0]  ]&...&.&
-    DB $68,$26,$2C,$26,$66,$2E,$FD,$26      ;[15A8]  h&,&f..&
-    DB $64,$26,$F0,$0E,$07,$27,$06,$26      ;[15B0]  d&...'.&
-    DB $06,$26,$11,$2A,$64,$26,$3C,$27      ;[15B8]  .&.*d&<'
-    DB $F4,$0E,$BD,$26,$16,$26,$25,$0F      ;[15C0]  ...&.&%.
-    DB $06,$26,$45,$27,$07,$27,$DB,$26      ;[15C8]  .&E'.'.&
-    DB $DB,$26,$07,$27,$F4,$0E,$04,$0F      ;[15D0]  .&.'....
-    DB $A9,$27,$07,$27,$DB,$26,$64,$26      ;[15D8]  .'.'.&d&
-    DB $DB,$26,$21,$62,$07,$27,$07,$27      ;[15E0]  .&!b.'.'
-    DB $06,$26,$07,$27,$07,$27,$07,$27      ;[15E8]  .&.'.'.'
-    DB $07,$27,$16,$26,$DB,$26              ;[15F0]  .'.&.&
+XITBLS:
+    DW    VALIDATE_LET              ;[1560] 
+    DW    VALIDATE_VDU              ;[1562] VDU
+    DW    VALIDATE_DEFPROC          ;[1564] DEFPROC
+    DW    VALIDATE_PROC             ;[1566] PROC
+    DW    VALIDATE_MON              ;[1568] ENDPROC
+    DW    VALIDATE_NEXT             ;[156A] NEXT
+    DW    VALIDATE_INK              ;[156C] INK
+    DW    VALIDATE_INK              ;[156E] PAPER
+    DW    VALIDATE_MON              ;[1570] RANDOM
+    DW    VALIDATE_LOAD             ;[1572] VERIFY
+    DW    VALIDATE_DPOKE            ;[1574] DPOKE
+    DW    VALIDATE_DPOKE            ;[1576] POINT
+    DW    VALIDATE_DPOKE            ;[1578] POKE
+    DW    VALIDATE_MON              ;[157A] END
+    DW    VALIDATE_MON              ;[157C] STOP
+    DW    VALIDATE_FOR              ;[157E] FOR
+    DW    VALIDATE_GOTO             ;[1580] GOTO
+    DW    VALIDATE_GOTO             ;[1582] GOSUB
+    DW    VALIDATE_MON              ;[1584] RETURN
+    DW    VALIDATE_MON              ;[1586] CLS
+    DW    VALIDATE_RESTORE          ;[1588] RUN
+    DW    VALIDATE_MON              ;[158A] CONT
+    DW    VALIDATE_DPOKE            ;[158C] OUT
+    DW    VALIDATE_REM              ;[158E] REM
+    DW    IRD                       ;[1590] READ
+    DW    VALIDATE_REM              ;[1592] DATA
+    DW    VALIDATE_MON              ;[1594] NEW
+    DW    VALIDATE_CALL             ;[1596] DELETE
+    DW    VALIDATE_LIST             ;[1598] AUTO
+    DW    VALIDATE_PRINT1           ;[159A] PRINT
+    DW    VALIDATE_LOAD             ;[159C] LOAD
+    DW    VALIDATE_SAVE             ;[159E] SAVE
+    DW    VALIDATE_RESTORE          ;[15A0] RESTORE
+    DW    VALIDATE_CCCR             ;[15A2] PLOT
+    DW    VALIDATE_DPOKE            ;[15A4] MOVE
+    DW    VALIDATE_DPOKE            ;[15A6] DRAW
+    DW    VALIDATE_CALL             ;[15A8] CALL
+    DW    VALIDATE_INPUT            ;[15AA] INPUT
+    DW    VALIDATE_DIM              ;[15AC] DIM
+    DW    VALIDATE_IF               ;[15AE] IF
+    DW    VALIDATE_LIST             ;[15B0] LIST
+    DW    VALIDATE_E4CR             ;[15B2] WINDOW
+    DW    VALIDATE_INK              ;[15B4] PAUSE
+    DW    VALIDATE_ROUND            ;[15B6] ROUND
+    DW    VALIDATE_ROUND            ;[15B8] TRAIL
+    DW    VALIDATE_PRINT1           ;[15BA] LPRINT
+    DW    VALIDATE_LIST             ;[15BC] LLIST
+    DW    VALIDATE_REM              ;[15BE] LABEL
+    DW    VALIDATE_CCCR             ;[15C0] BEEP
+    DW    VALIDATE_DPOKE            ;[15C2] SOUND
+    DW    VALIDATE_LOAD             ;[15C4] APPEND
+    DW    VALIDATE_CODE             ;[15C6] CODE
+    DW    VALIDATE_ROUND            ;[15C8] LINK
+    DW    VALIDATE_SWAP             ;[15CA] SWAP
+    DW    VALIDATE_INK              ;[15CC] WHILE
+    DW    VALIDATE_MON              ;[15CE] WEND
+    DW    VALIDATE_MON              ;[15D0] REPEAT
+    DW    VALIDATE_INK              ;[15D2] UNTIL
+    DW    VALIDATE_CCCR             ;[15D4] 
+    DW    VALIDATE_PRINT            ;[15D6] ? (PRINT)
+    DW    IL1                       ;[15D8] ELSE
+    DW    VALIDATE_INK              ;[15DA] RESERV
+    DW    VALIDATE_MON              ;[15DC] MONITOR
+    DW    VALIDATE_LIST             ;[15DE] RENUM
+    DW    VALIDATE_MON              ;[15E0] XROM
+    DW    SYSVAR_IEXT               ;[15E2] EXT
+    DW    VALIDATE_INK              ;[15E4] CFR
+    DW    VALIDATE_INK              ;[15E6] CCHAR
+    DW    VALIDATE_ROUND            ;[15E8] TRACE
+    DW    VALIDATE_INK              ;[15EA] SPEED
+    DW    VALIDATE_INK              ;[15EC] PROTECT
+    DW    VALIDATE_INK              ;[15EE] ERROR
+    DW    VALIDATE_INK              ;[15F0] TAPE
+    DW    VALIDATE_LOAD             ;[15F2] MLOAD
+    DW    VALIDATE_MON              ;[15F4] TEXT
 
 ;
 ; Command execution table. Execution routine addresses for BASIC words.
 ;
-DATA_XETBL:
-    DB $48,$21,$E3,$0E,$4A,$3B,$04,$29      ;[15F6]  H!..J;.)
-    DB $88,$29,$DB,$23,$4B,$0F,$50,$0F      ;[15FE]  .).#K.P.
-    DB $A8,$1F,$5A,$0C,$8C,$23,$93,$0F      ;[1606]  ..Z..#..
-    DB $85,$23,$BE,$1F,$2F,$1E,$97,$23      ;[160E]  .#../..#
-    DB $A2,$22,$96,$22,$74,$20,$B1,$1F      ;[1616]  ."."t...
-    DB $80,$22,$6D,$22,$7D,$23,$5F,$24      ;[161E]  ."m"}#_$
-    DB $C5,$21,$5F,$24,$83,$20,$3F,$23      ;[1626]  .!_$..?#
-    DB $8A,$28,$A9,$29,$8F,$0C,$CB,$0B      ;[162E]  .(.)....
-    DB $7D,$21,$A5,$0F,$55,$0F,$5F,$0F      ;[1636]  }!..U._.
-    DB $5F,$20,$94,$20,$CB,$2D,$2C,$24      ;[163E]  _....-,$
-    DB $E9,$22,$31,$08,$22,$21,$73,$24      ;[1646]  ."1."!s$
-    DB $55,$24,$4E,$22,$38,$23,$5F,$24      ;[164E]  U$N"8#_$
-    DB $3D,$09,$81,$09,$87,$0C,$5F,$24      ;[1656]  =....._$
-    DB $7E,$24,$5F,$22,$D3,$1F,$C4,$1F      ;[165E]  ~$_"....
-    DB $13,$20,$FA,$1F,$32,$3B,$32,$3B      ;[1666]  ....2;2;
-    DB $5F,$24,$4E,$2A,$64,$3B,$7E,$2A      ;[166E]  _$N*d;~*
-    DB $00,$E0,$24,$62,$AE,$0E,$B3,$0E      ;[1676]  ..$b....
-    DB $6E,$24,$60,$24,$2D,$21,$05,$0E      ;[167E]  n$`$-!..
-    DB $92,$0D,$62,$3F,$32,$21              ;[1686]  ..b?2!
+XETBLS:
+    DW    BASIC_COM_LET             ;[15F6] 
+    DW    BASIC_COM_VDU             ;[15F8] VDU
+    DW    ERR_WRONG_MODE            ;[15FA] DEFPROC
+    DW    BASIC_COM_PROC            ;[15FC] PROC
+    DW    BASIC_COM_ENDPROC         ;[15FE] ENDPROC
+    DW    BASIC_COM_NEXT            ;[1600] NEXT
+    DW    BASIC_COM_INK             ;[1602] INK
+    DW    BASIC_COM_PAPER           ;[1604] PAPER
+    DW    BASIC_COM_RANDOM          ;[1606] RANDOM
+    DW    BASIC_COM_VERIFY          ;[1608] VERIFY
+    DW    BASIC_COM_DPOKE           ;[160A] DPOKE
+    DW    BASIC_COM_DOT             ;[160C] POINT
+    DW    BASIC_COM_POKE            ;[160E] POKE
+    DW    BASIC_COM_END             ;[1610] END
+    DW    BASIC_COM_STOP            ;[1612] STOP
+    DW    BASIC_COM_FOR             ;[1614] FOR
+    DW    BASIC_COM_GOTO            ;[1616] GOTO
+    DW    BASIC_COM_GOSUB           ;[1618] GOSUB
+    DW    BASIC_COM_RETURN          ;[161A] RETURN
+    DW    BASIC_COM_CLS             ;[161C] CLS
+    DW    BASIC_COM_RUN             ;[161E] RUN
+    DW    BASIC_COM_CONT            ;[1620] CONT
+    DW    BASIC_COM_OUT             ;[1622] OUT
+    DW    BASIC_COM_NO_EXE          ;[1624] REM
+    DW    BASIC_COM_READ            ;[1626] READ
+    DW    BASIC_COM_NO_EXE          ;[1628] DATA
+    DW    BASIC_COM_NEW             ;[162A] NEW
+    DW    BASIC_COM_DEL             ;[162C] DELETE
+    DW    BASIC_COM_AUTO            ;[162E] AUTO
+    DW    BASIC_COM_PRINT           ;[1630] PRINT
+    DW    BASIC_COM_LOAD            ;[1632] LOAD
+    DW    BASIC_COM_SAVE            ;[1634] SAVE
+    DW    BASIC_COM_RESTORE         ;[1636] RESTORE
+    DW    BASIC_COM_PLOT            ;[1638] PLOT
+    DW    BASIC_COM_MOVE            ;[163A] MOVE
+    DW    BASIC_COM_DRAW            ;[163C] DRAW
+    DW    BASIC_COM_CALL            ;[163E] CALL
+    DW    BASIC_COM_INPUT           ;[1640] INPUT
+    DW    BASIC_COM_DIM             ;[1642] DIM
+    DW    BASIC_COM_IF              ;[1644] IF
+    DW    BASIC_COM_LIST            ;[1646] LIST
+    DW    BASIC_COM_WINDOW          ;[1648] WINDOW
+    DW    BASIC_COM_PAUSE           ;[164A] PAUSE
+    DW    BASIC_COM_ROUND           ;[164C] ROUND
+    DW    BASIC_COM_TRAIL           ;[164E] TRAIL
+    DW    BASIC_COM_LPRINT          ;[1650] LPRINT
+    DW    BASIC_COM_LLIST           ;[1652] LLIST
+    DW    BASIC_COM_NO_EXE          ;[1654] LABEL
+    DW    BASIC_COM_BEEP            ;[1656] BEEP
+    DW    BASIC_COM_SOUND           ;[1658] SOUND
+    DW    BASIC_COM_APPEND          ;[165A] APPEND
+    DW    BASIC_COM_NO_EXE          ;[165C] CODE
+    DW    BASIC_COM_LINK            ;[165E] LINK
+    DW    BASIC_COM_SWAP            ;[1660] SWAP
+    DW    BASIC_COM_WHILE           ;[1662] WHILE
+    DW    BASIC_COM_WEND            ;[1664] WEND
+    DW    BASIC_COM_REPEAT          ;[1666] REPEAT
+    DW    BASIC_COM_UNTIL           ;[1668] UNTIL
+    DW    ERR_NOT_YET_IMP           ;[166A] 
+    DW    ERR_NOT_YET_IMP           ;[166C] ? (PRINT)
+    DW    BASIC_COM_NO_EXE          ;[166E] ELSE
+    DW    BASIC_COM_RESERVE         ;[1670] RESERV
+    DW    BASIC_COM_MON             ;[1672] MONITOR
+    DW    BASIC_COM_RENUM           ;[1674] RENUM
+    DW    XROM                      ;[1676] XROM
+    DW    SYSVAR_EEXT               ;[1678] EXT
+    DW    BASIC_COM_CFR             ;[167A] CFR
+    DW    BASIC_COM_CCHAR           ;[167C] CCHAR
+    DW    BASIC_COM_TRACE           ;[167E] TRACE
+    DW    BASIC_COM_SPEED           ;[1680] SPEED
+    DW    BASIC_COM_PROTECT         ;[1682] PROTECT
+    DW    BASIC_COM_ERROR           ;[1684] ERROR
+    DW    BASIC_COM_TAPE            ;[1686] TAPE
+    DW    BASIC_COM_MLOAD           ;[1688] MLOAD
+    DW    ETEXT                     ;[168A] TEXT
 
 ;
 ; Lynx initialisation (called after INIT CRT)
@@ -3096,33 +3249,105 @@ DO_AUTONUM:
 ; Data used in initialisation.
 ;
 DATA_INIT:
-    DB $00,$FF,$01,$00,$00,$00,$00,$00      ;[1715]  ........
-    DB $05,$36,$4C,$69,$4D,$69,$4D,$69      ;[171D]  .6LiMiMi
-    DB $07,$63,$A4,$06,$5F,$24,$5B,$0B      ;[1725]  .c.._$[.
-    DB $01,$00,$01,$00,$00,$07,$66,$07      ;[172D]  ......f.
-    DB $66,$07,$67,$10,$68,$E4,$68,$68      ;[1735]  f.g.h.hh
-    DB $13,$E1,$11,$16,$14,$60,$15,$F6      ;[173D]  .....`..
-    DB $15,$4E,$69,$C3,$3C,$27,$C3,$32      ;[1745]  .Ni.<'.2
-    DB $3B,$C9,$00,$00,$C9,$00,$00,$01      ;[174D]  ;.......
-    DB $00,$18,$35,$00,$00,$00,$08,$00      ;[1755]  ..5.....
-    DB $00,$00,$00,$00,$1C,$30,$15,$1B      ;[175D]  .....0..
-    DB $19,$02,$10,$11,$25,$2F,$3E,$28      ;[1765]  ....%/>(
-    DB $12,$05,$04,$03,$17,$38,$0E,$44      ;[176D]  .....8.D
-    DB $39,$09,$36,$37,$14,$20,$03,$05      ;[1775]  9.67....
-    DB $03,$7B,$05,$F5,$00,$07,$00,$00      ;[177D]  .{......
-    DB $02,$20,$EF,$00,$C3,$BE,$0F,$00      ;[1785]  ........
-    DB $00,$00,$00,$00,$00,$00,$C3,$5E      ;[178D]  .......^
-    DB $08,$94,$00,$D4,$01,$20,$00,$00      ;[1795]  ........
-    DB $C3,$32,$3B,$C3,$32,$3B,$C3,$32      ;[179D]  .2;.2;.2
-    DB $3B,$C3,$32,$3B,$C3,$32,$3B,$C3      ;[17A5]  ;.2;.2;.
-    DB $32,$3B,$C9,$00,$00,$C9,$00,$00      ;[17AD]  2;......
-    DB $00,$80,$00,$C0,$00,$C0,$C3,$32      ;[17B5]  .......2
-    DB $3B,$C3,$32,$3B,$EF,$38,$50,$01      ;[17BD]  ;.2;.8P.
-    DB $04,$03,$28,$09,$0D,$C3,$D4,$0C      ;[17C5]  ..(.....
-    DB $C3,$67,$0D,$C3,$D7,$18,$C3,$BE      ;[17CD]  .g......
-    DB $19,$C3,$A9,$33,$C3,$E5,$27,$C3      ;[17D5]  ...3..'.
-    DB $E5,$24,$C3,$9A,$00,$C3,$E2,$10      ;[17DD]  .$......
-    DB $C3,$5C,$2D,$00                      ;[17E5]  .\-.
+    DW    $FF00                     ;[1715] 
+    DB    1,0,0,0                   ;[1717] Random #
+    DW    0                         ;[171B] HL store
+    DW    FLOAT_ZERO                ;[171D] Current line point to zero
+    DW    SYSVAR_SOBS-1             ;[171F] Start of basic - 1
+    DW    SYSVAR_SOBS               ;[1721] Start of basic
+    DW    SYSVAR_SOBS               ;[1723] End of basic
+    DW    SYSVAR_POLBUFS            ;[1725] Polish buffer
+    DW    SCREEN                    ;[1727] Display driver
+    DW    BASIC_COM_NO_EXE          ;[1729] Printer driver
+    DW    KEYB                      ;[172B] Basic keyboard driver
+    DB    1                         ;[172D] Output type 1=Display,2=printer
+    DB    0                         ;[172E] Last chr output
+    DB    1                         ;[172F] Current variable type
+    DB    0                         ;[1730] Continue line pointer
+    DB    0                         ;[1731] 
+    DW    SYSVAR_RSTACKS            ;[1732] Return stack start address
+    DW    SYSVAR_RSTACKS            ;[1734] Return stack pointer
+    DW    SYSVAR_VTBLS              ;[1736] Variable table
+    DW    SYSVAR_ATBLS              ;[1738] Array table
+    DW    SYSVAR_STBLS              ;[173A] String table
+    DW    DATA_FTBL                 ;[173C] Function table
+    DW    DATA_TTBL                 ;[173E] Token table
+    DW    XTTBLS                    ;[1740] Extra token table
+    DW    XITBLS                    ;[1742] Extra input syntax
+    DW    XETBLS                    ;[1744] Extra execution
+    DW    SYSVAR_SOBS+1             ;[1746] Top of vars
+    JP    VALIDATE_REM              ;[1748] Load in following
+    JP    ERR_NOT_YET_IMP           ;[174B] Not implemented
+    DB    $C9                       ;[174E] Before input of line
+    DW    0                         ;[174F] 
+    DB    $C9                       ;[1751] Before execute line
+    DW    0                         ;[1752] Zero flag ,round on
+    DB    1                         ;[1754] Auto off
+    DB    0                         ;[1755] Carriage return message
+    DW    CRMS                      ;[1756] Ksms off
+    DB    0                         ;[1758] Repeat delay
+    DB    0                         ;[1759] Last chr
+    DB    0                         ;[175A] Status
+    DW    8                         ;[175B] Repeat count
+    DB    0,0,0,0                   ;[175D] Shift lock off
+    DB    AUTO,BEEP,CONT,DELETE     ;[1761] Shortcut table
+    DB    DATA,DEFPRC,GOTO,GOSUB    ;[1765] 
+    DB    INPUT,LABEL,MONITR,LIST   ;[1769] 
+    DB    RETURN,NEXT,ENDPRC,PROC   ;[176D] 
+    DB    REM,REPEAT,STOP,TRACE     ;[1771] 
+    DB    UNTIL,VERIFY,WHILE,WEND   ;[1775] 
+    DB    RUN, RESTOR               ;[1779] 
+    DB    3                         ;[177B] CURSRX
+    DB    5                         ;[177C] CURSRY
+    DB    KWNDLF,KWNDRT,5,245       ;[177D] default window
+    DB    0                         ;[1781] CURSTA
+    DB    7                         ;[1782] INK
+    DB    0                         ;[1783] PAPER
+    DW    KFLASH                    ;[1784] FLASH
+    DB    ' '                       ;[1786] INPCUR
+    DB    $EF                       ;[1787] 
+    DB    0                         ;[1788] EXFLAG
+    JP    $0FBE                     ;[1789] GLINE
+    DW    0                         ;[178C] GOLDX
+    DB    0                         ;[178E] GOLDY
+    DW    0                         ;[178F] GNEWX
+    DB    0                         ;[1791] GNEWY
+    DB    0                         ;[1792] PROTST
+    JP    OUTB                      ;[1793] OUTB
+    DW    DATA_CHARS-320            ;[1796] CHRTBL
+    DW    DATA_CHARS                ;[1798] GPHTBL
+    DW    KBPERL                    ;[179A] BPERL
+    DB    0                         ;[179C] MASK
+    JP    ERR_NOT_YET_IMP           ;[179D] Not yet implemented
+    JP    ERR_NOT_YET_IMP           ;[17A0] Not yet implemented
+    JP    ERR_NOT_YET_IMP           ;[17A3] Not yet implemented
+    JP    ERR_NOT_YET_IMP           ;[17A6] Not yet implemented
+    JP    ERR_NOT_YET_IMP           ;[17A9] Not yet implemented
+    JP    ERR_NOT_YET_IMP           ;[17AC] Not yet implemented
+    DB    $C9                       ;[17AF] 
+    DW    0                         ;[17B0] 
+    DB    $C9                       ;[17B2] 
+    DW    0                         ;[17B3] 
+    DW    KBLUE                     ;[17B5] BLUE BANK
+    DW    KRED                      ;[17B7] RED BANK
+    DW    KGREEN                    ;[17B9] GRN BANK
+    JP    ERR_NOT_YET_IMP           ;[17BB] NMIRAM
+    JP    ERR_NOT_YET_IMP           ;[17BE] RSTRAM (IRQ)
+    DW    ERRS                      ;[17C1] ERRTBL
+    DB    $50,$01,$04,$03           ;[17C3] CASLEVEL/COARSE/FINE/SYNCLEN
+    DB    $28                       ;[17C7] VOLTAGE
+    DW    DATA_CASTBL               ;[17C8] CASTBL
+    JP    RBIT                      ;[17CA] RBIT
+    JP    WBYTE                     ;[17CD] WBYTE
+    JP    PP                        ;[17D0] PP
+    JP    NTPS                      ;[17D3] NTPS
+    JP    EE                        ;[17D6] EE
+    JP    DBASLN                    ;[17D9] DBASLN
+    JP    DEBUG                     ;[17DC] DEBUG
+    JP    VIDEO                     ;[17DF] VIDEO
+    JP    LINP                      ;[17E2] LINE INPUT
+    JP    VRPTS                     ;[17E5] VRPTS
+    DB    0                         ;[17E8] 
 
 ;
 ; BEEP,BEEP
@@ -6284,13 +6509,13 @@ IL3:
 ; Print a word from a list (6219).
 ;
 SUB_PRINT_KEYWORD:
-    CALL  OUTPUT_SPACE              ;[27D2] 
+    CALL  DISPLAY_SPACE             ;[27D2] 
     LD    HL,(SYSVAR_XTTBL)         ;[27D5] 
     LD    B,A                       ;[27D8] 
     INC   B                         ;[27D9] 
     CALL  TOKEN_TO_WORD_FIND        ;[27DA] 
     CALL  PNE15                     ;[27DD] 
-    CALL  OUTPUT_SPACE              ;[27E0] 
+    CALL  DISPLAY_SPACE             ;[27E0] 
     INC   DE                        ;[27E3] 
     RET                             ;[27E4] 
 
@@ -6341,11 +6566,11 @@ DBASLN2:
 DBASLN3:
     CP    $DF                       ;[282A] 
     PUSH  AF                        ;[282C] 
-    CALL  C,OUTPUT_SPACE            ;[282D] 
+    CALL  C,DISPLAY_SPACE           ;[282D] 
     CALL  PNE1                      ;[2830] 
     POP   AF                        ;[2833] 
     PUSH  AF                        ;[2834] 
-    CALL  C,OUTPUT_SPACE            ;[2835] 
+    CALL  C,DISPLAY_SPACE           ;[2835] 
     POP   AF                        ;[2838] 
     INC   DE                        ;[2839] 
     CP    THEN                      ;[283A] 
@@ -6409,7 +6634,7 @@ SUB_INDENT1:
     RLCA                            ;[2882] 
     LD    B,A                       ;[2883] 
 SUB_INDENT_LOOP:
-    CALL  OUTPUT_SPACE              ;[2884] 
+    CALL  DISPLAY_SPACE             ;[2884] 
     DJNZ  SUB_INDENT_LOOP           ;[2887] 
     RET                             ;[2889] 
 
@@ -8690,7 +8915,7 @@ PUTCHAR:
 ;
 ; Output a space
 ;
-OUTPUT_SPACE:
+DISPLAY_SPACE:
     PUSH  AF                        ;[352A] 
     LD    A,' '                     ;[352B] 
     JR    DISPLAYB1                 ;[352D] 
@@ -9660,7 +9885,7 @@ MODFY2:
     CALL  PRINT_HEX_A               ;[3C3D] 
     LD    A,'>'                     ;[3C40] 
     RST   $08                       ;[3C42] 
-    CALL  OUTPUT_SPACE              ;[3C43] 
+    CALL  DISPLAY_SPACE             ;[3C43] 
     CALL  SYSVAR_LINP               ;[3C46] 
     POP   BC                        ;[3C49] 
     LD    DE,INPBUF                 ;[3C4A] 
@@ -9709,7 +9934,7 @@ HEX3:
 HEX2:
     PUSH  BC                        ;[3C80] 
     CALL  HEXSUB                    ;[3C81] 
-    CALL  OUTPUT_SPACE              ;[3C84] 
+    CALL  DISPLAY_SPACE             ;[3C84] 
     LD    B,$08                     ;[3C87] 
 HEX4:
     LD    A,(HL)                    ;[3C89] 
@@ -9732,7 +9957,7 @@ HEXXX:
 
 HEXSUB:
     CALL  PRINT_HEX_HL              ;[3CA5] 
-    CALL  OUTPUT_SPACE              ;[3CA8] 
+    CALL  DISPLAY_SPACE             ;[3CA8] 
     LD    B,8                       ;[3CAB] 
     PUSH  HL                        ;[3CAD] 
 HEX1:
@@ -9766,7 +9991,7 @@ REGST2:
     RST   $08                       ;[3CCA] 
     INC   IX                        ;[3CCB] 
     DJNZ  REGST2                    ;[3CCD] 
-    CALL  OUTPUT_SPACE              ;[3CCF] 
+    CALL  DISPLAY_SPACE             ;[3CCF] 
     LD    A,(DE)                    ;[3CD2] 
     LD    L,A                       ;[3CD3] 
     INC   DE                        ;[3CD4] 
@@ -9798,7 +10023,7 @@ REGMSG:
 PRINT_HEX_HL:
     CALL  PHEXHL                    ;[3D0C] 
 MPHL1:
-    JP    OUTPUT_SPACE              ;[3D0F] 
+    JP    DISPLAY_SPACE             ;[3D0F] 
 MPHXA:
     CALL  PRINT_HEX_A               ;[3D12] 
     JR    MPHL1                     ;[3D15] 

@@ -20,6 +20,7 @@
 ; (possibly some unused in 48K original rom - TBD)
 ;
 EXT_ROM     EQU $4000   ; External ROM address
+XROM        EQU $E000
 ;TEDIT       EQU 5       ; unused
 RLAST       EQU 17      ; Input related
 MAXLEN      EQU 240     ; Maximum length of input buffer
@@ -70,14 +71,14 @@ KOUTBL      EQU $0E6    ; bank switches for screen I/O
 KOUTGR      EQU $0C6
 KINBL       EQU $26
 KINGR       EQU $06
-KBLUE       EQU $0C000  ; addresses of colour banks
-KRED        EQU $8000
-KGREEN      EQU $8000
-KALTG       EQU $0C000
-KDBLUE      EQU $0C020  ; temp. addr. for double height
+KBLUE       EQU $8000  ; addresses of colour banks
+KRED        EQU $C000
+KGREEN      EQU $C000
+KALTG       EQU $C000
+KDBLUE      EQU $C020  ; temp. addr. for double height
 KDRED       EQU $8020
 KDGREEN     EQU $8020
-KDALTG      EQU $0C020
+KDALTG      EQU $C020
 
 ;
 ; Lynx System RAM locations, prior to the start of user ram (Basic).
