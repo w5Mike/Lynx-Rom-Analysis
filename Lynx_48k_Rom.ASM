@@ -2140,24 +2140,24 @@ BASIC_COM_CCHAR:
     RET                             ;[0EB7] 
 
 ;
-; List of colours - starting with WHITE
+; List of colours
 ;
-BASIC_FN_COLOUR:
-    XOR   A                         ;[0EB8] 
-    INC   A                         ;[0EB9] 
-    LD    B,$AF                     ;[0EBA] YELLOW.
-    INC   A                         ;[0EBC] 
-    LD    B,$AF                     ;[0EBD] CYAN.
-    INC   A                         ;[0EBF] 
-    LD    B,$AF                     ;[0EC0] GREEN.
-    INC   A                         ;[0EC2] 
-    LD    B,$AF                     ;[0EC3] MAGENTA.
-    INC   A                         ;[0EC5] 
-    LD    B,$AF                     ;[0EC6] RED.
-    INC   A                         ;[0EC8] 
-    LD    B,$AF                     ;[0EC9] BLUE.
-    INC   A                         ;[0ECB] 
-    LD    B,$AF                     ;[0ECC] BLACK.
+FN_WHITE:
+    DB    $AF,$3C,6                 ;[0EB8] 
+FN_YELLOW:
+    DB    $AF,$3C,6                 ;[0EBB] YELLOW.
+FN_CYAN:
+    DB    $AF,$3C,6                 ;[0EBE] CYAN.
+FN_GREEN:
+    DB    $AF,$3C,6                 ;[0EC1] GREEN.
+FN_MAGENTA:
+    DB    $AF,$3C,6                 ;[0EC4] MAGENTA.
+FN_RED:
+    DB    $AF,$3C,6                 ;[0EC7] RED.
+FN_BLUE:
+    DB    $AF,$3C,6                 ;[0ECA] BLUE.
+FN_BLACK:
+    XOR   A                         ;[0ECD] BLACK.
     LD    L,A                       ;[0ECE] 
     LD    H,$00                     ;[0ECF] 
     JP    INTFP                     ;[0ED1] 
@@ -2838,89 +2838,201 @@ LINP_CR:
 ;
 ; Non-command token table
 ;
-DATA_TTBL:
-    DB $CD,$45,$4D,$D0,$49,$CB,$45,$59      ;[11E1]  .EM.I.EY
-    DB $4E,$D2,$4E,$44,$C8,$4C,$CC,$45      ;[11E9]  N.ND.L.E
-    DB $4E,$28,$D6,$41,$4C,$28,$C1,$53      ;[11F1]  N(.AL(.S
-    DB $43,$28,$C8,$49,$4D,$45,$4D,$C7      ;[11F9]  C(.IMEM.
-    DB $45,$54,$4E,$C9,$4E,$4B,$D0,$41      ;[1201]  ETN.NK.A
-    DB $50,$45,$52,$D0,$4F,$53,$D6,$50      ;[1209]  PER.OS.P
-    DB $4F,$53,$D4,$52,$55,$45,$C6,$41      ;[1211]  OS.RUE.A
-    DB $4C,$53,$45,$C9,$4E,$46,$C2,$4C      ;[1219]  LSE.NF.L
-    DB $41,$43,$4B,$C2,$4C,$55,$45,$D2      ;[1221]  ACK.LUE.
-    DB $45,$44,$CD,$41,$47,$45,$4E,$54      ;[1229]  ED.AGENT
-    DB $41,$C7,$52,$45,$45,$4E,$C3,$59      ;[1231]  A.REEN.Y
-    DB $41,$4E,$D9,$45,$4C,$4C,$4F,$57      ;[1239]  AN.ELLOW
-    DB $D7,$48,$49,$54,$45,$C1,$4C,$50      ;[1241]  .HITE.LP
-    DB $48,$41,$C7,$52,$41,$50,$48,$49      ;[1249]  HA.RAPHI
-    DB $43,$D3,$49,$4E,$C3,$4F,$53,$D4      ;[1251]  C.IN.OS.
-    DB $41,$4E,$C5,$58,$50,$CC,$4F,$47      ;[1259]  AN.XP.OG
-    DB $C1,$4E,$54,$49,$4C,$4F,$47,$CC      ;[1261]  .NTILOG.
-    DB $4E,$D3,$47,$4E,$C1,$42,$53,$C9      ;[1269]  N.GN.BS.
-    DB $4E,$54,$C6,$52,$41,$43,$D3,$51      ;[1271]  NT.RAC.Q
-    DB $52,$D0,$45,$45,$4B,$C4,$50,$45      ;[1279]  R.EEK.PE
-    DB $45,$4B,$C9,$4E,$50,$C6,$41,$43      ;[1281]  EK.NP.AC
-    DB $54,$C1,$52,$43,$54,$41,$4E,$C1      ;[1289]  T.RCTAN.
-    DB $52,$43,$43,$4F,$53,$C1,$52,$43      ;[1291]  RCCOS.RC
-    DB $53,$49,$4E,$CC,$43,$54,$4E,$C2      ;[1299]  SIN.CTN.
-    DB $49,$4E,$C4,$45,$47,$D2,$41,$44      ;[12A1]  IN.EG.AD
-    DB $D2,$41,$4E,$44,$CC,$49,$47,$48      ;[12A9]  .AND.IGH
-    DB $54,$50,$45,$4E,$CA,$4F,$59,$53      ;[12B1]  TPEN.OYS
-    DB $54,$4B,$D5,$53,$45,$52,$30,$D5      ;[12B9]  TK.SER0.
-    DB $53,$45,$52,$31,$D5,$53,$45,$52      ;[12C1]  SER1.SER
-    DB $32,$D5,$53,$45,$52,$33,$CC,$45      ;[12C9]  2.SER3.E
-    DB $54,$54,$45,$52,$80,$80,$80,$80      ;[12D1]  TTER....
-    DB $80,$A8,$CE,$4F,$54,$AD,$80,$80      ;[12D9]  ...OT...
-    DB $80,$AA,$2A,$AA,$AF,$AB,$AD,$BE      ;[12E1]  ..*.....
-    DB $3D,$BC,$3D,$BC,$3E,$BE,$BC,$BD      ;[12E9]  =.=.>...
-    DB $CF,$52,$C1,$4E,$44,$C2,$4E,$4F      ;[12F1]  .R.ND.NO
-    DB $52,$C2,$4E,$58,$4F,$52,$C2,$4E      ;[12F9]  R.NXOR.N
-    DB $41,$4E,$44,$C4,$49,$56,$CD,$4F      ;[1301]  AND.IV.O
-    DB $44,$D4,$48,$45,$4E,$CC,$41,$42      ;[1309]  D.HEN.AB
-    DB $45,$4C,$C0,$CF,$4E,$CF,$46,$46      ;[1311]  EL..N.FF
-    DB $D3,$54,$45,$50,$D4,$4F,$D4,$41      ;[1319]  .TEP.O.A
-    DB $42,$C3,$48,$52,$24,$28,$CC,$45      ;[1321]  B.HR$(.E
-    DB $46,$54,$24,$28,$D2,$49,$47,$48      ;[1329]  FT$(.IGH
-    DB $54,$24,$28,$CD,$49,$44,$24,$28      ;[1331]  T$(.ID$(
-    DB $D5,$50,$43,$24,$28,$CB,$45,$59      ;[1339]  .PC$(.EY
-    DB $24,$C7,$45,$54,$24,$D3,$54,$52      ;[1341]  $.ET$.TR
-    DB $24,$28,$80,$80                      ;[1349]  $(..
-
-;
-; Set to 80. Is it used ?
-;
-DATA_BLANK:
-    DB $80,$80,$80,$80,$80,$80,$80,$80      ;[134D]  ........
-    DB $80,$80,$80,$80,$80,$80,$80,$80      ;[1355]  ........
-    DB $80,$80,$80,$80,$80,$80,$80,$80      ;[135D]  ........
-    DB $80,$80,$80                          ;[1365]  ...
+DATA_TTBS:
+    DB    'M'+S,"EM"                ;[11E1] 
+    DB    'P'+S,"I"                 ;[11E4] PI
+    DB    'K'+S,"EYN"               ;[11E6] INKEY
+    DB    'R'+S,"ND"                ;[11EA] RND
+    DB    'H'+S,"L"                 ;[11ED] HL
+    DB    'L'+S,"EN("               ;[11EF] LEN
+    DB    'V'+S,"AL("               ;[11F3] VAL
+    DB    'A'+S,"SC("               ;[11F7] ASC
+    DB    'H'+S,"IMEM"              ;[11FB] HIMEM
+    DB    'G'+S,"ETN"               ;[1200] GET
+    DB    'I'+S,"NK"                ;[1204] INK
+    DB    'P'+S,"APER"              ;[1207] PAPER
+    DB    'P'+S,"OS"                ;[120C] POS
+    DB    'V'+S,"POS"               ;[120F] VPOS
+    DB    'T'+S,"RUE"               ;[1213] TRUE
+    DB    'F'+S,"ALSE"              ;[1217] FALSE
+    DB    'I'+S,"NF"                ;[121C] INF
+    DB    'B'+S,"LACK"              ;[121F] BLACK
+    DB    'B'+S,"LUE"               ;[1224] BLUE
+    DB    'R'+S,"ED"                ;[1228] RED
+    DB    'M'+S,"AGENTA"            ;[122B] MAGENTA
+    DB    'G'+S,"REEN"              ;[1232] GREEN
+    DB    'C'+S,"YAN"               ;[1237] CYAN
+    DB    'Y'+S,"ELLOW"             ;[123B] YELLOW
+    DB    'W'+S,"HITE"              ;[1241] WHITE
+    DB    'A'+S,"LPHA"              ;[1246] ALPHA
+    DB    'G'+S,"RAPHIC"            ;[124B] GRAPHIC
+    DB    'S'+S,"IN"                ;[1252] SIN
+    DB    'C'+S,"OS"                ;[1255] COS
+    DB    'T'+S,"AN"                ;[1258] TAN
+    DB    'E'+S,"XP"                ;[125B] EXP
+    DB    'L'+S,"OG"                ;[125E] LOG
+    DB    'A'+S,"NTILOG"            ;[1261] ANTILOG
+    DB    'L'+S,"N"                 ;[1268] LN
+    DB    'S'+S,"GN"                ;[126A] SGN
+    DB    'A'+S,"BS"                ;[126D] ABS
+    DB    'I'+S,"NT"                ;[1270] INT
+    DB    'F'+S,"RAC"               ;[1273] FRAC
+    DB    'S'+S,"QR"                ;[1277] SQR
+    DB    'P'+S,"EEK"               ;[127A] PEEK
+    DB    'D'+S,"PEEK"              ;[127E] DPEEK
+    DB    'I'+S,"NP"                ;[1283] INP
+    DB    'F'+S,"ACT"               ;[1286] FACTORIAL
+    DB    'A'+S,"RCTAN"             ;[128A] ATN
+    DB    'A'+S,"RCCOS"             ;[1290] ARCCOS
+    DB    'A'+S,"RCSIN"             ;[1296] ARCSIN
+    DB    'L'+S,"CTN"               ;[129C] LOCATION
+    DB    'B'+S,"IN"                ;[12A0] BINARY
+    DB    'D'+S,"EG"                ;[12A3] DEG
+    DB    'R'+S,"AD"                ;[12A6] RAD
+    DB    'R'+S,"AND"               ;[12A9] RAND
+    DB    'L'+S,"IGHTPEN"           ;[12AD] LIGHTPEN
+    DB    'J'+S,"OYSTK"             ;[12B5] JOYSTICK
+    DB    'U'+S,"SER0"              ;[12BB] USER0
+    DB    'U'+S,"SER1"              ;[12C0] USER1
+    DB    'U'+S,"SER2"              ;[12C5] USER2
+    DB    'U'+S,"SER3"              ;[12CA] USER3
+    DB    'L'+S,"ETTER"             ;[12CF] TFONT
+    DB    S,S,S,S,S                 ;[12D5] 
+    DB    '('+S                     ;[12DA] PARENTHESES
+    DB    'N'+S,"OT"                ;[12DB] NOT
+    DB    '-'+S                     ;[12DE] NEGATE
+    DB    S                         ;[12DF] FN0
+    DB    S                         ;[12E0] FN1
+    DB    S                         ;[12E1] ARRAY
+    DB    '*'+S,"*"                 ;[12E2] **
+    DB    '*'+S                     ;[12E4] *
+    DB    '/'+S                     ;[12E5] /
+    DB    '+'+S                     ;[12E6] +
+    DB    '-'+S                     ;[12E7] -
+    DB    '>'+S,"="                 ;[12E8] >=
+    DB    '<'+S,"="                 ;[12EA] <=
+    DB    '<'+S,">"                 ;[12EC] <>
+    DB    '>'+S                     ;[12EE] >
+    DB    '<'+S                     ;[12EF] <
+    DB    '='+S                     ;[12F0] =
+    DB    'O'+S,"R"                 ;[12F1] OR
+    DB    'A'+S,"ND"                ;[12F3] AND
+    DB    'B'+S,"NOR"               ;[12F6] BNOR
+    DB    'B'+S,"NXOR"              ;[12FA] BNXOR
+    DB    'B'+S,"NAND"              ;[12FF] BNAND
+    DB    'D'+S,"IV"                ;[1304] N$DIV
+    DB    'M'+S,"OD"                ;[1307] MOD
+    DB    'T'+S,"HEN"               ;[130A] THEN
+    DB    'L'+S,"ABEL"              ;[130E] LABEL
+    DB    '@'+S                     ;[1313] AT
+    DB    'O'+S,"N"                 ;[1314] ON
+    DB    'O'+S,"FF"                ;[1316] OFF
+    DB    'S'+S,"TEP"               ;[1319] STEP
+    DB    'T'+S,"O"                 ;[131D] TO
+    DB    'T'+S,"AB"                ;[131F] TAB
+    DB    'C'+S,"HR$("              ;[1322] CHR$
+    DB    'L'+S,"EFT$("             ;[1327] LEFT$
+    DB    'R'+S,"IGHT$("            ;[132D] RIGHT$
+    DB    'M'+S,"ID$("              ;[1334] MID$
+    DB    'U'+S,"PC$("              ;[1339] UPC$
+    DB    'K'+S,"EY$"               ;[133E] INKEY$
+    DB    'G'+S,"ET$"               ;[1342] GET$
+    DB    'S'+S,"TR$("              ;[1346] STR$
+    DB    S                         ;[134B] 
+    DB    S,S,S,S,S,S,S,S,S,S,S,S,S,S,S;[134C] 
+    DB    S,S,S,S,S,S,S,S,S,S,S,S,S ;[135B] 
 
 ;
 ; Function evaluation table.
 ;
-DATA_FTBL:
-    DB $69,$1E,$0C,$36,$26,$20,$57,$1E      ;[1368]  i..6&.W.
-    DB $24,$33,$14,$2D,$0E,$2D,$26,$2D      ;[1370]  $3.-.-&-
-    DB $1D,$33,$1E,$20,$44,$0E,$4C,$0E      ;[1378]  .3..D.L.
-    DB $51,$0E,$56,$0E,$BF,$35,$AE,$35      ;[1380]  Q.V..5.5
-    DB $65,$0E,$CD,$0E,$CA,$0E,$C7,$0E      ;[1388]  e.......
-    DB $C4,$0E,$C1,$0E,$BE,$0E,$BB,$0E      ;[1390]  ........
-    DB $B8,$0E,$60,$0E,$5B,$0E,$23,$32      ;[1398]  ..`.[.#2
-    DB $1A,$32,$90,$31,$84,$31,$E4,$30      ;[13A0]  .2.1.1.0
-    DB $AB,$31,$4C,$2F,$3A,$34,$34,$34      ;[13A8]  .1L/:444
-    DB $56,$34,$75,$34,$52,$30,$3F,$33      ;[13B0]  V4u4R0?3
-    DB $36,$33,$29,$33,$10,$30,$A5,$2F      ;[13B8]  63)3.0./
-    DB $85,$2F,$58,$2F,$9D,$1F,$D9,$28      ;[13C0]  ./X/...(
-    DB $45,$33,$4E,$33,$9F,$0E,$76,$62      ;[13C8]  E3N3..vb
-    DB $79,$62,$7C,$62,$7F,$62,$82,$62      ;[13D0]  yb|b.b.b
-    DB $85,$62,$09,$0E,$32,$3B,$32,$3B      ;[13D8]  .b..2;2;
-    DB $32,$3B,$32,$3B,$32,$3B,$00,$00      ;[13E0]  2;2;2;..
-    DB $A5,$32,$11,$33,$07,$33,$04,$33      ;[13E8]  .2.3.3.3
-    DB $D8,$1D,$9A,$30,$C8,$36,$B0,$37      ;[13F0]  ...0.6.7
-    DB $6D,$36,$6A,$36,$DA,$32,$D0,$32      ;[13F8]  m6j6.2.2
-    DB $BD,$32,$C2,$32,$D5,$32,$AF,$32      ;[1400]  .2.2.2.2
-    DB $DF,$32,$F6,$32,$7F,$0E,$8B,$0E      ;[1408]  .2.2....
-    DB $95,$0E,$3F,$0E,$18,$0E              ;[1410]  ..?...
+DATA_FTBS:
+    DW    BASIC_FN_MEM              ;[1368] 
+    DW    BASIC_FN_PI               ;[136A] PI
+    DW    BASIC_FN_KEYN             ;[136C] INKEY
+    DW    BASIC_FN_RND              ;[136E] RND
+    DW    BASIC_FN_HL               ;[1370] HL
+    DW    BASIC_FN_LEN              ;[1372] LEN
+    DW    BASIC_FN_VAL              ;[1374] VAL
+    DW    BASIC_FN_ASC              ;[1376] ASC
+    DW    BASIC_FN_HIMEM            ;[1378] HIMEM
+    DW    BASIC_FN_GETN             ;[137A] GET
+    DW    BASIC_FN_INK              ;[137C] INK
+    DW    BASIC_FN_PAPER            ;[137E] PAPER
+    DW    BASIC_FN_POS              ;[1380] POS
+    DW    BASIC_FN_VPOS             ;[1382] VPOS
+    DW    LONE                      ;[1384] TRUE
+    DW    LZERO                     ;[1386] FALSE
+    DW    BASIC_FN_INF              ;[1388] INF
+    DW    FN_BLACK                  ;[138A] BLACK
+    DW    FN_BLUE                   ;[138C] BLUE
+    DW    FN_RED                    ;[138E] RED
+    DW    FN_MAGENTA                ;[1390] MAGENTA
+    DW    FN_GREEN                  ;[1392] GREEN
+    DW    FN_CYAN                   ;[1394] CYAN
+    DW    FN_YELLOW                 ;[1396] YELLOW
+    DW    FN_WHITE                  ;[1398] WHITE
+    DW    BASIC_FN_ALPHA            ;[139A] ALPHA
+    DW    BASIC_FN_GRAPHIC          ;[139C] GRAPHIC
+    DW    BASIC_FN_SIN              ;[139E] SIN
+    DW    BASIC_FN_COS              ;[13A0] COS
+    DW    BASIC_FN_TAN              ;[13A2] TAN
+    DW    BASIC_FN_EXP              ;[13A4] EXP
+    DW    BASIC_FN_LOG              ;[13A6] LOG
+    DW    BASIC_FN_ANTILOG          ;[13A8] ANTILOG
+    DW    BASIC_FN_LN               ;[13AA] LN
+    DW    BASIC_FN_SGN              ;[13AC] SGN
+    DW    BASIC_FN_ABS              ;[13AE] ABS
+    DW    BASIC_FN_INT              ;[13B0] INT
+    DW    BASIC_FN_FRAC             ;[13B2] FRAC
+    DW    BASIC_FN_SQR              ;[13B4] SQR
+    DW    BASIC_FN_PEEK             ;[13B6] PEEK
+    DW    BASIC_FN_DPEEK            ;[13B8] DPEEK
+    DW    BASIC_FN_INP              ;[13BA] INP
+    DW    BASIC_FN_FACT             ;[13BC] FACTORIAL
+    DW    BASIC_FN_ARCTAN           ;[13BE] ATN
+    DW    BASIC_FN_ARCCOS           ;[13C0] ARCCOS
+    DW    BASIC_FN_ARCSIN           ;[13C2] ARCSIN
+    DW    BASIC_FN_LCTN             ;[13C4] LOCATION
+    DW    BASIC_FN_BIN              ;[13C6] BIN
+    DW    BASIC_FN_DEG              ;[13C8] DEG
+    DW    BASIC_FN_RAD              ;[13CA] RAD
+    DW    BASIC_FN_RAND             ;[13CC] RAND
+    DW    SYSVAR_FLIGHT             ;[13CE] LIGHTPEN
+    DW    SYSVAR_FJOY               ;[13D0] JOYSTICK
+    DW    SYSVAR_FUSER0             ;[13D2] USER0
+    DW    SYSVAR_FUSER1             ;[13D4] USER1
+    DW    SYSVAR_FUSER2             ;[13D6] USER2
+    DW    SYSVAR_FUSER3             ;[13D8] USER3
+    DW    BASIC_FN_LETTER           ;[13DA] FONT
+    DW    ERR_NOT_YET_IMP           ;[13DC] 
+    DW    ERR_NOT_YET_IMP           ;[13DE] 
+    DW    ERR_NOT_YET_IMP           ;[13E0] 
+    DW    ERR_NOT_YET_IMP           ;[13E2] 
+    DW    ERR_NOT_YET_IMP           ;[13E4] 
+    DW    0                         ;[13E6] PARENS
+    DW    BASIC_FN_NOT              ;[13E8] NOT
+    DW    BASIC_FN_MINUS            ;[13EA] NEGATE
+    DW    FFN0                      ;[13EC] FN0
+    DW    FFN1                      ;[13EE] FN1
+    DW    FARR                      ;[13F0] ARRAY
+    DW    BASIC_FN_POWER            ;[13F2] POWER
+    DW    _MULT                     ;[13F4] MULT
+    DW    DIV                       ;[13F6] DIVIDE
+    DW    ADD                       ;[13F8] ADD
+    DW    SUB                       ;[13FA] SUBT
+    DW    BASIC_FN_GT_EQUAL         ;[13FC] GEQUAL
+    DW    BASIC_FN_LT_EQUAL         ;[13FE] LEQUAL
+    DW    BASIC_FN_NOT_EQUAL        ;[1400] NEQUAL
+    DW    BASIC_FN_GREATERTHAN      ;[1402] GREATER
+    DW    BASIC_FN_LESSTHAN         ;[1404] LESS
+    DW    BASIC_FN_EQUAL            ;[1406] EQUAL
+    DW    BASIC_FN_OR               ;[1408] OR
+    DW    BASIC_FN_AND              ;[140A] AND
+    DW    BASIC_FN_BNOR             ;[140C] BNOR
+    DW    BASIC_FN_BNXOR            ;[140E] BNXOR
+    DW    BASIC_FN_BNAND            ;[1410] BNAND
+    DW    BASIC_FN_DIV              ;[1412] DIV
+    DW    BASIC_FN_MOD              ;[1414] MOD
 
 ;
 ; Command token table.
@@ -3270,8 +3382,8 @@ DATA_INIT:
     DW    SYSVAR_VTBLS              ;[1736] Variable table
     DW    SYSVAR_ATBLS              ;[1738] Array table
     DW    SYSVAR_STBLS              ;[173A] String table
-    DW    DATA_FTBL                 ;[173C] Function table
-    DW    DATA_TTBL                 ;[173E] Token table
+    DW    DATA_FTBS                 ;[173C] Function table
+    DW    DATA_TTBS                 ;[173E] Token table
     DW    XTTBLS                    ;[1740] Extra token table
     DW    XITBLS                    ;[1742] Extra input syntax
     DW    XETBLS                    ;[1744] Extra execution
