@@ -23,8 +23,9 @@
 ;*      SYSVAR_     - RAM addresses used by the Lynx ROM routines
 ;*      RST_        - Z80 Restarts
 ;*      DATA_       - Data tables stored in rom (eg. PI)
-;*      BASIC_COM_  - Lynx BASIC commands 
-;*      BASIC_FN_   - Lynx BASIC functions/operators
+;*      E<command>  - Lynx BASIC command
+;*      F<name>     - Lynx BASIC functions/operators
+;*      I<name>     - Validation of BASIC commands/functions.
 ;*      MONITOR_    - Lynx MONITOR commands
 ;*      VDU_        - VDU commands
 ;*      SUB_        - internal subroutines used by ROM
@@ -113,7 +114,7 @@ RST_28:
 ; Jumps to monitor TRAP routine. 
 ;
 RST_30:
-    JP    BASIC_COM_MON             ;[0030] 
+    JP    EMON                      ;[0030] 
     POP   HL                        ;[0033] Has POP HL JP (HL) 
     JP    (HL)                      ;[0034] 
     NOP                             ;[0035] 
@@ -979,10 +980,10 @@ SCREEN_CURS_OFF:
 ;
 ; WINDOW routine.
 ;
-BASIC_COM_WINDOW:
+EWINDOW:
     LD    B,$04                     ;[0831] 
     LD    HL,SYSVAR_WINDST          ;[0833] 
-BASIC_COM_WINDOW1:
+EWINDOW1:
     PUSH  HL                        ;[0836] 
     PUSH  BC                        ;[0837] 
     CALL  EINT                      ;[0838] 
@@ -992,7 +993,7 @@ BASIC_COM_WINDOW1:
     POP   HL                        ;[083E] 
     LD    (HL),A                    ;[083F] 
     INC   HL                        ;[0840] 
-    DJNZ  BASIC_COM_WINDOW1         ;[0841] 
+    DJNZ  EWINDOW1                  ;[0841] 
     RET                             ;[0843] 
 
 ;
@@ -1181,7 +1182,7 @@ SCREEN_BELL:
 ;
 ; Basic BEEP routine.
 ;
-BASIC_COM_BEEP:
+EBEEP:
     LD    A,$01                     ;[093D] 
     OUT   ($80),A                   ;[093F] 
     CALL  EINT                      ;[0941] 
@@ -1242,7 +1243,7 @@ DELAY_LOOP:
 ;
 ; SOUND routine.
 ;
-BASIC_COM_SOUND:
+ESOUND:
     LD    A,$01                     ;[0981] 
     OUT   ($80),A                   ;[0983] 
     CALL  EINT                      ;[0985] 
@@ -1597,7 +1598,7 @@ SAVE_END_ERROR:
 ;
 ; SAVE BASIC command. (DE -> filename?)
 ;
-BASIC_COM_SAVE:
+ESAVE:
     CALL  WRITE_FNAME               ;[0BCB] 
     INC   DE                        ;[0BCE] 
     LD    A,(DE)                    ;[0BCF] 
@@ -1688,7 +1689,7 @@ TAPE_READ_FNAME:
 ;
 ; VERIFY BASIC command.
 ;
-BASIC_COM_VERIFY:
+EVERIFY:
     CALL  TAPE_READ                 ;[0C5A] 
     LD    HL,(SYSVAR_SOB)           ;[0C5D] 
     CALL  RSYNC                     ;[0C60] 
@@ -1716,7 +1717,7 @@ VERIFY_ERROR_EXIT:
 ;
 ; APPEND BASIC command.
 ;
-BASIC_COM_APPEND:
+EAPPEND:
     CALL  TAPE_READ                 ;[0C87] 
     LD    HL,(SYSVAR_EOB)           ;[0C8A] 
     JR    BLOAD_READ_B              ;[0C8D] 
@@ -1724,7 +1725,7 @@ BASIC_COM_APPEND:
 ;
 ; LOAD BASIC command.
 ;
-BASIC_COM_LOAD:
+ELOAD:
     CALL  TAPE_READ                 ;[0C8F] 
     LD    HL,(SYSVAR_SOB)           ;[0C92] 
 BLOAD_READ_B:
@@ -1757,7 +1758,7 @@ BLOAD_READ_PROG:
     CALL  MOTOFF                    ;[0CC3] 
     CALL  ZERO_MEM                  ;[0CC6] 
     POP   IX                        ;[0CC9] Start pos/line
-    JP    EXC5                      ;[0CCB] 
+    JP    EXEC5                     ;[0CCB] 
 
 ;
 ; Escape route for read bit routine.
@@ -1874,7 +1875,7 @@ WBYTE_END:
 ;
 ; TAPE. Loads a 4 byte tape speed into HL and DE using the lookup table (DATA_TAPE).
 ;
-BASIC_COM_TAPE:
+ETAPE:
     RST   $18                       ;[0D92] 
     CP    $06                       ;[0D93] 
     CALL  NC,ERR_NUM_OUT_RANGE      ;[0D95] 
@@ -1886,12 +1887,12 @@ BASIC_COM_TAPE:
     ADD   HL,DE                     ;[0DA0] 
     LD    DE,SYSVAR_CASLEV          ;[0DA1] 
     LD    B,$04                     ;[0DA4] 
-BASIC_COM_TAPE1:
+ETAPE1:
     LD    A,(HL)                    ;[0DA6] 
     LD    (DE),A                    ;[0DA7] 
     INC   DE                        ;[0DA8] 
     INC   HL                        ;[0DA9] 
-    DJNZ  BASIC_COM_TAPE1           ;[0DAA] 
+    DJNZ  ETAPE1                    ;[0DAA] 
     RET                             ;[0DAC] 
 
 ;
@@ -1963,14 +1964,14 @@ SUB_INPUT_IS_ESC:
 ;
 ; ERROR. Outputs specified error message.
 ;
-BASIC_COM_ERROR:
+EERROR:
     RST   $18                       ;[0E05] 
     JP    DISP_ERROR_A              ;[0E06] 
 
 ;
 ; LETTER - ptr to specified DATA_CHARS definitions.
 ;
-BASIC_FN_LETTER:
+FLETTER:
     CALL  FPINT                     ;[0E09] 
     LD    A,L                       ;[0E0C] 
     CP    $20                       ;[0E0D] 
@@ -1981,33 +1982,33 @@ BASIC_FN_LETTER:
 ;
 ; MOD.
 ;
-BASIC_FN_MOD:
+FMOD:
     CALL  SWAP                      ;[0E18] 
-    CALL  BASIC_FN_ABS              ;[0E1B] 
+    CALL  FABSLTE                   ;[0E1B] 
     CALL  PUSH_WRA1                 ;[0E1E] 
     CALL  PUSH_WRA1                 ;[0E21] 
     CALL  SWAP                      ;[0E24] 
     CALL  DIV                       ;[0E27] 
-    CALL  BASIC_FN_FRAC             ;[0E2A] 
+    CALL  FFRAC                     ;[0E2A] 
     CALL  POP_WRA2                  ;[0E2D] 
     CALL  _MULT                     ;[0E30] 
     CALL  POP_WRA2                  ;[0E33] 
     LD    A,(SYSVAR_WRA1)           ;[0E36] 
     CALL  SUB_MOD                   ;[0E39] 
 JP_FN_INT:
-    JP    BASIC_FN_INT              ;[0E3C] 
+    JP    FINT                      ;[0E3C] 
 
 ;
 ; DIV.
 ;
-BASIC_FN_DIV:
+FDIV:
     CALL  DIV                       ;[0E3F] 
     JR    JP_FN_INT                 ;[0E42] 
 
 ;
 ; Return INK value.
 ;
-BASIC_FN_INK:
+FINK:
     LD    HL,(SYSVAR_INKST)         ;[0E44] 
 L_TO_WRA1:
     LD    H,$00                     ;[0E47] 
@@ -2017,42 +2018,42 @@ HL_TO_WRA1:
 ;
 ; Return PAPER value.
 ;
-BASIC_FN_PAPER:
+FPAPER:
     LD    HL,(SYSVAR_PAPST)         ;[0E4C] 
     JR    L_TO_WRA1                 ;[0E4F] 
 
 ;
 ; POS.
 ;
-BASIC_FN_POS:
+FPOS:
     LD    HL,(SYSVAR_CURSORX)       ;[0E51] 
     JR    L_TO_WRA1                 ;[0E54] 
 
 ;
 ; VPOS.
 ;
-BASIC_FN_VPOS:
+FVPOS:
     LD    HL,(SYSVAR_CURSORY)       ;[0E56] 
     JR    L_TO_WRA1                 ;[0E59] 
 
 ;
 ; GRAPHIC.
 ;
-BASIC_FN_GRAPHIC:
+FGRAPHIC:
     LD    HL,SYSVAR_GPHTBL          ;[0E5B] 
     JR    HL_TO_WRA1                ;[0E5E] 
 
 ;
 ; ALPHA.
 ;
-BASIC_FN_ALPHA:
+FALPHA:
     LD    HL,SYSVAR_CHRTBL          ;[0E60] 
     JR    HL_TO_WRA1                ;[0E63] 
 
 ;
 ; INF.
 ;
-BASIC_FN_INF:
+FINF:
     LD    HL,DATA_INF               ;[0E65] 
     JP    LNUM1                     ;[0E68] 
 
@@ -2078,7 +2079,7 @@ HLBC_FROM_WRA12:
 ;
 ; BNOR.
 ;
-BASIC_FN_BNOR:
+FBNOR:
     CALL  HLBC_FROM_WRA12           ;[0E7F] 
     LD    A,B                       ;[0E82] 
     OR    H                         ;[0E83] 
@@ -2092,7 +2093,7 @@ BN_RESULT_TO_WRA1:
 ;
 ; BNXOR.
 ;
-BASIC_FN_BNXOR:
+FBNXOR:
     CALL  HLBC_FROM_WRA12           ;[0E8B] 
     LD    A,B                       ;[0E8E] 
     XOR   H                         ;[0E8F] 
@@ -2104,7 +2105,7 @@ BASIC_FN_BNXOR:
 ;
 ; BNAND.
 ;
-BASIC_FN_BNAND:
+FBNAND:
     CALL  HLBC_FROM_WRA12           ;[0E95] 
     LD    A,B                       ;[0E98] 
     AND   H                         ;[0E99] 
@@ -2116,17 +2117,17 @@ BASIC_FN_BNAND:
 ;
 ; RAND.
 ;
-BASIC_FN_RAND:
+FRAND:
     CALL  PUSH_WRA1                 ;[0E9F] 
-    CALL  BASIC_FN_RND              ;[0EA2] 
+    CALL  FRND                      ;[0EA2] 
     CALL  POP_WRA2                  ;[0EA5] 
     CALL  _MULT                     ;[0EA8] 
-    JP    BASIC_FN_INT              ;[0EAB] 
+    JP    FINT                      ;[0EAB] 
 
 ;
 ; CFR. Cursor flash rate.
 ;
-BASIC_COM_CFR:
+ECFR:
     RST   $18                       ;[0EAE] 
     LD    (SYSVAR_FLASH),HL         ;[0EAF] CFR.
     RET                             ;[0EB2] 
@@ -2134,7 +2135,7 @@ BASIC_COM_CFR:
 ;
 ; CCHAR.
 ;
-BASIC_COM_CCHAR:
+ECCHAR:
     RST   $18                       ;[0EB3] 
     LD    (SYSVAR_INPCUR),HL        ;[0EB4] 
     RET                             ;[0EB7] 
@@ -2165,53 +2166,53 @@ FN_BLACK:
 ;
 ; Validate VDU. Reads reverse polish until CR or comma reached.
 ;
-VALIDATE_VDU:
+IVDU:
     CALL  RP                        ;[0ED4] 
     LD    (HL),A                    ;[0ED7] 
     CP    CR                        ;[0ED8] 
     RET   Z                         ;[0EDA] 
     INC   HL                        ;[0EDB] 
     CP    ','                       ;[0EDC] 
-    JR    Z,VALIDATE_VDU            ;[0EDE] 
+    JR    Z,IVDU                    ;[0EDE] 
     CALL  ERR_SYNTAX                ;[0EE0] 
 
 ;
 ; VDU routine.
 ;
-BASIC_COM_VDU:
+EVDU:
     RST   $18                       ;[0EE3] 
     RST   $08                       ;[0EE4] 
     LD    A,(DE)                    ;[0EE5] 
     CP    CR                        ;[0EE6] 
     RET   Z                         ;[0EE8] 
     INC   DE                        ;[0EE9] 
-    JR    BASIC_COM_VDU             ;[0EEA] 
+    JR    EVDU                      ;[0EEA] 
 
 ;
 ; Validate expression with 6 args?
 ;
-VALIDATE_E6CR:
+IE6CR:
     LD    B,$05                     ;[0EEC] 
-    JR    VALIDATE_COMMAS_CR        ;[0EEE] 
+    JR    ICOMMAS_CR                ;[0EEE] 
 
 ;
 ; Validation for cmds with 4 args such as WINDOW.
 ;
-VALIDATE_E4CR:
+IE4CR:
     LD    B,$03                     ;[0EF0] 
-    JR    VALIDATE_COMMAS_CR        ;[0EF2] 
+    JR    ICOMMAS_CR                ;[0EF2] 
 
 ;
 ; Validation for cmds with 3 args eg. PLOT;BEEP.
 ;
-VALIDATE_CCCR:
+ICCCR:
     LD    B,$02                     ;[0EF4] 
 
 ;
 ; Validate commands of the form:- cmd a,b,c,d.
 ; where B is the number of args. (aka: CMCR1)
 ;
-VALIDATE_COMMAS_CR:
+ICOMMAS_CR:
     PUSH  BC                        ;[0EF6] 
     CALL  RP                        ;[0EF7] 
     RST   $20                       ;[0EFA] 
@@ -2219,13 +2220,13 @@ VALIDATE_COMMAS_CR:
     LD    (HL),A                    ;[0EFC] 
     INC   HL                        ;[0EFD] 
     POP   BC                        ;[0EFE] 
-    DJNZ  VALIDATE_COMMAS_CR        ;[0EFF] 
-    JP    VALIDATE_INK              ;[0F01] 
+    DJNZ  ICOMMAS_CR                ;[0EFF] 
+    JP    IINK                      ;[0F01] 
 
 ;
 ; Validation for '?'.
 ;
-VALIDATE_PRINT:
+IPRINT:
     DEC   HL                        ;[0F04] 
     LD    A,PRINT                   ;[0F05] 
     JP    IL2                       ;[0F07] 
@@ -2248,7 +2249,7 @@ PRINT_BAS_LINE_LOOP:
 ;
 ; Part of CODE validation.
 ;
-VALIDATE_CODE1:
+ICODE1:
     LD    A,(DE)                    ;[0F1D] 
     LD    (HL),A                    ;[0F1E] 
     CP    $0D                       ;[0F1F] 
@@ -2259,16 +2260,16 @@ VALIDATE_CODE1:
 ;
 ; Validation for CODE.
 ;
-VALIDATE_CODE:
-    CALL  VALIDATE_CODE2            ;[0F25] 
+ICODE:
+    CALL  ICODE2                    ;[0F25] 
     LD    (HL),C                    ;[0F28] 
     INC   HL                        ;[0F29] 
-    JR    VALIDATE_CODE1            ;[0F2A] 
+    JR    ICODE1                    ;[0F2A] 
 
 ;
 ; Part of CODE validation.
 ;
-VALIDATE_CODE2:
+ICODE2:
     LD    C,$00                     ;[0F2C] 
     LD    A,(DE)                    ;[0F2E] 
     SUB   $30                       ;[0F2F] 
@@ -2292,7 +2293,7 @@ VALIDATE_CODE2:
 ;
 ; Set INK routine.
 ;
-BASIC_COM_INK:
+EINK:
     RST   $18                       ;[0F4B] 
     LD    (SYSVAR_INKST),A          ;[0F4C] 
     RET                             ;[0F4F] 
@@ -2300,7 +2301,7 @@ BASIC_COM_INK:
 ;
 ; Set PAPER routine.
 ;
-BASIC_COM_PAPER:
+EPAPER:
     RST   $18                       ;[0F50] 
     LD    (SYSVAR_PAPST),A          ;[0F51] 
     RET                             ;[0F54] 
@@ -2308,7 +2309,7 @@ BASIC_COM_PAPER:
 ;
 ; MOVE.
 ;
-BASIC_COM_MOVE:
+EMOVE:
     RST   $18                       ;[0F55] 
     INC   DE                        ;[0F56] 
     LD    (SYSVAR_GOLDX),HL         ;[0F57] 
@@ -2319,7 +2320,7 @@ BASIC_COM_MOVE:
 ;
 ; DRAW.
 ;
-BASIC_COM_DRAW:
+EDRAW:
     RST   $18                       ;[0F5F] 
     INC   DE                        ;[0F60] 
     LD    (SYSVAR_GNEWX),HL         ;[0F61] 
@@ -2360,7 +2361,7 @@ SUB_PLOT2:
 ;
 ; PLOT subroutine.
 ;
-BASIC_COM_DOT:
+EDOT:
     RST   $18                       ;[0F93] 
     INC   DE                        ;[0F94] 
     LD    (SYSVAR_GNEWX),HL         ;[0F95] 
@@ -2373,19 +2374,19 @@ BASIC_COM_DOT:
 ;
 ; PLOT.
 ;
-BASIC_COM_PLOT:
+EPLOT:
     RST   $18                       ;[0FA5] 
     INC   DE                        ;[0FA6] 
     OR    A                         ;[0FA7] 
-    JP    Z,BASIC_COM_MOVE          ;[0FA8] 
+    JP    Z,EMOVE                   ;[0FA8] 
     DEC   L                         ;[0FAB] 
     JP    Z,SUB_PLOT1               ;[0FAC] 
     DEC   L                         ;[0FAF] 
-    JP    Z,BASIC_COM_DRAW          ;[0FB0] 
+    JP    Z,EDRAW                   ;[0FB0] 
     DEC   L                         ;[0FB3] 
     JP    Z,SUB_PLOT2               ;[0FB4] 
     DEC   L                         ;[0FB7] 
-    JP    Z,BASIC_COM_DOT           ;[0FB8] 
+    JP    Z,EDOT                    ;[0FB8] 
     CALL  ERR_NOT_YET_IMP           ;[0FBB] 
     LD    HL,(SYSVAR_GNEWX)         ;[0FBE] 
     PUSH  HL                        ;[0FC1] 
@@ -2414,26 +2415,26 @@ BASIC_COM_PLOT:
     LD    B,$01                     ;[0FEA] 
     OR    E                         ;[0FEC] 
     OR    D                         ;[0FED] 
-    JR    Z,BASIC_COM_PLOT4         ;[0FEE] 
+    JR    Z,EPLOT4                  ;[0FEE] 
     DEC   B                         ;[0FF0] 
     CALL  SUB_PLOT5                 ;[0FF1] 
-    JR    NZ,BASIC_COM_PLOT2        ;[0FF4] 
+    JR    NZ,EPLOT2                 ;[0FF4] 
     SCF                             ;[0FF6] 
-BASIC_COM_PLOT1:
+EPLOT1:
     RR    B                         ;[0FF7] 
     CALL  SUB_PLOT4                 ;[0FF9] 
     CALL  SUB_PLOT5                 ;[0FFC] 
-    JR    Z,BASIC_COM_PLOT1         ;[0FFF] 
-BASIC_COM_PLOT2:
+    JR    Z,EPLOT1                  ;[0FFF] 
+EPLOT2:
     CALL  SUB_PLOT3                 ;[1001] 
-BASIC_COM_PLOT3:
+EPLOT3:
     ADD   HL,DE                     ;[1004] 
     EXX                             ;[1005] 
     ADD   HL,DE                     ;[1006] 
     EXX                             ;[1007] 
-BASIC_COM_PLOT4:
+EPLOT4:
     CALL  SUB_PLOT3                 ;[1008] 
-    DJNZ  BASIC_COM_PLOT3           ;[100B] 
+    DJNZ  EPLOT3                    ;[100B] 
     POP   HL                        ;[100D] 
     LD    A,L                       ;[100E] 
     LD    (SYSVAR_GOLDY),A          ;[100F] 
@@ -2946,23 +2947,23 @@ DATA_TTBS:
 ; Function evaluation table.
 ;
 DATA_FTBS:
-    DW    BASIC_FN_MEM              ;[1368] 
-    DW    BASIC_FN_PI               ;[136A] PI
-    DW    BASIC_FN_KEYN             ;[136C] INKEY
-    DW    BASIC_FN_RND              ;[136E] RND
-    DW    BASIC_FN_HL               ;[1370] HL
-    DW    BASIC_FN_LEN              ;[1372] LEN
-    DW    BASIC_FN_VAL              ;[1374] VAL
-    DW    BASIC_FN_ASC              ;[1376] ASC
-    DW    BASIC_FN_HIMEM            ;[1378] HIMEM
-    DW    BASIC_FN_GETN             ;[137A] GET
-    DW    BASIC_FN_INK              ;[137C] INK
-    DW    BASIC_FN_PAPER            ;[137E] PAPER
-    DW    BASIC_FN_POS              ;[1380] POS
-    DW    BASIC_FN_VPOS             ;[1382] VPOS
+    DW    FMEM                      ;[1368] 
+    DW    FPI                       ;[136A] PI
+    DW    FKEYN                     ;[136C] INKEY
+    DW    FRND                      ;[136E] RND
+    DW    FHL                       ;[1370] HL
+    DW    FLEN                      ;[1372] LEN
+    DW    FVAL                      ;[1374] VAL
+    DW    FASC                      ;[1376] ASC
+    DW    FHIMEM                    ;[1378] HIMEM
+    DW    FGETN                     ;[137A] GET
+    DW    FINK                      ;[137C] INK
+    DW    FPAPER                    ;[137E] PAPER
+    DW    FPOS                      ;[1380] POS
+    DW    FVPOS                     ;[1382] VPOS
     DW    LONE                      ;[1384] TRUE
     DW    LZERO                     ;[1386] FALSE
-    DW    BASIC_FN_INF              ;[1388] INF
+    DW    FINF                      ;[1388] INF
     DW    FN_BLACK                  ;[138A] BLACK
     DW    FN_BLUE                   ;[138C] BLUE
     DW    FN_RED                    ;[138E] RED
@@ -2971,68 +2972,68 @@ DATA_FTBS:
     DW    FN_CYAN                   ;[1394] CYAN
     DW    FN_YELLOW                 ;[1396] YELLOW
     DW    FN_WHITE                  ;[1398] WHITE
-    DW    BASIC_FN_ALPHA            ;[139A] ALPHA
-    DW    BASIC_FN_GRAPHIC          ;[139C] GRAPHIC
-    DW    BASIC_FN_SIN              ;[139E] SIN
-    DW    BASIC_FN_COS              ;[13A0] COS
-    DW    BASIC_FN_TAN              ;[13A2] TAN
-    DW    BASIC_FN_EXP              ;[13A4] EXP
-    DW    BASIC_FN_LOG              ;[13A6] LOG
-    DW    BASIC_FN_ANTILOG          ;[13A8] ANTILOG
-    DW    BASIC_FN_LN               ;[13AA] LN
-    DW    BASIC_FN_SGN              ;[13AC] SGN
-    DW    BASIC_FN_ABS              ;[13AE] ABS
-    DW    BASIC_FN_INT              ;[13B0] INT
-    DW    BASIC_FN_FRAC             ;[13B2] FRAC
-    DW    BASIC_FN_SQR              ;[13B4] SQR
-    DW    BASIC_FN_PEEK             ;[13B6] PEEK
-    DW    BASIC_FN_DPEEK            ;[13B8] DPEEK
-    DW    BASIC_FN_INP              ;[13BA] INP
-    DW    BASIC_FN_FACT             ;[13BC] FACTORIAL
-    DW    BASIC_FN_ARCTAN           ;[13BE] ATN
-    DW    BASIC_FN_ARCCOS           ;[13C0] ARCCOS
-    DW    BASIC_FN_ARCSIN           ;[13C2] ARCSIN
-    DW    BASIC_FN_LCTN             ;[13C4] LOCATION
-    DW    BASIC_FN_BIN              ;[13C6] BIN
-    DW    BASIC_FN_DEG              ;[13C8] DEG
-    DW    BASIC_FN_RAD              ;[13CA] RAD
-    DW    BASIC_FN_RAND             ;[13CC] RAND
+    DW    FALPHA                    ;[139A] ALPHA
+    DW    FGRAPHIC                  ;[139C] GRAPHIC
+    DW    FSIN                      ;[139E] SIN
+    DW    FCOS                      ;[13A0] COS
+    DW    FTAN                      ;[13A2] TAN
+    DW    FEXP                      ;[13A4] EXP
+    DW    FLOG                      ;[13A6] LOG
+    DW    FANTILOG                  ;[13A8] ANTILOG
+    DW    FLN                       ;[13AA] LN
+    DW    FSGN                      ;[13AC] SGN
+    DW    FABSLTE                   ;[13AE] ABS
+    DW    FINT                      ;[13B0] INT
+    DW    FFRAC                     ;[13B2] FRAC
+    DW    FSQR                      ;[13B4] SQR
+    DW    FPEEK                     ;[13B6] PEEK
+    DW    FDPEEK                    ;[13B8] DPEEK
+    DW    FINP                      ;[13BA] INP
+    DW    FFACT                     ;[13BC] FACTORIAL
+    DW    FARCTAN                   ;[13BE] ATN
+    DW    FARCCOS                   ;[13C0] ARCCOS
+    DW    FARCSIN                   ;[13C2] ARCSIN
+    DW    FLCTN                     ;[13C4] LOCATION
+    DW    FBIN                      ;[13C6] BIN
+    DW    FDEG                      ;[13C8] DEG
+    DW    FRAD                      ;[13CA] RAD
+    DW    FRAND                     ;[13CC] RAND
     DW    SYSVAR_FLIGHT             ;[13CE] LIGHTPEN
     DW    SYSVAR_FJOY               ;[13D0] JOYSTICK
     DW    SYSVAR_FUSER0             ;[13D2] USER0
     DW    SYSVAR_FUSER1             ;[13D4] USER1
     DW    SYSVAR_FUSER2             ;[13D6] USER2
     DW    SYSVAR_FUSER3             ;[13D8] USER3
-    DW    BASIC_FN_LETTER           ;[13DA] FONT
+    DW    FLETTER                   ;[13DA] FONT
     DW    ERR_NOT_YET_IMP           ;[13DC] 
     DW    ERR_NOT_YET_IMP           ;[13DE] 
     DW    ERR_NOT_YET_IMP           ;[13E0] 
     DW    ERR_NOT_YET_IMP           ;[13E2] 
     DW    ERR_NOT_YET_IMP           ;[13E4] 
     DW    0                         ;[13E6] PARENS
-    DW    BASIC_FN_NOT              ;[13E8] NOT
-    DW    BASIC_FN_MINUS            ;[13EA] NEGATE
+    DW    FNOT                      ;[13E8] NOT
+    DW    FMINUS                    ;[13EA] NEGATE
     DW    FFN0                      ;[13EC] FN0
     DW    FFN1                      ;[13EE] FN1
     DW    FARR                      ;[13F0] ARRAY
-    DW    BASIC_FN_POWER            ;[13F2] POWER
+    DW    FPOWER                    ;[13F2] POWER
     DW    _MULT                     ;[13F4] MULT
     DW    DIV                       ;[13F6] DIVIDE
     DW    ADD                       ;[13F8] ADD
     DW    SUB                       ;[13FA] SUBT
-    DW    BASIC_FN_GT_EQUAL         ;[13FC] GEQUAL
-    DW    BASIC_FN_LT_EQUAL         ;[13FE] LEQUAL
-    DW    BASIC_FN_NOT_EQUAL        ;[1400] NEQUAL
-    DW    BASIC_FN_GREATERTHAN      ;[1402] GREATER
-    DW    BASIC_FN_LESSTHAN         ;[1404] LESS
-    DW    BASIC_FN_EQUAL            ;[1406] EQUAL
-    DW    BASIC_FN_OR               ;[1408] OR
-    DW    BASIC_FN_AND              ;[140A] AND
-    DW    BASIC_FN_BNOR             ;[140C] BNOR
-    DW    BASIC_FN_BNXOR            ;[140E] BNXOR
-    DW    BASIC_FN_BNAND            ;[1410] BNAND
-    DW    BASIC_FN_DIV              ;[1412] DIV
-    DW    BASIC_FN_MOD              ;[1414] MOD
+    DW    FGT_EQUAL                 ;[13FC] GEQUAL
+    DW    FLT_EQUAL                 ;[13FE] LEQUAL
+    DW    FNOT_EQUAL                ;[1400] NEQUAL
+    DW    FGREATERTHAN              ;[1402] GREATER
+    DW    FLESSTHAN                 ;[1404] LESS
+    DW    FEQUAL                    ;[1406] EQUAL
+    DW    FNOR                      ;[1408] OR
+    DW    FAND                      ;[140A] AND
+    DW    FBNOR                     ;[140C] BNOR
+    DW    FBNXOR                    ;[140E] BNXOR
+    DW    FBNAND                    ;[1410] BNAND
+    DW    FDIV                      ;[1412] DIV
+    DW    FMOD                      ;[1414] MOD
 
 ;
 ; Command token table.
@@ -3120,160 +3121,160 @@ XTTBLS:
 ; Input syntax checking table. Validation routine addresses for BASIC words.
 ;
 XITBLS:
-    DW    VALIDATE_LET              ;[1560] 
-    DW    VALIDATE_VDU              ;[1562] VDU
-    DW    VALIDATE_DEFPROC          ;[1564] DEFPROC
-    DW    VALIDATE_PROC             ;[1566] PROC
-    DW    VALIDATE_MON              ;[1568] ENDPROC
-    DW    VALIDATE_NEXT             ;[156A] NEXT
-    DW    VALIDATE_INK              ;[156C] INK
-    DW    VALIDATE_INK              ;[156E] PAPER
-    DW    VALIDATE_MON              ;[1570] RANDOM
-    DW    VALIDATE_LOAD             ;[1572] VERIFY
-    DW    VALIDATE_DPOKE            ;[1574] DPOKE
-    DW    VALIDATE_DPOKE            ;[1576] POINT
-    DW    VALIDATE_DPOKE            ;[1578] POKE
-    DW    VALIDATE_MON              ;[157A] END
-    DW    VALIDATE_MON              ;[157C] STOP
-    DW    VALIDATE_FOR              ;[157E] FOR
-    DW    VALIDATE_GOTO             ;[1580] GOTO
-    DW    VALIDATE_GOTO             ;[1582] GOSUB
-    DW    VALIDATE_MON              ;[1584] RETURN
-    DW    VALIDATE_MON              ;[1586] CLS
-    DW    VALIDATE_RESTORE          ;[1588] RUN
-    DW    VALIDATE_MON              ;[158A] CONT
-    DW    VALIDATE_DPOKE            ;[158C] OUT
-    DW    VALIDATE_REM              ;[158E] REM
+    DW    ILET                      ;[1560] 
+    DW    IVDU                      ;[1562] VDU
+    DW    IDEFPROC                  ;[1564] DEFPROC
+    DW    IPROC                     ;[1566] PROC
+    DW    IMON                      ;[1568] ENDPROC
+    DW    INEXT                     ;[156A] NEXT
+    DW    IINK                      ;[156C] INK
+    DW    IINK                      ;[156E] PAPER
+    DW    IMON                      ;[1570] RANDOM
+    DW    ILOAD                     ;[1572] VERIFY
+    DW    IDPOKE                    ;[1574] DPOKE
+    DW    IDPOKE                    ;[1576] POINT
+    DW    IDPOKE                    ;[1578] POKE
+    DW    IMON                      ;[157A] END
+    DW    IMON                      ;[157C] STOP
+    DW    IFOR                      ;[157E] FOR
+    DW    IGOTO                     ;[1580] GOTO
+    DW    IGOTO                     ;[1582] GOSUB
+    DW    IMON                      ;[1584] RETURN
+    DW    IMON                      ;[1586] CLS
+    DW    IRESTORE                  ;[1588] RUN
+    DW    IMON                      ;[158A] CONT
+    DW    IDPOKE                    ;[158C] OUT
+    DW    IREM                      ;[158E] REM
     DW    IRD                       ;[1590] READ
-    DW    VALIDATE_REM              ;[1592] DATA
-    DW    VALIDATE_MON              ;[1594] NEW
-    DW    VALIDATE_CALL             ;[1596] DELETE
-    DW    VALIDATE_LIST             ;[1598] AUTO
-    DW    VALIDATE_PRINT1           ;[159A] PRINT
-    DW    VALIDATE_LOAD             ;[159C] LOAD
-    DW    VALIDATE_SAVE             ;[159E] SAVE
-    DW    VALIDATE_RESTORE          ;[15A0] RESTORE
-    DW    VALIDATE_CCCR             ;[15A2] PLOT
-    DW    VALIDATE_DPOKE            ;[15A4] MOVE
-    DW    VALIDATE_DPOKE            ;[15A6] DRAW
-    DW    VALIDATE_CALL             ;[15A8] CALL
-    DW    VALIDATE_INPUT            ;[15AA] INPUT
-    DW    VALIDATE_DIM              ;[15AC] DIM
-    DW    VALIDATE_IF               ;[15AE] IF
-    DW    VALIDATE_LIST             ;[15B0] LIST
-    DW    VALIDATE_E4CR             ;[15B2] WINDOW
-    DW    VALIDATE_INK              ;[15B4] PAUSE
-    DW    VALIDATE_ROUND            ;[15B6] ROUND
-    DW    VALIDATE_ROUND            ;[15B8] TRAIL
-    DW    VALIDATE_PRINT1           ;[15BA] LPRINT
-    DW    VALIDATE_LIST             ;[15BC] LLIST
-    DW    VALIDATE_REM              ;[15BE] LABEL
-    DW    VALIDATE_CCCR             ;[15C0] BEEP
-    DW    VALIDATE_DPOKE            ;[15C2] SOUND
-    DW    VALIDATE_LOAD             ;[15C4] APPEND
-    DW    VALIDATE_CODE             ;[15C6] CODE
-    DW    VALIDATE_ROUND            ;[15C8] LINK
-    DW    VALIDATE_SWAP             ;[15CA] SWAP
-    DW    VALIDATE_INK              ;[15CC] WHILE
-    DW    VALIDATE_MON              ;[15CE] WEND
-    DW    VALIDATE_MON              ;[15D0] REPEAT
-    DW    VALIDATE_INK              ;[15D2] UNTIL
-    DW    VALIDATE_CCCR             ;[15D4] 
-    DW    VALIDATE_PRINT            ;[15D6] ? (PRINT)
+    DW    IREM                      ;[1592] DATA
+    DW    IMON                      ;[1594] NEW
+    DW    ICALL                     ;[1596] DELETE
+    DW    ILIST                     ;[1598] AUTO
+    DW    IPRINT1                   ;[159A] PRINT
+    DW    ILOAD                     ;[159C] LOAD
+    DW    ISAVE                     ;[159E] SAVE
+    DW    IRESTORE                  ;[15A0] RESTORE
+    DW    ICCCR                     ;[15A2] PLOT
+    DW    IDPOKE                    ;[15A4] MOVE
+    DW    IDPOKE                    ;[15A6] DRAW
+    DW    ICALL                     ;[15A8] CALL
+    DW    IINPUT                    ;[15AA] INPUT
+    DW    IDIM                      ;[15AC] DIM
+    DW    IIF                       ;[15AE] IF
+    DW    ILIST                     ;[15B0] LIST
+    DW    IE4CR                     ;[15B2] WINDOW
+    DW    IINK                      ;[15B4] PAUSE
+    DW    IROUND                    ;[15B6] ROUND
+    DW    IROUND                    ;[15B8] TRAIL
+    DW    IPRINT1                   ;[15BA] LPRINT
+    DW    ILIST                     ;[15BC] LLIST
+    DW    IREM                      ;[15BE] LABEL
+    DW    ICCCR                     ;[15C0] BEEP
+    DW    IDPOKE                    ;[15C2] SOUND
+    DW    ILOAD                     ;[15C4] APPEND
+    DW    ICODE                     ;[15C6] CODE
+    DW    IROUND                    ;[15C8] LINK
+    DW    ISWAP                     ;[15CA] SWAP
+    DW    IINK                      ;[15CC] WHILE
+    DW    IMON                      ;[15CE] WEND
+    DW    IMON                      ;[15D0] REPEAT
+    DW    IINK                      ;[15D2] UNTIL
+    DW    ICCCR                     ;[15D4] 
+    DW    IPRINT                    ;[15D6] ? (PRINT)
     DW    IL1                       ;[15D8] ELSE
-    DW    VALIDATE_INK              ;[15DA] RESERV
-    DW    VALIDATE_MON              ;[15DC] MONITOR
-    DW    VALIDATE_LIST             ;[15DE] RENUM
-    DW    VALIDATE_MON              ;[15E0] XROM
+    DW    IINK                      ;[15DA] RESERV
+    DW    IMON                      ;[15DC] MONITOR
+    DW    ILIST                     ;[15DE] RENUM
+    DW    IMON                      ;[15E0] XROM
     DW    SYSVAR_IEXT               ;[15E2] EXT
-    DW    VALIDATE_INK              ;[15E4] CFR
-    DW    VALIDATE_INK              ;[15E6] CCHAR
-    DW    VALIDATE_ROUND            ;[15E8] TRACE
-    DW    VALIDATE_INK              ;[15EA] SPEED
-    DW    VALIDATE_INK              ;[15EC] PROTECT
-    DW    VALIDATE_INK              ;[15EE] ERROR
-    DW    VALIDATE_INK              ;[15F0] TAPE
-    DW    VALIDATE_LOAD             ;[15F2] MLOAD
-    DW    VALIDATE_MON              ;[15F4] TEXT
+    DW    IINK                      ;[15E4] CFR
+    DW    IINK                      ;[15E6] CCHAR
+    DW    IROUND                    ;[15E8] TRACE
+    DW    IINK                      ;[15EA] SPEED
+    DW    IINK                      ;[15EC] PROTECT
+    DW    IINK                      ;[15EE] ERROR
+    DW    IINK                      ;[15F0] TAPE
+    DW    ILOAD                     ;[15F2] MLOAD
+    DW    IMON                      ;[15F4] TEXT
 
 ;
 ; Command execution table. Execution routine addresses for BASIC words.
 ;
 XETBLS:
-    DW    BASIC_COM_LET             ;[15F6] 
-    DW    BASIC_COM_VDU             ;[15F8] VDU
+    DW    ELET                      ;[15F6] 
+    DW    EVDU                      ;[15F8] VDU
     DW    ERR_WRONG_MODE            ;[15FA] DEFPROC
-    DW    BASIC_COM_PROC            ;[15FC] PROC
-    DW    BASIC_COM_ENDPROC         ;[15FE] ENDPROC
-    DW    BASIC_COM_NEXT            ;[1600] NEXT
-    DW    BASIC_COM_INK             ;[1602] INK
-    DW    BASIC_COM_PAPER           ;[1604] PAPER
-    DW    BASIC_COM_RANDOM          ;[1606] RANDOM
-    DW    BASIC_COM_VERIFY          ;[1608] VERIFY
-    DW    BASIC_COM_DPOKE           ;[160A] DPOKE
-    DW    BASIC_COM_DOT             ;[160C] POINT
-    DW    BASIC_COM_POKE            ;[160E] POKE
-    DW    BASIC_COM_END             ;[1610] END
-    DW    BASIC_COM_STOP            ;[1612] STOP
-    DW    BASIC_COM_FOR             ;[1614] FOR
-    DW    BASIC_COM_GOTO            ;[1616] GOTO
-    DW    BASIC_COM_GOSUB           ;[1618] GOSUB
-    DW    BASIC_COM_RETURN          ;[161A] RETURN
-    DW    BASIC_COM_CLS             ;[161C] CLS
-    DW    BASIC_COM_RUN             ;[161E] RUN
-    DW    BASIC_COM_CONT            ;[1620] CONT
-    DW    BASIC_COM_OUT             ;[1622] OUT
-    DW    BASIC_COM_NO_EXE          ;[1624] REM
-    DW    BASIC_COM_READ            ;[1626] READ
-    DW    BASIC_COM_NO_EXE          ;[1628] DATA
-    DW    BASIC_COM_NEW             ;[162A] NEW
-    DW    BASIC_COM_DEL             ;[162C] DELETE
-    DW    BASIC_COM_AUTO            ;[162E] AUTO
-    DW    BASIC_COM_PRINT           ;[1630] PRINT
-    DW    BASIC_COM_LOAD            ;[1632] LOAD
-    DW    BASIC_COM_SAVE            ;[1634] SAVE
-    DW    BASIC_COM_RESTORE         ;[1636] RESTORE
-    DW    BASIC_COM_PLOT            ;[1638] PLOT
-    DW    BASIC_COM_MOVE            ;[163A] MOVE
-    DW    BASIC_COM_DRAW            ;[163C] DRAW
-    DW    BASIC_COM_CALL            ;[163E] CALL
-    DW    BASIC_COM_INPUT           ;[1640] INPUT
-    DW    BASIC_COM_DIM             ;[1642] DIM
-    DW    BASIC_COM_IF              ;[1644] IF
-    DW    BASIC_COM_LIST            ;[1646] LIST
-    DW    BASIC_COM_WINDOW          ;[1648] WINDOW
-    DW    BASIC_COM_PAUSE           ;[164A] PAUSE
-    DW    BASIC_COM_ROUND           ;[164C] ROUND
-    DW    BASIC_COM_TRAIL           ;[164E] TRAIL
-    DW    BASIC_COM_LPRINT          ;[1650] LPRINT
-    DW    BASIC_COM_LLIST           ;[1652] LLIST
-    DW    BASIC_COM_NO_EXE          ;[1654] LABEL
-    DW    BASIC_COM_BEEP            ;[1656] BEEP
-    DW    BASIC_COM_SOUND           ;[1658] SOUND
-    DW    BASIC_COM_APPEND          ;[165A] APPEND
-    DW    BASIC_COM_NO_EXE          ;[165C] CODE
-    DW    BASIC_COM_LINK            ;[165E] LINK
-    DW    BASIC_COM_SWAP            ;[1660] SWAP
-    DW    BASIC_COM_WHILE           ;[1662] WHILE
-    DW    BASIC_COM_WEND            ;[1664] WEND
-    DW    BASIC_COM_REPEAT          ;[1666] REPEAT
-    DW    BASIC_COM_UNTIL           ;[1668] UNTIL
+    DW    EPROC                     ;[15FC] PROC
+    DW    EENDPROC                  ;[15FE] ENDPROC
+    DW    ENEXT                     ;[1600] NEXT
+    DW    EINK                      ;[1602] INK
+    DW    EPAPER                    ;[1604] PAPER
+    DW    ERANDOM                   ;[1606] RANDOM
+    DW    EVERIFY                   ;[1608] VERIFY
+    DW    EDPOKE                    ;[160A] DPOKE
+    DW    EDOT                      ;[160C] POINT
+    DW    EPOKE                     ;[160E] POKE
+    DW    EEND                      ;[1610] END
+    DW    ESTOP                     ;[1612] STOP
+    DW    EFOR                      ;[1614] FOR
+    DW    EGOTO                     ;[1616] GOTO
+    DW    EGOSUB                    ;[1618] GOSUB
+    DW    ERETURN                   ;[161A] RETURN
+    DW    ECLS                      ;[161C] CLS
+    DW    ERUN                      ;[161E] RUN
+    DW    ECONT                     ;[1620] CONT
+    DW    EOUT                      ;[1622] OUT
+    DW    ENO_EXE                   ;[1624] REM
+    DW    EREAD                     ;[1626] READ
+    DW    ENO_EXE                   ;[1628] DATA
+    DW    ENEW                      ;[162A] NEW
+    DW    EDEL                      ;[162C] DELETE
+    DW    EAUTO                     ;[162E] AUTO
+    DW    EPRINT                    ;[1630] PRINT
+    DW    ELOAD                     ;[1632] LOAD
+    DW    ESAVE                     ;[1634] SAVE
+    DW    ERESTORE                  ;[1636] RESTORE
+    DW    EPLOT                     ;[1638] PLOT
+    DW    EMOVE                     ;[163A] MOVE
+    DW    EDRAW                     ;[163C] DRAW
+    DW    ECALL                     ;[163E] CALL
+    DW    EINPUT                    ;[1640] INPUT
+    DW    EDIM                      ;[1642] DIM
+    DW    EIF                       ;[1644] IF
+    DW    ELIST                     ;[1646] LIST
+    DW    EWINDOW                   ;[1648] WINDOW
+    DW    EPAUSE                    ;[164A] PAUSE
+    DW    EROUND                    ;[164C] ROUND
+    DW    ETRAIL                    ;[164E] TRAIL
+    DW    ELPRINT                   ;[1650] LPRINT
+    DW    ELLIST                    ;[1652] LLIST
+    DW    ENO_EXE                   ;[1654] LABEL
+    DW    EBEEP                     ;[1656] BEEP
+    DW    ESOUND                    ;[1658] SOUND
+    DW    EAPPEND                   ;[165A] APPEND
+    DW    ENO_EXE                   ;[165C] CODE
+    DW    ELINK                     ;[165E] LINK
+    DW    ESWAP                     ;[1660] SWAP
+    DW    EWHILE                    ;[1662] WHILE
+    DW    EWEND                     ;[1664] WEND
+    DW    EREPEAT                   ;[1666] REPEAT
+    DW    EUNTIL                    ;[1668] UNTIL
     DW    ERR_NOT_YET_IMP           ;[166A] 
     DW    ERR_NOT_YET_IMP           ;[166C] ? (PRINT)
-    DW    BASIC_COM_NO_EXE          ;[166E] ELSE
-    DW    BASIC_COM_RESERVE         ;[1670] RESERV
-    DW    BASIC_COM_MON             ;[1672] MONITOR
-    DW    BASIC_COM_RENUM           ;[1674] RENUM
+    DW    ENO_EXE                   ;[166E] ELSE
+    DW    ERESERVE                  ;[1670] RESERV
+    DW    EMON                      ;[1672] MONITOR
+    DW    ERENUM                    ;[1674] RENUM
     DW    XROM                      ;[1676] XROM
     DW    SYSVAR_EEXT               ;[1678] EXT
-    DW    BASIC_COM_CFR             ;[167A] CFR
-    DW    BASIC_COM_CCHAR           ;[167C] CCHAR
-    DW    BASIC_COM_TRACE           ;[167E] TRACE
-    DW    BASIC_COM_SPEED           ;[1680] SPEED
-    DW    BASIC_COM_PROTECT         ;[1682] PROTECT
-    DW    BASIC_COM_ERROR           ;[1684] ERROR
-    DW    BASIC_COM_TAPE            ;[1686] TAPE
-    DW    BASIC_COM_MLOAD           ;[1688] MLOAD
+    DW    ECFR                      ;[167A] CFR
+    DW    ECCHAR                    ;[167C] CCHAR
+    DW    ETRACE                    ;[167E] TRACE
+    DW    ESPEED                    ;[1680] SPEED
+    DW    EPROTECT                  ;[1682] PROTECT
+    DW    EERROR                    ;[1684] ERROR
+    DW    ETAPE                     ;[1686] TAPE
+    DW    EMLOAD                    ;[1688] MLOAD
     DW    ETEXT                     ;[168A] TEXT
 
 ;
@@ -3281,7 +3282,7 @@ XETBLS:
 ;
 INIT:
     DI                              ;[168C] 
-    LD    HL,DATA_INIT              ;[168D] Initialise stack.
+    LD    HL,DATA_RAMC              ;[168D] Initialise stack.
     LD    DE,SYSVAR_STACK           ;[1690] 
     LD    BC,$00D3                  ;[1693] 
     LDIR                            ;[1696] 
@@ -3358,9 +3359,9 @@ DO_AUTONUM:
     JP    WRA1_TO_DE                ;[1712] 
 
 ;
-; Data used in initialisation.
+; Data used in RAM initialisation.
 ;
-DATA_INIT:
+DATA_RAMC:
     DW    $FF00                     ;[1715] 
     DB    1,0,0,0                   ;[1717] Random #
     DW    0                         ;[171B] HL store
@@ -3370,7 +3371,7 @@ DATA_INIT:
     DW    SYSVAR_SOBS               ;[1723] End of basic
     DW    SYSVAR_POLBUFS            ;[1725] Polish buffer
     DW    SCREEN                    ;[1727] Display driver
-    DW    BASIC_COM_NO_EXE          ;[1729] Printer driver
+    DW    ENO_EXE                   ;[1729] Printer driver
     DW    KEYB                      ;[172B] Basic keyboard driver
     DB    1                         ;[172D] Output type 1=Display,2=printer
     DB    0                         ;[172E] Last chr output
@@ -3388,7 +3389,7 @@ DATA_INIT:
     DW    XITBLS                    ;[1742] Extra input syntax
     DW    XETBLS                    ;[1744] Extra execution
     DW    SYSVAR_SOBS+1             ;[1746] Top of vars
-    JP    VALIDATE_REM              ;[1748] Load in following
+    JP    IREM                      ;[1748] Load in following
     JP    ERR_NOT_YET_IMP           ;[174B] Not implemented
     DB    $C9                       ;[174E] Before input of line
     DW    0                         ;[174F] 
@@ -3396,7 +3397,7 @@ DATA_INIT:
     DW    0                         ;[1752] Zero flag ,round on
     DB    1                         ;[1754] Auto off
     DB    0                         ;[1755] Carriage return message
-    DW    CRMS                      ;[1756] Ksms off
+    DW    CRMSG                     ;[1756] Ksms off
     DB    0                         ;[1758] Repeat delay
     DB    0                         ;[1759] Last chr
     DB    0                         ;[175A] Status
@@ -4609,7 +4610,7 @@ ARLOC2:
 ;
 ; Handle stopping BASIC program; set continue line;  display "Stopped" message.
 ;
-BASIC_COM_STOP:
+ESTOP:
     LD    IX,(SYSVAR_CURRLP)        ;[1E2F] 
     LD    A,(IX+$00)                ;[1E33] 
     CP    $80                       ;[1E36] 
@@ -4632,7 +4633,7 @@ STOPPED_MSG:
 ;
 ; RND.
 ;
-BASIC_FN_RND:
+FRND:
     CALL  FRNDS                     ;[1E57] 
     LD    HL,(SYSVAR_RNDNO)         ;[1E5A] 
     CALL  INTFP                     ;[1E5D] 
@@ -4643,7 +4644,7 @@ BASIC_FN_RND:
 ;
 ; MEM.
 ;
-BASIC_FN_MEM:
+FMEM:
     LD    BC,(SYSVAR_TOV)           ;[1E69] 
     LD    HL,0                      ;[1E6D] 
     ADD   HL,SP                     ;[1E70] 
@@ -4694,7 +4695,7 @@ ERR_RECOVERY:
     JR    NZ,ERR_RECOVERY1          ;[1EB9] 
     LD    A,$0D                     ;[1EBB] 
     RST   $08                       ;[1EBD] 
-    LD    BC,EXC2                   ;[1EBE] 
+    LD    BC,EXEC2                  ;[1EBE] 
 ERR_RECOVERY2:
     POP   HL                        ;[1EC1] 
     OR    A                         ;[1EC2] 
@@ -4873,7 +4874,7 @@ ZERO_VTBL:
 ;
 ; LCTN.
 ;
-BASIC_FN_LCTN:
+FLCTN:
     CALL  FINDLN                    ;[1F9D] 
     CALL  SKIP_LNUM                 ;[1FA0] 
     EX    DE,HL                     ;[1FA3] 
@@ -4883,7 +4884,7 @@ BASIC_FN_LCTN:
 ;
 ; RANDOM.
 ;
-BASIC_COM_RANDOM:
+ERANDOM:
     LD    A,R                       ;[1FA8] 
     AND   $7F                       ;[1FAA] 
     INC   A                         ;[1FAC] 
@@ -4893,7 +4894,7 @@ BASIC_COM_RANDOM:
 ;
 ; CLS.
 ;
-BASIC_COM_CLS:
+ECLS:
     LD    HL,SYSVAR_OTYPE           ;[1FB1] 
     LD    A,(HL)                    ;[1FB4] 
     PUSH  AF                        ;[1FB5] 
@@ -4907,14 +4908,14 @@ BASIC_COM_CLS:
 ;
 ; END.
 ;
-BASIC_COM_END:
+EEND:
     CALL  READY_MSG                 ;[1FBE] 
     JP    EXEC_EXIT                 ;[1FC1] 
 
 ;
 ; WEND.
 ;
-BASIC_COM_WEND:
+EWEND:
     CALL  POP_A_RSTACK              ;[1FC4] 
     CP    $36                       ;[1FC7] 
     CALL  NZ,ERR_WEND_NO_WHILE      ;[1FC9] 
@@ -4925,7 +4926,7 @@ BASIC_COM_WEND:
 ;
 ; WHILE.
 ;
-BASIC_COM_WHILE:
+EWHILE:
     RST   $28                       ;[1FD3] 
     LD    A,(SYSVAR_WRA1)           ;[1FD4] 
     CP    $80                       ;[1FD7] 
@@ -4948,7 +4949,7 @@ DO_WHILE:
 ;
 ; UNTIL.
 ;
-BASIC_COM_UNTIL:
+EUNTIL:
     PUSH  DE                        ;[1FFA] 
     CALL  POP_A_RSTACK              ;[1FFB] 
     CP    REPEAT                    ;[1FFE] 
@@ -4967,7 +4968,7 @@ EUNT1:
 ;
 ; REPEAT.
 ;
-BASIC_COM_REPEAT:
+EREPEAT:
     LD    HL,(SYSVAR_CURRLP)        ;[2013] 
     CALL  PUSH_HL_RSTACK            ;[2016] 
     LD    A,REPEAT                  ;[2019] 
@@ -4976,16 +4977,16 @@ BASIC_COM_REPEAT:
 ;
 ; GETN.
 ;
-BASIC_FN_GETN:
+FGETN:
     CALL  KEY                       ;[201E] 
     OR    A                         ;[2021] 
-    JR    Z,BASIC_FN_GETN           ;[2022] 
+    JR    Z,FGETN                   ;[2022] 
     JR    FINKY1                    ;[2024] 
 
 ;
 ; KEYN.
 ;
-BASIC_FN_KEYN:
+FKEYN:
     CALL  KEY                       ;[2026] 
 FINKY1:
     LD    L,A                       ;[2029] 
@@ -5047,7 +5048,7 @@ SUB_CHK_EXP_EVAL:
 ;
 ; CALL.
 ;
-BASIC_COM_CALL:
+ECALL:
     RST   $18                       ;[205F] 
     PUSH  HL                        ;[2060] 
     LD    A,(DE)                    ;[2061] 
@@ -5067,7 +5068,7 @@ ECALL2:
 ;
 ; Check for stack full.
 ;
-BASIC_COM_RETURN:
+ERETURN:
     CALL  POP_A_RSTACK              ;[2074] 
     CP    GOSUB                     ;[2077] 
     CALL  NZ,ERR_RETURN_NO_GOSUB    ;[2079] 
@@ -5076,7 +5077,7 @@ EEPRN1:
     LD    (SYSVAR_CURRLP),HL        ;[207F] 
     RET                             ;[2082] 
 
-BASIC_COM_NEW:
+ENEW:
     LD    HL,(SYSVAR_SOB)           ;[2083] 
     LD    (SYSVAR_EOB),HL           ;[2086] 
     LD    (HL),$80                  ;[2089] 
@@ -5087,7 +5088,7 @@ BASIC_COM_NEW:
 ;
 ; INPUT.
 ;
-BASIC_COM_INPUT:
+EINPUT:
     CP    $22                       ;[2094] 
     JR    NZ,EIPT1                  ;[2096] 
     CALL  PRINT_STRING              ;[2098] 
@@ -5203,7 +5204,7 @@ VARP1:
 ;
 ; PAUSE.
 ;
-BASIC_COM_PAUSE:
+EPAUSE:
     RST   $18                       ;[2122] 
 EPAUSE1:
     DEC   HL                        ;[2123] 
@@ -5218,7 +5219,7 @@ EPAUSE2:
 ;
 ; PROTECT.
 ;
-BASIC_COM_PROTECT:
+EPROTECT:
     RST   $18                       ;[212D] 
 EPROT1:
     LD    (SYSVAR_PROTST),A         ;[212E] 
@@ -5246,7 +5247,7 @@ ETEXT:
 ;
 ; LET.
 ;
-BASIC_COM_LET:
+ELET:
     CALL  TEST_FOR_STRING           ;[2148] 
     JR    Z,ELET1                   ;[214B] 
     CALL  GET_VAR_ADDR              ;[214D] 
@@ -5263,7 +5264,7 @@ ELET7:
     CP    CR                        ;[215B] 
     RET   Z                         ;[215D] 
     INC   DE                        ;[215E] 
-    JR    BASIC_COM_LET             ;[215F] 
+    JR    ELET                      ;[215F] 
 ELET1:
     LD    IY,SYSVAR_CSTACK          ;[2161] 
     CALL  SYSVAR_VRPTS              ;[2165] String pointer
@@ -5283,7 +5284,7 @@ ELET3:
 ;
 ; RESTORE.
 ;
-BASIC_COM_RESTORE:
+ERESTORE:
     CP    $0D                       ;[217D] 
     LD    IX,(SYSVAR_SOB)           ;[217F] 
     JR    Z,$2189                   ;[2183] 
@@ -5342,7 +5343,7 @@ FTLD3:
 ;
 ; READ.
 ;
-BASIC_COM_READ:
+EREAD:
     EXX                             ;[21C5] 
     LD    DE,(SYSVAR_DATAP)         ;[21C6] 
     EXX                             ;[21CA] 
@@ -5462,9 +5463,9 @@ PHEXHL_OUTB:
 ;
 ; LPRINT.
 ;
-BASIC_COM_LPRINT:
+ELPRINT:
     CALL  SUB_LINK_ON               ;[224E] 
-    CALL  BASIC_COM_PRINT           ;[2251] 
+    CALL  EPRINT                    ;[2251] 
     JP    SUB_LINK_OFF              ;[2254] 
 
 ;
@@ -5481,7 +5482,7 @@ PRINT_STRING:
 ;
 ; SWAP.
 ;
-BASIC_COM_SWAP:
+ESWAP:
     CALL  GET_VAR_ADDR              ;[225F] 
     PUSH  HL                        ;[2262] 
     INC   DE                        ;[2263] 
@@ -5490,7 +5491,7 @@ BASIC_COM_SWAP:
     LD    B,$05                     ;[2268] 
     JP    SWAP1                     ;[226A] 
 
-BASIC_COM_CONT:
+ECONT:
     LD    HL,(SYSVAR_CURRLP)        ;[226D] 
     LD    A,(HL)                    ;[2270] 
     CP    $80                       ;[2271] 
@@ -5505,7 +5506,7 @@ BASIC_COM_CONT:
 ;
 ; RUN. (aka ERUN)
 ;
-BASIC_COM_RUN:
+ERUN:
     PUSH  DE                        ;[2280] 
     CALL  ZERO_MEM                  ;[2281] Pre-run module
     POP   DE                        ;[2284] 
@@ -5518,19 +5519,19 @@ EGT2:
     CALL  FINDLN                    ;[228F] 
 EGT1:
     POP   BC                        ;[2292] 
-    JP    EXC5                      ;[2293] 
+    JP    EXEC5                     ;[2293] 
 
 ;
 ; GOSUB
 ;
-BASIC_COM_GOSUB:
+EGOSUB:
     LD    HL,(SYSVAR_CURRLP)        ;[2296] 
     CALL  PUSH_HL_RSTACK            ;[2299] 
     LD    A,GOSUB                   ;[229C] 
     CALL  PUSH_A_RSTACK             ;[229E] 
     LD    A,(DE)                    ;[22A1] 
 
-BASIC_COM_GOTO:
+EGOTO:
     CP    OLABEL                    ;[22A2] 
     JR    NZ,EGT2                   ;[22A4] 
     LD    C,LABEL                   ;[22A6] 
@@ -5581,7 +5582,7 @@ ELIST2:
     LD    DE,$FFFF                  ;[22E4] 
     JR    ELIST1                    ;[22E7] 
 
-BASIC_COM_LIST:
+ELIST:
     CP    CR                        ;[22E9] 
     LD    A,0                       ;[22EB] 
     LD    (SYSVAR_SBC),A            ;[22ED] 
@@ -5630,15 +5631,15 @@ ELIST4:
 ;
 ; LLIST.
 ;
-BASIC_COM_LLIST:
+ELLIST:
     CALL  SUB_LINK_ON               ;[2338] 
     LD    A,(DE)                    ;[233B] 
-    JP    BASIC_COM_LIST            ;[233C] 
+    JP    ELIST                     ;[233C] 
 
 ;
 ; DEL
 ;
-BASIC_COM_DEL:
+EDEL:
     RST   $28                       ;[233F] 
     PUSH  DE                        ;[2340] 
     CALL  FINDLN                    ;[2341] 
@@ -5688,7 +5689,7 @@ ADD64K:
 ;
 ; OUT.
 ;
-BASIC_COM_OUT:
+EOUT:
     RST   $18                       ;[237D] 
     PUSH  HL                        ;[237E] 
     INC   DE                        ;[237F] 
@@ -5697,7 +5698,7 @@ BASIC_COM_OUT:
     OUT   (C),A                     ;[2382] 
     RET                             ;[2384] 
 
-BASIC_COM_POKE:
+EPOKE:
     RST   $18                       ;[2385] 
     PUSH  HL                        ;[2386] 
     INC   DE                        ;[2387] 
@@ -5709,7 +5710,7 @@ BASIC_COM_POKE:
 ;
 ; DPOKE.
 ;
-BASIC_COM_DPOKE:
+EDPOKE:
     RST   $18                       ;[238C] 
     PUSH  HL                        ;[238D] 
     INC   DE                        ;[238E] 
@@ -5725,7 +5726,7 @@ BASIC_COM_DPOKE:
 ;
 ; FOR
 ;
-BASIC_COM_FOR:
+EFOR:
     PUSH  AF                        ;[2397] 
     CALL  GET_VAR_ADDR              ;[2398] 
     PUSH  HL                        ;[239B] Get & save vptr
@@ -5773,7 +5774,7 @@ EFOR3:
 ;
 ; NEXT.
 ;
-BASIC_COM_NEXT:
+ENEXT:
     LD    HL,(SYSVAR_RSP)           ;[23DB] 
     DEC   HL                        ;[23DE] Point to for
     LD    A,(HL)                    ;[23DF] 
@@ -5827,7 +5828,7 @@ ENXTS:
 ;
 ; IF
 ;
-BASIC_COM_IF:
+EIF:
     RST   $28                       ;[242C] 
     LD    A,(SYSVAR_WRA1)           ;[242D] 
     CP    $80                       ;[2430] 
@@ -5852,7 +5853,7 @@ EIF1:
 ;
 ; TRAIL
 ;
-BASIC_COM_TRAIL:
+ETRAIL:
     LD    HL,SYSVAR_ZFLAG           ;[2455] 
     RES   1,(HL)                    ;[2458] 
     CP    $DA                       ;[245A] 
@@ -5863,13 +5864,13 @@ BASIC_COM_TRAIL:
 ; CODE, REM, DATA, LABEL, ELSE 
 ; (non-executable commands, just return)
 ;
-BASIC_COM_NO_EXE:
+ENO_EXE:
     RET                             ;[245F] 
 
 ;
 ; SPEED.
 ;
-BASIC_COM_SPEED:
+ESPEED:
     RST   $18                       ;[2460] 
     LD    HL,SYSVAR_EXFLAG          ;[2461] 
     LD    (SYSVAR_SPEEDST),A        ;[2464] 
@@ -5882,14 +5883,14 @@ BASIC_COM_SPEED:
 ;
 ; TRACE.
 ;
-BASIC_COM_TRACE:
+ETRACE:
     LD    HL,SYSVAR_EXFLAG          ;[246E] 
     JR    ERND1                     ;[2471] 
 
 ;
 ; ROUND.
 ;
-BASIC_COM_ROUND:
+EROUND:
     LD    HL,SYSVAR_ZFLAG           ;[2473] 
 ERND1:
     RES   0,(HL)                    ;[2476] 
@@ -5901,7 +5902,7 @@ ERND1:
 ;
 ; LINK.
 ;
-BASIC_COM_LINK:
+ELINK:
     LD    HL,SYSVAR_OTYPE           ;[247E] 
     RES   7,(HL)                    ;[2481] 
     CP    $DA                       ;[2483] 
@@ -5943,7 +5944,7 @@ EXEC41:
     LD    L,A                       ;[24AF] Lookup command address in table
     LD    H,$00                     ;[24B0] 
     ADD   HL,BC                     ;[24B2] 
-    LD    BC,EXC2                   ;[24B3] 
+    LD    BC,EXEC2                  ;[24B3] 
     PUSH  BC                        ;[24B6] Return addr
     LD    A,(HL)                    ;[24B7] 
     INC   HL                        ;[24B8] 
@@ -5953,11 +5954,11 @@ EXEC41:
     LD    A,(DE)                    ;[24BC] Next byte
     JP    (HL)                      ;[24BD] Execute basic command.
 
-EXC2:
+EXEC2:
     LD    IX,(SYSVAR_CURRLP)        ;[24BE] 
     CALL  NEXT_LINE                 ;[24C2] 
 
-EXC5:
+EXEC5:
     LD    (SYSVAR_CURRLP),IX        ;[24C5] 
     LD    A,(IX+$00)                ;[24C9] 
     CP    $80                       ;[24CC] $80 = End of program marker
@@ -6213,7 +6214,7 @@ QU1:
 ;
 ; Validation for ROUND, TRAIL, LINK, TRACE.
 ;
-VALIDATE_ROUND:
+IROUND:
     CALL  TKSL                      ;[2606] 
     CP    $DA                       ;[2609] 
     JR    Z,IRD1                    ;[260B] 
@@ -6231,7 +6232,7 @@ IRD1:
 ;
 ; Validation for LOAD, MLOAD, APPEND, VERIFY.
 ;
-VALIDATE_LOAD:
+ILOAD:
     CALL  QUOT                      ;[2616] 
     RST   $20                       ;[2619] 
     DB    CR                        ;[261A] 
@@ -6242,7 +6243,7 @@ ILD1:
 ;
 ; Validation for SAVE.
 ;
-VALIDATE_SAVE:
+ISAVE:
     CALL  QUOT                      ;[261D] 
     CP    $0D                       ;[2620] 
     JR    Z,ILD1                    ;[2622] 
@@ -6251,12 +6252,12 @@ VALIDATE_SAVE:
     LD    (HL),A                    ;[2626] 
     INC   HL                        ;[2627] 
     INC   DE                        ;[2628] 
-    JP    VALIDATE_INK              ;[2629] 
+    JP    IINK                      ;[2629] 
 
 ;
 ; Validation for INPUT.
 ;
-VALIDATE_INPUT:
+IINPUT:
     CP    $22                       ;[262C] 
     JR    NZ,IRD                    ;[262E] 
     CALL  QUOT                      ;[2630] 
@@ -6275,7 +6276,7 @@ IRD:
     POP   HL                        ;[2643] 
     CALL  TEST_FOR_STRING           ;[2644] 
     JR    Z,IREAD1                  ;[2647] 
-    CALL  VALIDATE_READ             ;[2649] 
+    CALL  IREAD                     ;[2649] 
 IREAD3:
     LD    (HL),A                    ;[264C] 
     CP    $0D                       ;[264D] 
@@ -6294,9 +6295,9 @@ IREAD1:
 ;
 ; Validation for RESTORE. Optional expression.
 ;
-VALIDATE_RESTORE:
+IRESTORE:
     CP    CR                        ;[265D] 
-    JP    NZ,VALIDATE_INK           ;[265F] 
+    JP    NZ,IINK                   ;[265F] 
 OC1:
     LD    (HL),A                    ;[2662] 
     RET                             ;[2663] 
@@ -6304,14 +6305,14 @@ OC1:
 ;
 ; Validation for LIST, LLIST, RENUM. (expr(,expr))
 ;
-VALIDATE_LIST:
+ILIST:
     CP    CR                        ;[2664] 
     JR    Z,OC1                     ;[2666] 
 
 ;
 ; Validation for CALL. expr, (,expr)
 ;
-VALIDATE_CALL:
+ICALL:
     CALL  RP                        ;[2668] 
     CP    $0D                       ;[266B] 
     JR    Z,OC1                     ;[266D] 
@@ -6319,7 +6320,7 @@ VALIDATE_CALL:
     DB    ','                       ;[2670] 
     LD    (HL),A                    ;[2671] 
     INC   HL                        ;[2672] 
-    JP    VALIDATE_INK              ;[2673] 
+    JP    IINK                      ;[2673] 
 
 ;
 ; Validation routine for LET.
@@ -6332,10 +6333,10 @@ ILET1:
 ILET4:
     LD    (HL),A                    ;[267A] 
     INC   HL                        ;[267B] 
-VALIDATE_LET:
+ILET:
     CALL  TEST_FOR_STRING           ;[267C] 
     JR    Z,ILET3                   ;[267F] 
-    CALL  VALIDATE_READ             ;[2681] 
+    CALL  IREAD                     ;[2681] 
     CP    '='                       ;[2684] 
     JP    NZ,IERR                   ;[2686] 
     LD    (HL),A                    ;[2689] 
@@ -6345,7 +6346,7 @@ VALIDATE_LET:
 ILET7:
     CP    ','                       ;[268F] 
     JR    Z,ILET4                   ;[2691] 
-    JP    VALIDATE_MON              ;[2693] 
+    JP    IMON                      ;[2693] 
 ILET3:
     CALL  READ_STRING_VAR           ;[2696] 
     RST   $10                       ;[2699] 
@@ -6366,7 +6367,7 @@ IERR:
     LD    DE,INPBUF                 ;[26A6] 
     LD    HL,(SYSVAR_POLBUF)        ;[26A9] 
     PUSH  HL                        ;[26AC] 
-    CALL  VALIDATE_INK              ;[26AD] 
+    CALL  IINK                      ;[26AD] 
     POP   DE                        ;[26B0] 
     CALL  SYSVAR_EE                 ;[26B1] 
     CALL  PN                        ;[26B4] 
@@ -6377,40 +6378,40 @@ IERR:
 ;
 ; Validation routine for DPOKE, POKE, DOT, OUT, MOVE, DRAW.SOUND.
 ;
-VALIDATE_DPOKE:
+IDPOKE:
     CALL  TEST_IS_COMMA             ;[26BD] 
-    JP    VALIDATE_INK              ;[26C0] 
+    JP    IINK                      ;[26C0] 
 
 ;
 ; Validation routine for GOSUB, GOTO.  (expr,expr type)
 ;
-VALIDATE_GOTO:
+IGOTO:
     PUSH  DE                        ;[26C3] 
     CALL  TKSL                      ;[26C4] 
-    JR    C,VALIDATE_GOTO2          ;[26C7] 
+    JR    C,IGOTO2                  ;[26C7] 
     CP    OLABEL                    ;[26C9] 
-    JR    Z,VALIDATE_GOTO1          ;[26CB] 
-VALIDATE_GOTO2:
+    JR    Z,IGOTO1                  ;[26CB] 
+IGOTO2:
     POP   DE                        ;[26CD] 
-    JP    VALIDATE_INK              ;[26CE] 
-VALIDATE_GOTO1:
+    JP    IINK                      ;[26CE] 
+IGOTO1:
     POP   BC                        ;[26D1] 
     LD    (HL),A                    ;[26D2] 
     INC   HL                        ;[26D3] 
     RST   $10                       ;[26D4] 
-    JP    VALIDATE_REM              ;[26D5] 
+    JP    IREM                      ;[26D5] 
 
 ;
 ; Validation routine for NEXT.
 ;
-VALIDATE_NEXT:
+INEXT:
     CALL  TEST_IS_VAR               ;[26D8] 
 
 ;
 ; Validation for MON, ENDPROC, RANDOM, END, STOP, RETURN, CLS, CONT, NEW, 
 ; WEND, REPEAT, DISK, TEXT.
 ;
-VALIDATE_MON:
+IMON:
     LD    (HL),A                    ;[26DB] 
     RST   $20                       ;[26DC] 
     DEC   C                         ;[26DD] 
@@ -6419,7 +6420,7 @@ VALIDATE_MON:
 ;
 ; Validation for FOR.
 ;
-VALIDATE_FOR:
+IFOR:
     CALL  TEST_IS_VAR               ;[26DF] 
     RST   $20                       ;[26E2] 
     DEC   A                         ;[26E3] 
@@ -6434,12 +6435,12 @@ VALIDATE_FOR:
     JP    Z,OC1                     ;[26F3] 
     RST   $20                       ;[26F6] 
     CALL  C,$2377                   ;[26F7] 
-    JP    VALIDATE_INK              ;[26FA] 
+    JP    IINK                      ;[26FA] 
 
 ;
 ; Validation for IF.
 ;
-VALIDATE_IF:
+IIF:
     CALL  RP                        ;[26FD] 
     RST   $20                       ;[2700] 
     DB    THEN                      ;[2701] 
@@ -6451,9 +6452,9 @@ VALIDATE_IF:
 ; Validation for INK, PAPER, PAUSE, WHILE, UNTIL, RESERVE, CFR,  CCHAR, SPEED, 
 ; PROTECT, ERROR, TAPE. (Expression followed by CR)
 ;
-VALIDATE_INK:
+IINK:
     CALL  RP                        ;[2707] 
-    JP    VALIDATE_MON              ;[270A] 
+    JP    IMON                      ;[270A] 
 
 ;
 ; Convert to internal language and check for a comma.
@@ -6480,7 +6481,7 @@ TEST_IS_VAR:
 ;
 ; is validation routine for READ.
 ;
-VALIDATE_READ:
+IREAD:
     CALL  TEST_ALPHA                ;[2721] 
     JP    C,IERR                    ;[2724] 
     LD    (HL),A                    ;[2727] 
@@ -6504,26 +6505,26 @@ ARG3:
 ;
 ; Validation for REM, DATA, EXT, LABEL.
 ;
-VALIDATE_REM:
+IREM:
     LD    A,(DE)                    ;[273C] 
     LD    (HL),A                    ;[273D] 
     CP    CR                        ;[273E] 
     RET   Z                         ;[2740] 
     INC   HL                        ;[2741] 
     INC   DE                        ;[2742] 
-    JR    VALIDATE_REM              ;[2743] 
+    JR    IREM                      ;[2743] 
 
 ;
 ; Validation for SWAP.
 ;
-VALIDATE_SWAP:
-    CALL  VALIDATE_READ             ;[2745] 
+ISWAP:
+    CALL  IREAD                     ;[2745] 
     LD    (HL),A                    ;[2748] 
     CP    ','                       ;[2749] 
     JR    NZ,ISW1                   ;[274B] 
     INC   HL                        ;[274D] 
     INC   DE                        ;[274E] 
-    CALL  VALIDATE_READ             ;[274F] 
+    CALL  IREAD                     ;[274F] 
     LD    (HL),A                    ;[2752] 
     CP    CR                        ;[2753] 
     RET   Z                         ;[2755] 
@@ -6753,7 +6754,7 @@ SUB_INDENT_LOOP:
 ;
 ; AUTO.
 ;
-BASIC_COM_AUTO:
+EAUTO:
     LD    HL,DATA_AUTO              ;[288A] 
     PUSH  DE                        ;[288D] 
     LD    DE,SYSVAR_AUTOST          ;[288E] 
@@ -6802,7 +6803,7 @@ DATA_AUTO:
 ;
 ; BIN. Decimal to binary fudge.
 ;
-BASIC_FN_BIN:
+FBIN:
     LD    A,(SYSVAR_WRA1)           ;[28D9] 
     CP    $C0                       ;[28DC] 
     JP    C,LZERO                   ;[28DE] 
@@ -6829,7 +6830,7 @@ FBIN1:
 ;
 ; Load (DE) to (HL) testing for CR and (.
 ;
-BASIC_COM_PROC:
+EPROC:
     LD    HL,(SYSVAR_CURRLP)        ;[2904] 
     CALL  PUSH_HL_RSTACK            ;[2907] 
     LD    A,ENDPRC                  ;[290A] 
@@ -6891,7 +6892,7 @@ IPRCS1:
 ;
 ; Validation for PROC.
 ;
-VALIDATE_PROC:
+IPROC:
     CALL  IPROCS                    ;[295D] 
 IPROC1:
     CALL  RP                        ;[2960] 
@@ -6903,12 +6904,12 @@ IPROCR:
     RST   $20                       ;[2969] 
     DB    ')'                       ;[296A] 
     RST   $10                       ;[296B] 
-    JP    VALIDATE_MON              ;[296C] 
+    JP    IMON                      ;[296C] 
 
 ;
 ; Validation for DEFPPOC.
 ;
-VALIDATE_DEFPROC:
+IDEFPROC:
     CALL  IPROCS                    ;[296F] 
 IDFPR1:
     RST   $10                       ;[2972] 
@@ -6929,7 +6930,7 @@ IDFPR1:
 ;
 ; ENDPROC.
 ;
-BASIC_COM_ENDPROC:
+EENDPROC:
     CALL  POP_A_RSTACK              ;[2988] 
     CP    ENDPRC                    ;[298B] 
     CALL  NZ,ERR_ENDPROC_NO_PROC    ;[298D] 
@@ -6947,7 +6948,7 @@ PRINT_HEX:
     CALL  PHEXHL                    ;[299A] 
     LD    A,'H'                     ;[299D] 
     RST   $08                       ;[299F] 
-    JP    BASIC_COM_PRINT           ;[29A0] 
+    JP    EPRINT                    ;[29A0] 
 EPRT3:
     RST   $28                       ;[29A3] 
     PUSH  DE                        ;[29A4] 
@@ -6957,7 +6958,7 @@ EPRT3:
 ;
 ; PRINT.
 ;
-BASIC_COM_PRINT:
+EPRINT:
     LD    C,$00                     ;[29A9] 
 EPRT1:
     LD    A,(DE)                    ;[29AB] 
@@ -6980,7 +6981,7 @@ EPRT6:
     LD    HL,SYSVAR_STRBUF          ;[29CD] 
 EPRT8:
     CALL  PRTSTR                    ;[29D0] 
-    JP    BASIC_COM_PRINT           ;[29D3] 
+    JP    EPRINT                    ;[29D3] 
 EPRTX:
     LD    A,C                       ;[29D6] 
     OR    A                         ;[29D7] 
@@ -7012,7 +7013,7 @@ PRINT_TAB:
     LD    A,$1E                     ;[29F2] 
     RST   $08                       ;[29F4] 
 PRINT_NEXT:
-    JP    BASIC_COM_PRINT           ;[29F5] 
+    JP    EPRINT                    ;[29F5] 
 
 ;
 ; Print @ x,y ?
@@ -7043,7 +7044,7 @@ IPT5:
 ;
 ; Validation for PRINT.
 ;
-VALIDATE_PRINT1:
+IPRINT1:
     LD    (HL),A                    ;[2A11] 
     CP    $0D                       ;[2A12] 
     RET   Z                         ;[2A14] 
@@ -7082,12 +7083,12 @@ VALIDATE_PRINT1A:
     CP    $80                       ;[2A46] 
     CALL  NC,ERR_SYNTAX             ;[2A48] 
     DEC   DE                        ;[2A4B] Point to byte specified in A
-    JR    VALIDATE_PRINT1           ;[2A4C] 
+    JR    IPRINT1                   ;[2A4C] 
 
 ;
 ; RESERVE.
 ;
-BASIC_COM_RESERVE:
+ERESERVE:
     RST   $18                       ;[2A4E] 
     EX    DE,HL                     ;[2A4F] 
     LD    HL,(SYSVAR_STACK)         ;[2A50] 
@@ -7122,8 +7123,8 @@ BASIC_COM_RESERVE:
 ;
 ; RENUM
 ;
-BASIC_COM_RENUM:
-    CALL  BASIC_COM_AUTO            ;[2A7E] 
+ERENUM:
+    CALL  EAUTO                     ;[2A7E] 
     XOR   A                         ;[2A81] 
     LD    (SYSVAR_AUTOFL),A         ;[2A82] 
 REN:
@@ -7296,7 +7297,7 @@ STRDVR:
 ;
 ; STR$
 ;
-BASIC_FN_STR_STRING:
+FSTR_STRING:
     PUSH  IX                        ;[2B76] 
     INC   DE                        ;[2B78] Past sop
     CALL  EE1                       ;[2B79] Evaluate
@@ -7315,7 +7316,7 @@ BASIC_FN_STR_STRING:
 ;
 ; KEY$
 ;
-BASIC_FN_KEY_STRING:
+FKEY_STRING:
     CALL  KEY                       ;[2B93] 
     OR    A                         ;[2B96] 
     JR    Z,ESECT                   ;[2B97] 
@@ -7331,16 +7332,16 @@ GET_STRING:
 ;
 ; GET$
 ;
-BASIC_FN_GET_STRING:
+FGET_STRING:
     CALL  KEY                       ;[2BA0] 
     OR    A                         ;[2BA3] 
-    JR    Z,BASIC_FN_GET_STRING     ;[2BA4] 
+    JR    Z,FGET_STRING             ;[2BA4] 
     JR    GET_STRING                ;[2BA6] 
 
 ;
 ; UPC$
 ;
-BASIC_FN_UPC_STRING:
+FUPC_STRING:
     CALL  SYSVAR_VRPTS              ;[2BA8] 
 ESEUP1:
     LD    A,(HL)                    ;[2BAB] 
@@ -7396,21 +7397,21 @@ ESE1:
     LD    A,(DE)                    ;[2BEF] 
     INC   DE                        ;[2BF0] 
     CP    UPCS                      ;[2BF1] 
-    JR    Z,BASIC_FN_UPC_STRING     ;[2BF3] 
+    JR    Z,FUPC_STRING             ;[2BF3] 
     CP    STR                       ;[2BF5] 
-    JP    Z,BASIC_FN_STR_STRING     ;[2BF7] 
+    JP    Z,FSTR_STRING             ;[2BF7] 
     CP    GETS                      ;[2BFA] 
-    JR    Z,BASIC_FN_GET_STRING     ;[2BFC] 
+    JR    Z,FGET_STRING             ;[2BFC] 
     CP    INKEYS                    ;[2BFE] 
-    JR    Z,BASIC_FN_KEY_STRING     ;[2C00] 
+    JR    Z,FKEY_STRING             ;[2C00] 
     CP    CHR                       ;[2C02] 
-    JR    Z,BASIC_FN_CHR_STRING     ;[2C04] 
+    JR    Z,FCHR_STRING             ;[2C04] 
     CP    LEFT                      ;[2C06] 
-    JR    Z,BASIC_FN_LEFT_STRING    ;[2C08] 
+    JR    Z,FLEFT_STRING            ;[2C08] 
     CP    RIGHT                     ;[2C0A] 
-    JR    Z,BASIC_FN_RIGHT_STRING   ;[2C0C] 
+    JR    Z,FRIGHT_STRING           ;[2C0C] 
     CP    MID                       ;[2C0E] 
-    JR    Z,BASIC_FN_MID_STRING     ;[2C10] 
+    JR    Z,FMID_STRING             ;[2C10] 
     CALL  ERR_SOMETHG_MISSG         ;[2C12] 
 ESE2:
     INC   DE                        ;[2C15] 
@@ -7428,7 +7429,7 @@ ESE3:
 ;
 ; CHR$ (aka ESE4)
 ;
-BASIC_FN_CHR_STRING:
+FCHR_STRING:
     CALL  SEINT                     ;[2C28] 
     LD    (IX+$00),L                ;[2C2B] 
     INC   IX                        ;[2C2E] 
@@ -7437,7 +7438,7 @@ BASIC_FN_CHR_STRING:
 ;
 ; LEFT$ (aka ESE5)
 ;
-BASIC_FN_LEFT_STRING:
+FLEFT_STRING:
     CALL  SYSVAR_VRPTS              ;[2C32] 
     PUSH  HL                        ;[2C35] 
     INC   DE                        ;[2C36] 
@@ -7450,7 +7451,7 @@ BASIC_FN_LEFT_STRING:
 ;
 ; MID$ (aka ESE7)
 ;
-BASIC_FN_MID_STRING:
+FMID_STRING:
     CALL  SYSVAR_VRPTS              ;[2C41] 
     INC   DE                        ;[2C44] 
     PUSH  HL                        ;[2C45] 
@@ -7477,7 +7478,7 @@ ESE71:
 ;
 ; RIGHT$ (aka ESE6)
 ;
-BASIC_FN_RIGHT_STRING:
+FRIGHT_STRING:
     CALL  SYSVAR_VRPTS              ;[2C63] 
     INC   DE                        ;[2C66] 
     PUSH  HL                        ;[2C67] 
@@ -7609,14 +7610,14 @@ TKSL:
 ;
 ; VAL(. Note left bracket is part of the word.
 ;
-BASIC_FN_VAL:
+FVAL:
     LD    DE,SYSVAR_STRBUF          ;[2D0E] 
     JP    RDN                       ;[2D11] 
 
 ;
 ; LEN(.
 ;
-BASIC_FN_LEN:
+FLEN:
     LD    HL,SYSVAR_STRBUF          ;[2D14] 
     LD    B,$FF                     ;[2D17] 
 FLEN1:
@@ -7633,7 +7634,7 @@ FASC1:
 ;
 ; ASC(.
 ;
-BASIC_FN_ASC:
+FASC:
     LD    HL,SYSVAR_STRBUF          ;[2D26] 
     LD    L,(HL)                    ;[2D29] 
     JR    FASC1                     ;[2D2A] 
@@ -7773,7 +7774,7 @@ EDMAR2:
 ;
 ; DIM.
 ;
-BASIC_COM_DIM:
+EDIM:
     CALL  TEST_FOR_STRING           ;[2DCB] 
     JR    NZ,EDIM3                  ;[2DCE] 
     LD    A,(DE)                    ;[2DD0] 
@@ -7814,7 +7815,7 @@ BASIC_COM_DIM:
     CALL  Z,EDMAR                   ;[2E01] 
     CP    ','                       ;[2E04] 
     INC   DE                        ;[2E06] 
-    JR    Z,BASIC_COM_DIM           ;[2E07] 
+    JR    Z,EDIM                    ;[2E07] 
     RET                             ;[2E09] 
 
 EDIM3:
@@ -7866,13 +7867,13 @@ EDIM1:
     LD    A,(DE)                    ;[2E5E] 
     CP    ','                       ;[2E5F] 
     INC   DE                        ;[2E61] 
-    JP    Z,BASIC_COM_DIM           ;[2E62] 
+    JP    Z,EDIM                    ;[2E62] 
     RET                             ;[2E65] 
 
 ;
 ; Validation for DIM.
 ;
-VALIDATE_DIM:
+IDIM:
     CALL  TEST_FOR_STRING           ;[2E66] 
     JR    NZ,$2E7C                  ;[2E69] VALIDATE_DIM+$16
     CALL  READ_STRING_VAR           ;[2E6B] 
@@ -7886,8 +7887,8 @@ IDIM1:
     RST   $20                       ;[2E77] 
     INC   L                         ;[2E78] 
     INC   DE                        ;[2E79] 
-    JR    VALIDATE_DIM              ;[2E7A] 
-    CALL  VALIDATE_READ             ;[2E7C] 
+    JR    IDIM                      ;[2E7A] 
+    CALL  IREAD                     ;[2E7C] 
     DEC   HL                        ;[2E7F] 
     LD    A,$29                     ;[2E80] 
     CP    (HL)                      ;[2E82] 
@@ -7902,7 +7903,7 @@ IDIM1:
     INC   HL                        ;[2E8E] 
     INC   DE                        ;[2E8F] 
     RST   $10                       ;[2E90] 
-    JR    VALIDATE_DIM              ;[2E91] 
+    JR    IDIM                      ;[2E91] 
 
 ;
 ; ROUND
@@ -8056,8 +8057,8 @@ POP_WRA2:
 ;
 ; Log base e, get log base 10
 ;
-BASIC_FN_LN:
-    CALL  BASIC_FN_LOG              ;[2F4C] 
+FLN:
+    CALL  FLOG                      ;[2F4C] 
     LD    HL,FLOAT_LOGE             ;[2F4F] 
     CALL  LNUM2                     ;[2F52] 
     JP    DIV                       ;[2F55] 
@@ -8065,7 +8066,7 @@ BASIC_FN_LN:
 ;
 ; ARCSIN.
 ;
-BASIC_FN_ARCSIN:
+FARCSIN:
     LD    A,(SYSVAR_WRA1)           ;[2F58] 
     CP    $80                       ;[2F5B] 
     JP    Z,LZERO                   ;[2F5D] 
@@ -8079,7 +8080,7 @@ ARCCOS1:
     CALL  SUB                       ;[2F64] 
     CALL  POP_WRA2                  ;[2F67] 
     CALL  DIV                       ;[2F6A] 
-    CALL  BASIC_FN_SQR              ;[2F6D] 
+    CALL  FSQR                      ;[2F6D] 
     CALL  ARCTANS                   ;[2F70] 
     CALL  WRA1_TO_WRA2              ;[2F73] 
     CALL  ADD                       ;[2F76] 
@@ -8087,13 +8088,13 @@ ARCCOS1:
     RLA                             ;[2F7A] 
     RET   C                         ;[2F7B] 
     CALL  WRA1_TO_WRA2              ;[2F7C] 
-    CALL  BASIC_FN_PI               ;[2F7F] 
+    CALL  FPI                       ;[2F7F] 
     JP    SUB                       ;[2F82] 
 
 ;
 ; ARCCOS.
 ;
-BASIC_FN_ARCCOS:
+FARCCOS:
     LD    HL,SYSVAR_WRA1            ;[2F85] 
     LD    A,(HL)                    ;[2F88] 
     PUSH  AF                        ;[2F89] 
@@ -8112,7 +8113,7 @@ BASIC_FN_ARCCOS:
 ;
 ; ARCTAN.
 ;
-BASIC_FN_ARCTAN:
+FARCTAN:
     LD    A,(SYSVAR_WRA1)           ;[2FA5] 
     PUSH  AF                        ;[2FA8] 
     SET   7,A                       ;[2FA9] 
@@ -8160,8 +8161,8 @@ DATA_ARCTAN:
 ;
 ; Factorial.
 ;
-BASIC_FN_FACT:
-    CALL  BASIC_FN_INT              ;[3010] 
+FFACT:
+    CALL  FINT                      ;[3010] 
     LD    A,(SYSVAR_WRA1)           ;[3013] 
     CP    $80                       ;[3016] 
     JP    Z,LONE                    ;[3018] 
@@ -8191,7 +8192,7 @@ FACT4:
 ;
 ; Square root.
 ;
-BASIC_FN_SQR:
+FSQR:
     PUSH  IY                        ;[3052] 
     CALL  WRA1_TO_IY                ;[3054] 
     POP   IY                        ;[3057] 
@@ -8234,7 +8235,7 @@ SUB_POWER1:
 ;
 ; ** Power routine.
 ;
-BASIC_FN_POWER:
+FPOWER:
     CALL  CSW1                      ;[309A] 
     LD    A,(SYSVAR_WRA1)           ;[309D] 
     CP    $80                       ;[30A0] 
@@ -8272,15 +8273,15 @@ POWER3:
 POWER4:
     CALL  PUSH_WRA1                 ;[30D2] 
     CALL  CSW1                      ;[30D5] 
-    CALL  BASIC_FN_LOG              ;[30D8] 
+    CALL  FLOG                      ;[30D8] 
     CALL  POP_WRA2                  ;[30DB] 
     CALL  _MULT                     ;[30DE] 
-    JP    BASIC_FN_ANTILOG          ;[30E1] 
+    JP    FANTILOG                  ;[30E1] 
 
 ;
 ; LOG - if negative, give error.
 ;
-BASIC_FN_LOG:
+FLOG:
     LD    HL,SYSVAR_WRA1            ;[30E4] 
     LD    A,(HL)                    ;[30E7] Get exponent
     CP    $81                       ;[30E8] Neg or 0
@@ -8354,30 +8355,30 @@ DATA_LOG:
 ;
 ; EXP.
 ;
-BASIC_FN_EXP:
+FEXP:
     LD    HL,FLOAT_LOGE             ;[3184] 
     CALL  LNUM2                     ;[3187] 
     CALL  _MULT                     ;[318A] 
-    JP    BASIC_FN_ANTILOG          ;[318D] 
+    JP    FANTILOG                  ;[318D] 
 
 ;
 ; TAN.
 ;
-BASIC_FN_TAN:
+FTAN:
     CALL  PUSH_WRA1                 ;[3190] 
-    CALL  BASIC_FN_COS              ;[3193] Cosine
+    CALL  FCOS                      ;[3193] Cosine
     CALL  POP_WRA2                  ;[3196] Load x into wra2
     CALL  PUSH_WRA1                 ;[3199] Stack cos
     LD    HL,SYSVAR_WRA2            ;[319C] 
     CALL  LNUM1                     ;[319F] Load wra2 into wra1
-    CALL  BASIC_FN_SIN              ;[31A2] 
+    CALL  FSIN                      ;[31A2] 
     CALL  POP_WRA2                  ;[31A5] Cos into wra2
     JP    DIV                       ;[31A8] Sin/cos
 
 ;
 ; ANTILOG.
 ;
-BASIC_FN_ANTILOG:
+FANTILOG:
     LD    HL,SYSVAR_WRA1            ;[31AB] 
     BIT   7,(HL)                    ;[31AE] Save sign in f'
     EX    AF,AF'                    ;[31B0] 
@@ -8430,7 +8431,7 @@ DATA_ANTILOG:
 ;
 ; COS.
 ;
-BASIC_FN_COS:
+FCOS:
     LD    HL,FLOAT_NPI2             ;[321A] 
     CALL  LNUM2                     ;[321D] Add pi/4 to wra1
     CALL  ADD                       ;[3220] 
@@ -8438,11 +8439,11 @@ BASIC_FN_COS:
 ;
 ; SIN.
 ;
-BASIC_FN_SIN:
+FSIN:
     LD    HL,FLOAT_TAU              ;[3223] 
     CALL  LNUM2                     ;[3226] Convert degrees to radians
     CALL  DIV                       ;[3229] 
-    CALL  BASIC_FN_FRAC             ;[322C] Take fractional part
+    CALL  FFRAC                     ;[322C] Take fractional part
     LD    HL,FLOAT_N4               ;[322F] *4
     CALL  LNUM2                     ;[3232] 
     CALL  _MULT                     ;[3235] 
@@ -8491,7 +8492,7 @@ DATA_SINCOS:
 ;
 ; NOT.
 ;
-BASIC_FN_NOT:
+FNOT:
     CALL  CSW1                      ;[32A5] 
 FNOT1:
     LD    A,(SYSVAR_WRA1)           ;[32A8] 
@@ -8501,7 +8502,7 @@ FNOT1:
 ;
 ; = as in IF A=B
 ;
-BASIC_FN_EQUAL:
+FEQUAL:
     CALL  CMP                       ;[32AF] 
 FQ1:
     LD    HL,FLOAT_ZERO             ;[32B2] 
@@ -8513,14 +8514,14 @@ FQ2:
 ;
 ; <> Not equal routine.
 ;
-BASIC_FN_NOT_EQUAL:
-    CALL  BASIC_FN_EQUAL            ;[32BD] 
+FNOT_EQUAL:
+    CALL  FEQUAL                    ;[32BD] 
     JR    FNOT1                     ;[32C0] 
 
 ;
 ; > Greater than routine.
 ;
-BASIC_FN_GREATERTHAN:
+FGREATERTHAN:
     NOP                             ;[32C2] 
 FG3:
     CALL  CMP                       ;[32C3] 
@@ -8533,28 +8534,28 @@ FG2:
 ;
 ; = Less than or equal to routine.
 ;
-BASIC_FN_LT_EQUAL:
-    CALL  BASIC_FN_GREATERTHAN      ;[32D0] 
+FLT_EQUAL:
+    CALL  FGREATERTHAN              ;[32D0] 
     JR    FNOT1                     ;[32D3] 
 
 ;
 ; > Greater than routine.
 ;
-BASIC_FN_LESSTHAN:
+FLESSTHAN:
     CALL  SWAP                      ;[32D5] 
     JR    FG3                       ;[32D8] 
 
 ;
 ; )= Greater than or equal to routine.
 ;
-BASIC_FN_GT_EQUAL:
-    CALL  BASIC_FN_LESSTHAN         ;[32DA] 
+FGT_EQUAL:
+    CALL  FLESSTHAN                 ;[32DA] 
     JR    FNOT1                     ;[32DD] 
 
 ;
-; OR.
+; Function OR.
 ;
-BASIC_FN_OR:
+FNOR:
     LD    A,(SYSVAR_WRA1)           ;[32DF] 
     CP    $80                       ;[32E2] 
     JR    NZ,FNR2                   ;[32E4] 
@@ -8570,7 +8571,7 @@ FNR1:
 ;
 ; AND.
 ;
-BASIC_FN_AND:
+FAND:
     LD    A,(SYSVAR_WRA1)           ;[32F6] 
     CP    $80                       ;[32F9] 
     JR    Z,FNR2                    ;[32FB] 
@@ -8589,7 +8590,7 @@ FFN0:
 ;
 ; - Minus sign.
 ;
-BASIC_FN_MINUS:
+FMINUS:
     CALL  CSW1                      ;[3311] 
     JP    NEGATE_WRA1               ;[3314] 
 FN_NEGATE1:
@@ -8604,7 +8605,7 @@ FN_NEGATE1:
 ;
 ; HIMEM.
 ;
-BASIC_FN_HIMEM:
+FHIMEM:
     LD    HL,(SYSVAR_STACK)         ;[331D] 
     INC   HL                        ;[3320] 
     INC   HL                        ;[3321] 
@@ -8613,14 +8614,14 @@ BASIC_FN_HIMEM:
 ;
 ; HL.
 ;
-BASIC_FN_HL:
+FHL:
     LD    HL,(SYSVAR_HLSTORE)       ;[3324] 
     JR    FN_INP2                   ;[3327] 
 
 ;
 ; INP.
 ;
-BASIC_FN_INP:
+FINP:
     CALL  FPINT                     ;[3329] 
     LD    C,L                       ;[332C] 
     LD    B,H                       ;[332D] 
@@ -8634,7 +8635,7 @@ FN_INP2:
 ;
 ; DPEEK.
 ;
-BASIC_FN_DPEEK:
+FDPEEK:
     CALL  FPINT                     ;[3336] 
     LD    A,(HL)                    ;[3339] 
     INC   HL                        ;[333A] 
@@ -8645,7 +8646,7 @@ BASIC_FN_DPEEK:
 ;
 ; PEEK.
 ;
-BASIC_FN_PEEK:
+FPEEK:
     CALL  FPINT                     ;[333F] 
     LD    A,(HL)                    ;[3342] 
     JR    FN_INP1                   ;[3343] 
@@ -8653,7 +8654,7 @@ BASIC_FN_PEEK:
 ;
 ; DEG.
 ;
-BASIC_FN_DEG:
+FDEG:
     LD    HL,SUB_ANGLE              ;[3345] 
     CALL  LNUM2                     ;[3348] 
     JP    _MULT                     ;[334B] 
@@ -8661,7 +8662,7 @@ BASIC_FN_DEG:
 ;
 ; RAD.
 ;
-BASIC_FN_RAD:
+FRAD:
     LD    HL,SUB_ANGLE              ;[334E] 
     CALL  LNUM2                     ;[3351] 
     JP    DIV                       ;[3354] 
@@ -8820,7 +8821,7 @@ LS1:
 ;
 ; ABS. Absolute value of WRA1
 ;
-BASIC_FN_ABS:
+FABSLTE:
     LD    HL,SYSVAR_WRA1            ;[3434] 
     SET   7,(HL)                    ;[3437] 
     RET                             ;[3439] 
@@ -8828,7 +8829,7 @@ BASIC_FN_ABS:
 ;
 ; SGN. Sign of WRA1 1=+,-1=-,0=0
 ;
-BASIC_FN_SGN:
+FSGN:
     LD    A,(SYSVAR_WRA1)           ;[343A] 
     PUSH  AF                        ;[343D] Save exponent
     CALL  LZERO                     ;[343E] Store a zero
@@ -8848,7 +8849,7 @@ SIGN1:
 ;
 ; INT.
 ;
-BASIC_FN_INT:
+FINT:
     LD    A,(SYSVAR_WRA1)           ;[3456] 
     RES   7,A                       ;[3459] Kill sign
     CP    $47                       ;[345B] 
@@ -8871,7 +8872,7 @@ BASIC_FN_INT2:
 ;
 ; FRAC.
 ;
-BASIC_FN_FRAC:
+FFRAC:
     LD    A,(SYSVAR_WRA1)           ;[3475] 
     RES   7,A                       ;[3478] 
     CP    $47                       ;[347A] If >1e8 no frac
@@ -9007,7 +9008,7 @@ ZW1:
 ;
 ; Data. Used to to 'Clear to end of line'
 ;
-CRMS:
+CRMSG:
     DB    NEWLINE,CEL,0             ;[3518] 
 
 ;
@@ -9211,7 +9212,7 @@ DATA_EXEC:
 ;
 ; PI.
 ;
-BASIC_FN_PI:
+FPI:
     LD    HL,DATA_NPI               ;[360C] 
     JR    LNUM1                     ;[360F] 
 
@@ -9842,7 +9843,7 @@ ERROR_PRINT:
 ;
 ; MONitor.
 ;
-BASIC_COM_MON:
+EMON:
     EX    (SP),HL                   ;[3B64] 
     DEC   HL                        ;[3B65] 
     LD    (TRAPPC),HL               ;[3B66] 
@@ -10630,7 +10631,7 @@ DUMP1:
 ;
 ; MLOAD
 ;
-BASIC_COM_MLOAD:
+EMLOAD:
     LD    HL,(SYSVAR_STACK)         ;[3F62] 
     LD    (MONSP),HL                ;[3F65] 
     JR    ELDM1                     ;[3F68] 
@@ -10728,7 +10729,7 @@ PATCH6:
     RET   Z                         ;[3FE7] 
     JP    STRING_SEEK_END           ;[3FE8] 
 FNACOS:
-    CALL  BASIC_FN_ARCCOS           ;[3FEB] 
+    CALL  FARCCOS                   ;[3FEB] 
     JP    ARCTAN4                   ;[3FEE] 
 SUB_MOD:
     RLA                             ;[3FF1] 
