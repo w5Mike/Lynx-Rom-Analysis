@@ -49,7 +49,7 @@ BEGIN:
     DI                              ;[0000] 
     LD    A,$20                     ;[0001] 
     OUT   ($80),A                   ;[0003] 
-    JP    INIT_CRT                  ;[0005] 
+    JP    CRTC                      ;[0005] 
 
 ;
 ; Output character in the A register
@@ -130,14 +130,14 @@ RST_38:
 ;
 ; Initialise the 6845 CRT controller.
 ;
-INIT_CRT:
+CRTC:
     XOR   A                         ;[003B] 
     LD    BC,$FF7F                  ;[003C] 
     OUT   (C),A                     ;[003F] 
     LD    B,$10                     ;[0041] 
     LD    HL,D6845                  ;[0043] 
     XOR   A                         ;[0046] 
-INIT_CRT1:
+CRTC1:
     OUT   ($86),A                   ;[0047] 
     EX    AF,AF'                    ;[0049] 
     LD    A,(HL)                    ;[004A] 
@@ -145,7 +145,7 @@ INIT_CRT1:
     EX    AF,AF'                    ;[004D] 
     INC   A                         ;[004E] 
     INC   HL                        ;[004F] 
-    DJNZ  INIT_CRT1                 ;[0050] 
+    DJNZ  CRTC1                     ;[0050] 
     JP    INIT                      ;[0052] 
     NOP                             ;[0055] 
 
@@ -1949,10 +1949,10 @@ SUB_TEST_END:
     JP    START                     ;[0DEC] 
 
 ;
-; Overwrite off, CR/LF,  greater than symbol >
+; Prompt: overwrite off, CR/LF, '>' symbol
 ;
-DATA_PROMPT:
-    DB $14,$13,$3E,$00              ;[0DEF]  ..>.
+PROMPT:
+    DB    20,19,'>',0               ;[0DEF] 
 
 ;
 ; Test for [Esc] key. Stop BASIC if necessary.
@@ -3310,7 +3310,7 @@ START:
     LD    HL,INPBUF                 ;[16AD] 
     LD    (HL),$0D                  ;[16B0] 
     ADD   HL,SP                     ;[16B2] 
-    LD    HL,DATA_LYNX_LOGO         ;[16B3] 
+    LD    HL,INTRO                  ;[16B3] 
     JR    NC,LOGO_OUTPUT            ;[16B6] 
     LD    HL,DATA_2BEEPS+$02        ;[16B8] Skip a beep
     NOP                             ;[16BB] 
@@ -3324,7 +3324,7 @@ MAIN_LOOP:
 ; MAIN - called from MAIN_LOOP.
 ;
 MAIN1:
-    LD    HL,DATA_PROMPT            ;[16C4] 
+    LD    HL,PROMPT                 ;[16C4] 
     CALL  PLINE                     ;[16C7] Display prompt
     LD    A,(SYSVAR_AUTOFL)         ;[16CA] Auto line numbering?
     OR    A                         ;[16CD] 
@@ -3478,9 +3478,10 @@ DATA_2BEEPS:
 ;
 ; Data used to display the 'LYNX LOGO' at power on.
 ;
-DATA_LYNX_LOGO:
-    DB $04,$07,$18,$F3,$F4,$F5,$F6,$F7      ;[17ED]  ........
-    DB $F8,$F9,$19,$0A,$0A,$0D,$00          ;[17F5]  .......
+INTRO:
+    DB    $04,$07,$18,$F3,$F4       ;[17ED] 
+    DB    $F5,$F6,$F7,$F8,$F9       ;[17F2] 
+    DB    $19,$0A,$0A,$0D,$00       ;[17F7] 
 
 ;
 ; BASIC line analysis routine.
@@ -7093,7 +7094,7 @@ VALIDATE_PRINT1A:
     JR    IPRINT1                   ;[2A4C] 
 
 ;
-; RESERVE.
+; RESERVE. Set aside memory by moving stack. (aka. ERSV)
 ;
 ERESERVE:
     RST   $18                       ;[2A4E] 
