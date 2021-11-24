@@ -209,10 +209,10 @@ INBANK:
 ;
 ; Used by keyboard driver
 ;
-KBD_TEST:
+DBNCE:
     PUSH  BC                        ;[0089] 
-    LD    BC,$0500                  ;[008A] 
-    CALL  KEYRPT_WAIT               ;[008D] 
+    LD    BC,KDBNCE                 ;[008A] 
+    CALL  KBD_DLAY                  ;[008D] 
     POP   BC                        ;[0090] 
     IN    A,(C)                     ;[0091] 
     CPL                             ;[0093] 
@@ -1280,21 +1280,21 @@ _SOUND:
 ;
 ; Test for escape.
 ;
-TEST_ESCAPE:
+ESCKEY:
     LD    HL,SYSVAR_OLDESC          ;[09A4] 
-    LD    BC,$0080                  ;[09A7] 
-    IN    A,(C)                     ;[09AA] 
+    LD    BC,PORT                   ;[09A7] C=keyboard port
+    IN    A,(C)                     ;[09AA] Get byte
     CPL                             ;[09AC] 
     AND   $40                       ;[09AD] 
-    LD    E,A                       ;[09AF] 
-    XOR   (HL)                      ;[09B0] 
-    LD    (HL),E                    ;[09B1] 
-    AND   E                         ;[09B2] 
-    RET   Z                         ;[09B3] 
-    CALL  KBD_TEST                  ;[09B4] 
+    LD    E,A                       ;[09AF] Store in e
+    XOR   (HL)                      ;[09B0] Xor with last
+    LD    (HL),E                    ;[09B1] Store new
+    AND   E                         ;[09B2] And with present
+    RET   Z                         ;[09B3] Return if not pressed
+    CALL  DBNCE                     ;[09B4] 
     AND   $40                       ;[09B7] 
-    RET   Z                         ;[09B9] 
-    LD    A,$1B                     ;[09BA] 
+    RET   Z                         ;[09B9] Return if bounce
+    LD    A,$1B                     ;[09BA] Esc chr
     RET                             ;[09BC] 
 
 ;
@@ -1304,70 +1304,70 @@ KEYDVR:
     PUSH  HL                        ;[09BD] 
     PUSH  BC                        ;[09BE] 
     PUSH  DE                        ;[09BF] 
-    XOR   A                         ;[09C0] 
-    LD    (SYSVAR_STATUS),A         ;[09C1] 
-    CALL  TEST_ESCAPE               ;[09C4] 
-    JR    NZ,KEYDVR_END             ;[09C7] 
-    LD    C,$80                     ;[09C9] 
-    LD    B,$0A                     ;[09CB] 
-    LD    HL,SYSVAR_OLDKEY          ;[09CD] 
+    XOR   A                         ;[09C0] Zero a
+    LD    (SYSVAR_STATUS),A         ;[09C1] Zero status
+    CALL  ESCKEY                    ;[09C4] Check esc key
+    JR    NZ,KEYDVR_END             ;[09C7] Exit if esc
+    LD    C,PORT                    ;[09C9] C=keyboard port
+    LD    B,10                      ;[09CB] No of keyboard columns
+    LD    HL,SYSVAR_OLDKEY          ;[09CD] HL=oldkey store
 KEYDVR1:
-    DEC   B                         ;[09D0] 
-    JP    M,KEYRPT                  ;[09D1] 
-    IN    A,(C)                     ;[09D4] 
-    CPL                             ;[09D6] 
-    AND   $3F                       ;[09D7] 
+    DEC   B                         ;[09D0] Dec column pointer
+    JP    M,KEYX                    ;[09D1] JP if B negative
+    IN    A,(C)                     ;[09D4] Input from keyboard
+    CPL                             ;[09D6] Complement
+    AND   00111111B                 ;[09D7] Zap bits 6 & 7
     OR    A                         ;[09D9] 
-    JR    Z,KEYDVR2                 ;[09DA] 
-    LD    (SYSVAR_STATUS),A         ;[09DC] 
-KEYDVR2:
+    JR    Z,KEYDVR7                 ;[09DA] JP if yes
+    LD    (SYSVAR_STATUS),A         ;[09DC] Set flag
+KEYDVR7:
     LD    E,A                       ;[09DF] 
-    XOR   (HL)                      ;[09E0] 
-    LD    (HL),E                    ;[09E1] 
-    AND   E                         ;[09E2] 
-    INC   HL                        ;[09E3] 
-    JR    Z,KEYDVR1                 ;[09E4] 
-    LD    C,E                       ;[09E6] 
-    PUSH  BC                        ;[09E7] 
+    XOR   (HL)                      ;[09E0] XOR with last
+    LD    (HL),E                    ;[09E1] Store new
+    AND   E                         ;[09E2] And with present
+    INC   HL                        ;[09E3] INC pointer
+    JR    Z,KEYDVR1                 ;[09E4] JP if no key pressed
+    LD    C,E                       ;[09E6] Else store INC C
+    PUSH  BC                        ;[09E7] Save B & C on stack
     LD    C,$FF                     ;[09E8] 
-KEYDVR3:
-    INC   C                         ;[09EA] 
+KEYDVR2:
+    INC   C                         ;[09EA] C= BIT #
     RRCA                            ;[09EB] 
-    JR    NC,KEYDVR3                ;[09EC] 
-    LD    A,B                       ;[09EE] 
-    RLCA                            ;[09EF] 
-    ADD   A,B                       ;[09F0] 
-    RLCA                            ;[09F1] 
-    ADD   A,C                       ;[09F2] 
-    LD    E,A                       ;[09F3] 
-    LD    HL,DATA_KEYBOARD          ;[09F4] Choose upper case (default)
-    LD    BC,$0080                  ;[09F7] 
-    IN    A,(C)                     ;[09FA] 
-    RLCA                            ;[09FC] 
+    JR    NC,KEYDVR2                ;[09EC] 
+    LD    A,B                       ;[09EE] A=COL
+    RLCA                            ;[09EF] A=2*COL
+    ADD   A,B                       ;[09F0] A=3*COL
+    RLCA                            ;[09F1] A=6*COL
+    ADD   A,C                       ;[09F2] A=6*COL+ROW
+    LD    E,A                       ;[09F3] Save in E
+    LD    HL,KEYTBL                 ;[09F4] HL points to keytbl
+    LD    BC,PORT                   ;[09F7] B points to col 0, C=port
+    IN    A,(C)                     ;[09FA] Get byte
+    RLCA                            ;[09FC] Bit 7 in carry
     JR    C,KEYDVR4                 ;[09FD] 
-    LD    HL,$0ADF                  ;[09FF] Choose lower case
+    LD    HL,SHFTBL                 ;[09FF] Choose lower case
 KEYDVR4:
-    LD    B,$02                     ;[0A02] 
-    IN    A,(C)                     ;[0A04] 
-    BIT   6,A                       ;[0A06] 
-    JR    NZ,KEYDVR5                ;[0A08] 
-    LD    HL,$0AB2                  ;[0A0A] Choose special?
+    LD    B,$02                     ;[0A02] Check for control
+    IN    A,(C)                     ;[0A04] Get key
+    BIT   6,A                       ;[0A06] Control key
+    JR    NZ,KEYDVR5                ;[0A08] If not present JP else
+    LD    HL,CNTRL                  ;[0A0A] HL points to cntrl
 KEYDVR5:
-    LD    D,$00                     ;[0A0D] 
-    ADD   HL,DE                     ;[0A0F] 
-    POP   DE                        ;[0A10] 
-    LD    B,D                       ;[0A11] 
-    CALL  KBD_TEST                  ;[0A12] 
-    AND   $3F                       ;[0A15] 
-    XOR   E                         ;[0A17] 
-    JR    NZ,KEYDVR_END0            ;[0A18] 
+    LD    D,$00                     ;[0A0D] Zero D
+    ADD   HL,DE                     ;[0A0F] HL points to byte
+    POP   DE                        ;[0A10] Get row & col
+    LD    B,D                       ;[0A11] Col in B
+    CALL  DBNCE                     ;[0A12] 
+    AND   $3F                       ;[0A15] Zap bits 6 & 7
+    XOR   E                         ;[0A17] Exclusive OR with E
+    JR    NZ,KEYDVR_END0            ;[0A18] If Z key still pressed
     LD    A,(HL)                    ;[0A1A] 
-    LD    HL,SYSVAR_SHLKT           ;[0A1B] 
+    LD    HL,SYSVAR_SHLKT           ;[0A1B] Check for shift lock
     BIT   0,(HL)                    ;[0A1E] 
-    CALL  NZ,SHLKT0                 ;[0A20] 
-    BIT   1,(HL)                    ;[0A23] 
+    CALL  NZ,SHLKT0                 ;[0A20] Swap upper & lower
+    BIT   1,(HL)                    ;[0A23] Graphic
     CALL  NZ,SHLKT1                 ;[0A25] 
-    LD    (SYSVAR_LASTK),A          ;[0A28] 
+    LD    (SYSVAR_LASTK),A          ;[0A28] Store last char
     LD    C,$02                     ;[0A2B] 
     CP    $03                       ;[0A2D] 
     JR    Z,KEYDVR6                 ;[0A2F] 
@@ -1407,77 +1407,86 @@ SHLKT1:
 ;
 ; Handle repeat keys (probably)
 ;
-KEYRPT:
+KEYX:
     LD    A,(SYSVAR_STATUS)         ;[0A4E] 
-    OR    A                         ;[0A51] 
-    LD    HL,(SYSVAR_RPTDLY)        ;[0A52] 
-    JR    Z,KEYRPT1                 ;[0A55] 
-    LD    HL,(SYSVAR_RPT)           ;[0A57] 
+    OR    A                         ;[0A51] Check for active keyb
+    LD    HL,(SYSVAR_RPTDLY)        ;[0A52] Rpt count
+    JR    Z,KX1                     ;[0A55] JP if keyb not active
+    LD    HL,(SYSVAR_RPT)           ;[0A57] LD count
     DEC   HL                        ;[0A5A] 
     LD    A,H                       ;[0A5B] 
-    OR    L                         ;[0A5C] 
-    JR    Z,KEYRPT2                 ;[0A5D] 
-KEYRPT1:
-    LD    (SYSVAR_RPT),HL           ;[0A5F] 
-    XOR   A                         ;[0A62] 
-    JR    KEYDVR_END                ;[0A63] 
-KEYRPT2:
-    LD    BC,$1000                  ;[0A65] 
-    CALL  KEYRPT_WAIT               ;[0A68] 
-    LD    A,(SYSVAR_LASTK)          ;[0A6B] 
-    JR    KEYDVR_END                ;[0A6E] 
-KEYRPT_WAIT:
+    OR    L                         ;[0A5C] See if zero
+    JR    Z,KYREPT                  ;[0A5D] If yes then repeat
+KX1:
+    LD    (SYSVAR_RPT),HL           ;[0A5F] Store count
+    XOR   A                         ;[0A62] Else zero A
+    JR    KEYDVR_END                ;[0A63] Return
+KYREPT:
+    LD    BC,KREPT2                 ;[0A65] Keyboard repeat delay
+    CALL  KBD_DLAY                  ;[0A68] 
+    LD    A,(SYSVAR_LASTK)          ;[0A6B] Get last chr
+    JR    KEYDVR_END                ;[0A6E] Return
+KBD_DLAY:
     DEC   BC                        ;[0A70] 
     LD    A,B                       ;[0A71] 
     OR    C                         ;[0A72] 
-    JR    NZ,KEYRPT_WAIT            ;[0A73] 
+    JR    NZ,KBD_DLAY               ;[0A73] 
     RET                             ;[0A75] 
 
 ;
 ; Keyboard data table.
 ;
-DATA_KEYBOARD:
-    DB $31,$2A,$2A,$00,$0B,$0A,$33,$34      ;[0A76]  1**...34
-    DB $45,$58,$44,$43,$32,$51,$57,$5A      ;[0A7E]  EXDC2QWZ
-    DB $53,$41,$35,$52,$54,$56,$47,$46      ;[0A86]  SA5RTVGF
-    DB $36,$59,$48,$20,$4E,$42,$37,$38      ;[0A8E]  6YH.NB78
-    DB $55,$4D,$2A,$4A,$39,$49,$4F,$2C      ;[0A96]  UM*J9IO,
-    DB $2A,$4B,$30,$50,$4C,$2E,$2A,$3B      ;[0A9E]  *K0PL.*;
-    DB $2D,$40,$5B,$2F,$2A,$3A,$08,$5D      ;[0AA6]  -@[/*:.]
-    DB $16,$0D,$2A,$0C,$03,$00,$00,$00      ;[0AAE]  ..*.....
-    DB $00,$00,$1C,$1D,$05,$18,$04,$03      ;[0AB6]  ........
-    DB $1B,$11,$17,$1A,$13,$01,$1E,$12      ;[0ABE]  ........
-    DB $14,$16,$07,$06,$1F,$19,$08,$00      ;[0AC6]  ........
-    DB $0E,$02,$00,$00,$15,$0D,$00,$0A      ;[0ACE]  ........
-    DB $00,$09,$0F,$00,$00,$0B,$00,$10      ;[0AD6]  ........
-    DB $0C,$21,$2A,$2A,$00,$0B,$0A,$23      ;[0ADE]  .!**...#
-    DB $24,$65,$78,$64,$63,$22,$71,$77      ;[0AE6]  $exdc"qw
-    DB $7A,$73,$61,$25,$72,$74,$76,$67      ;[0AEE]  zsa%rtvg
-    DB $66,$26,$79,$68,$20,$6E,$62,$27      ;[0AF6]  f&yh.nb'
-    DB $28,$75,$6D,$3F,$6A,$29,$69,$6F      ;[0AFE]  (um?j)io
-    DB $3C,$3F,$6B,$5F,$70,$6C,$3E,$3F      ;[0B06]  <?k_pl>?
-    DB $2B,$3D,$60,$5E,$3F,$2A,$2A,$08      ;[0B0E]  +=`^?**.
-    DB $7F,$16,$0D,$2A,$0C                  ;[0B16]  ...*.
+KEYTBL:
+    DB    "1**",$00,CUP,CDOWN       ;[0A76] 
+    DB    "34EXDC"                  ;[0A7C] 
+    DB    "2QWZSA"                  ;[0A82] 
+    DB    "5RTVGF"                  ;[0A88] 
+    DB    "6YH NB"                  ;[0A8E] 
+    DB    "78UM*J"                  ;[0A94] 
+    DB    "9IO,*K"                  ;[0A9A] 
+    DB    "0PL.*;"                  ;[0AA0] 
+    DB    "-@[/*:"                  ;[0AA6] 
+    DB    8,']',CLEFT,CR,'*',CRIGHT ;[0AAC] 
+CNTRL:
+    DB    $03,0,0,0,0,0             ;[0AB2] 
+    DB    $1C,$1D,$05,$18,$04,$03   ;[0AB8] 
+    DB    $1B,$11,$17,$1A,$13,$01   ;[0ABE] 
+    DB    $1E,$12,$14,$16,$07,$06   ;[0AC4] 
+    DB    $1F,$19,$08,$00,$0E,$02   ;[0ACA] 
+    DB    0,0,$15,$0D,0,$0A         ;[0AD0] 
+    DB    0,$09,$0F,0,0,$0B         ;[0AD6] 
+    DB    0,$10,$0C                 ;[0ADC] 
+SHFTBL:
+    DB    $21,$2A,$2A,0,$0B,$0A     ;[0ADF] 
+    DB    "#$exdc"                  ;[0AE5] 
+    DB    $22,"qwzsa"               ;[0AEB] 
+    DB    "%rtvgf"                  ;[0AF1] 
+    DB    "&yh nb"                  ;[0AF7] 
+    DB    $27,"(um?j"               ;[0AFD] 
+    DB    ")io<?k"                  ;[0B03] 
+    DB    "_pl>?+"                  ;[0B09] 
+    DB    "=`^?**"                  ;[0B0F] 
+    DB    8,$7F,CLEFT,CR,'*',CRIGHT ;[0B15] 
 
 ;
-; Find [ESC] shorthand in a list. (Called from SYSVAR_/KEYB)
+; Find [ESC] shorthand in a list. (Called from SYSVAR_KEYB)
 ;
-KEYB_ESCKEY:
+KSM:
     LD    A,(SYSVAR_KSMS+$01)       ;[0B1B] 
     OR    A,A                       ;[0B1E] 
-    JR    NZ,$0b49                  ;[0B1F] Keyboard modifiers? Like [CTRL] [SHIFT]?
+    JR    NZ,KSM1                   ;[0B1F] Keyboard modifiers? Like [CTRL] [SHIFT]?
     CALL  KEYDVR                    ;[0B21] Get key in A
     CALL  ESC                       ;[0B24] 
     RET   NZ                        ;[0B27] Return if NOT escape
     RES   5,A                       ;[0B28] 
-    CP    $41                       ;[0B2A] 
+    CP    'A'                       ;[0B2A] 
     RET   C                         ;[0B2C] 
-    CP    $5B                       ;[0B2D] 
+    CP    'Z'+1                     ;[0B2D] 
     RET   NC                        ;[0B2F] 
-    SUB   $41                       ;[0B30] Letter found [A-Z]
+    SUB   'A'                       ;[0B30] Letter found [A-Z]
     LD    HL,SYSVAR_KTBL            ;[0B32] Shorthand char table
     LD    C,A                       ;[0B35] 
-    LD    B,$00                     ;[0B36] 
+    LD    B,0                       ;[0B36] 
     ADD   HL,BC                     ;[0B38] 
     LD    A,(HL)                    ;[0B39] 
     LD    HL,(SYSVAR_XTTBL)         ;[0B3A] Shorthand token table (Auto, Beep, etc)
@@ -1489,7 +1498,7 @@ KEYB_ESCKEY:
     RES   7,A                       ;[0B46] Reset Bit 7 (word marker)
     RET                             ;[0B48] 
 
-KEYB2:
+KSM1:
     LD    HL,(SYSVAR_KSMS)          ;[0B49] 
     INC   HL                        ;[0B4C] 
     LD    (SYSVAR_KSMS),HL          ;[0B4D] 
@@ -1498,7 +1507,7 @@ KEYB2:
     RET   Z                         ;[0B53] 
     XOR   A                         ;[0B54] 
     LD    (SYSVAR_KSMS+$01),A       ;[0B55] 
-    LD    A,$20                     ;[0B58] 
+    LD    A,' '                     ;[0B58] 
     RET                             ;[0B5A] 
 
 ;
@@ -1508,7 +1517,7 @@ KEYB:
     PUSH  HL                        ;[0B5B] 
     PUSH  BC                        ;[0B5C] 
     PUSH  DE                        ;[0B5D] 
-    CALL  KEYB_ESCKEY               ;[0B5E] 
+    CALL  KSM                       ;[0B5E] 
     POP   DE                        ;[0B61] 
     POP   BC                        ;[0B62] 
     POP   HL                        ;[0B63] 
