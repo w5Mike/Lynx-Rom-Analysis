@@ -60,8 +60,8 @@ RST_8:
 ;
 ; Rom version identifier L014
 ;
-DATA_L014:
-    DB $20,$4C,$30,$31,$34          ;[000B]  .L014
+LYNX_IDENT:
+    DB    " L014"                   ;[000B] 
 
 ;
 ; Checks if the character at the address pointed to by DE is a space.
@@ -104,11 +104,7 @@ RST_20:
 ;
 RST_28:
     JP    SUB_CHK_EXP_EVAL          ;[0028] 
-    NOP                             ;[002B] 
-    NOP                             ;[002C] 
-    NOP                             ;[002D] 
-    NOP                             ;[002E] 
-    NOP                             ;[002F] 
+    DB    0,0,0,0,0                 ;[002B] 
 
 ;
 ; Jumps to monitor TRAP routine. 
@@ -117,9 +113,7 @@ RST_30:
     JP    EMON                      ;[0030] 
     POP   HL                        ;[0033] Has POP HL JP (HL) 
     JP    (HL)                      ;[0034] 
-    NOP                             ;[0035] 
-    NOP                             ;[0036] 
-    NOP                             ;[0037] 
+    DB    0,0,0                     ;[0035] 
 
 ;
 ; NOT YET IMPLEMENTED. Jumps to RAM RSTRAM (see RAM variables).
@@ -1968,7 +1962,7 @@ PROMPT:
     DB    20,19,'>',0               ;[0DEF] 
 
 ;
-; Test for [Esc] key. Stop BASIC if necessary.
+; Test for [Esc] key. Stop BASIC if necessary. (aka X$PAT)
 ;
 SUB_INPUT_IS_ESC:
     CALL  SYSVAR_LINP               ;[0DF3] 
@@ -2237,6 +2231,7 @@ ICOMMAS_CR:
     CALL  RP                        ;[0EF7] 
     RST   $20                       ;[0EFA] 
     DB    ','                       ;[0EFB] 
+ICOMMAS_CR1:
     LD    (HL),A                    ;[0EFC] 
     INC   HL                        ;[0EFD] 
     POP   BC                        ;[0EFE] 
@@ -2275,32 +2270,34 @@ ICODE1:
     CP    $0D                       ;[0F1F] 
     RET   Z                         ;[0F21] 
     RST   $20                       ;[0F22] 
-    JR    NZ,$0EFC                  ;[0F23] 
+    JR    NZ,ICOMMAS_CR1            ;[0F23] 
 
 ;
 ; Validation for CODE.
 ;
 ICODE:
-    CALL  ICODE2                    ;[0F25] 
+    CALL  RHEX                      ;[0F25] 
     LD    (HL),C                    ;[0F28] 
     INC   HL                        ;[0F29] 
     JR    ICODE1                    ;[0F2A] 
 
 ;
-; Part of CODE validation.
+; Part of CODE validation. (Read hex)
 ;
-ICODE2:
+RHEX:
     LD    C,$00                     ;[0F2C] 
+RHEX1:
     LD    A,(DE)                    ;[0F2E] 
-    SUB   $30                       ;[0F2F] 
+    SUB   '0'                       ;[0F2F] 
     RET   C                         ;[0F31] 
     CP    $0A                       ;[0F32] 
-    JR    C,$0F3E                   ;[0F34] 
+    JR    C,RHEX2                   ;[0F34] 
     SUB   $07                       ;[0F36] 
     CP    $0A                       ;[0F38] 
     RET   C                         ;[0F3A] 
     CP    $10                       ;[0F3B] 
     RET   NC                        ;[0F3D] 
+RHEX2:
     SLA   C                         ;[0F3E] 
     SLA   C                         ;[0F40] 
     SLA   C                         ;[0F42] 
@@ -2308,7 +2305,7 @@ ICODE2:
     ADD   A,C                       ;[0F46] 
     LD    C,A                       ;[0F47] 
     INC   DE                        ;[0F48] 
-    JR    $0F2E                     ;[0F49] 
+    JR    RHEX1                     ;[0F49] 
 
 ;
 ; Set INK routine.
@@ -5308,11 +5305,12 @@ ELET3:
 ; RESTORE.
 ;
 ERESTORE:
-    CP    $0D                       ;[217D] 
+    CP    CR                        ;[217D] 
     LD    IX,(SYSVAR_SOB)           ;[217F] 
-    JR    Z,$2189                   ;[2183] 
+    JR    Z,ERESTORE1               ;[2183] 
     RST   $28                       ;[2185] 
     CALL  FINDLN                    ;[2186] 
+ERESTORE1:
     DEC   IX                        ;[2189] 
     LD    (SYSVAR_DATAP),IX         ;[218B] 
     RET                             ;[218F] 
