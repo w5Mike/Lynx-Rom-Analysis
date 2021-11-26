@@ -1618,7 +1618,7 @@ ESAVE:
     CALL  WRITE_FNAME               ;[0BCB] 
     INC   DE                        ;[0BCE] 
     LD    A,(DE)                    ;[0BCF] 
-    LD    HL,$0000                  ;[0BD0] 
+    LD    HL,0                      ;[0BD0] 
     PUSH  HL                        ;[0BD3] 
     CP    $0D                       ;[0BD4] 
     JR    Z,SAVE_HEADER             ;[0BD6] 
@@ -1642,7 +1642,7 @@ SAVE_HEADER:
     PUSH  HL                        ;[0BF8] 
     LD    HL,(SYSVAR_SOB)           ;[0BF9] 
     CALL  WSYNC                     ;[0BFC] 
-    LD    A,$42                     ;[0BFF] Write letter "B" - chr$($42)
+    LD    A,'B'                     ;[0BFF] Write letter "B" - chr$($42)
     CALL  SYSVAR_WBYTE              ;[0C01] 
     POP   BC                        ;[0C04] Write basic program length.
     LD    A,C                       ;[0C05] 
@@ -1686,7 +1686,7 @@ TAPE_READ_FNAME:
     JR    NZ,TAPE_READ_FNAME        ;[0C3C] 
     POP   DE                        ;[0C3E] 
     PUSH  DE                        ;[0C3F] 
-    LD    A,$20                     ;[0C40] 
+    LD    A,' '                     ;[0C40] 
     RST   $08                       ;[0C42] 
     LD    A,$22                     ;[0C43] 
     RST   $08                       ;[0C45] 
@@ -1695,7 +1695,7 @@ TAPE_READ_FNAME:
     PUSH  HL                        ;[0C4B] 
     CALL  PLINE                     ;[0C4C] Display filename.
     DEC   HL                        ;[0C4F] 
-    LD    (HL),$0D                  ;[0C50] 
+    LD    (HL),SZ                   ;[0C50] 
     POP   HL                        ;[0C52] 
     CALL  STRING_CMP                ;[0C53] 
     POP   DE                        ;[0C56] 
@@ -1710,7 +1710,7 @@ EVERIFY:
     LD    HL,(SYSVAR_SOB)           ;[0C5D] 
     CALL  RSYNC                     ;[0C60] 
     CALL  RBYTE                     ;[0C63] 
-    CP    $42                       ;[0C66] 
+    CP    'B'                       ;[0C66] 
     JR    NZ,VERIFY_ERROR_EXIT      ;[0C68] 
     CALL  RBYTE                     ;[0C6A] 
     LD    C,A                       ;[0C6D] 
@@ -1747,7 +1747,7 @@ ELOAD:
 BLOAD_READ_B:
     CALL  RSYNC                     ;[0C95] 
     CALL  RBYTE                     ;[0C98] 
-    CP    $42                       ;[0C9B] 'B' char
+    CP    'B'                       ;[0C9B] 'B' char
     JR    NZ,BLOAD_READ_B           ;[0C9D] 
     CALL  RBYTE                     ;[0C9F] Read length into BC
     LD    C,A                       ;[0CA2] 
@@ -1824,7 +1824,7 @@ MOTOFF:
     XOR   A                         ;[0CFB] 
     OUT   ($87),A                   ;[0CFC] 
     OUT   ($80),A                   ;[0CFE] 
-    LD    BC,$1770                  ;[0D00] 
+    LD    BC,KMOTWT                 ;[0D00] 
 MOTOFF_DELAY:
     DEC   BC                        ;[0D03] 
     LD    A,B                       ;[0D04] 
@@ -1899,7 +1899,7 @@ ETAPE:
     RLCA                            ;[0D99] 
     LD    E,A                       ;[0D9A] 
     LD    D,$00                     ;[0D9B] 
-    LD    HL,DATA_TAPE              ;[0D9D] 
+    LD    HL,TAPTBL                 ;[0D9D] 
     ADD   HL,DE                     ;[0DA0] 
     LD    DE,SYSVAR_CASLEV          ;[0DA1] 
     LD    B,$04                     ;[0DA4] 
@@ -1913,11 +1913,15 @@ ETAPE1:
 
 ;
 ; Six 32 bit timing values, used by the TAPE command.
+; CASLEV COARSE FINE SYNCLN
 ;
-DATA_TAPE:
-    DB $50,$01,$04,$03,$38,$01,$01,$04      ;[0DAD]  P...8...
-    DB $2C,$02,$04,$05,$23,$02,$02,$06      ;[0DB5]  ,...#...
-    DB $1B,$02,$01,$07,$14,$03,$02,$08      ;[0DBD]  ........
+TAPTBL:
+    DB    80,1,4,3                  ;[0DAD] 
+    DB    56,1,1,4                  ;[0DB1] 
+    DB    44,2,4,5                  ;[0DB5] 
+    DB    35,2,2,6                  ;[0DB9] 
+    DB    27,2,1,7                  ;[0DBD] 
+    DB    20,3,2,8                  ;[0DC1] 
 
 ;
 ; Moves cursor one character block to the right. (VDU 12) (I don't know why it's called PATCH1)
@@ -2533,7 +2537,7 @@ SUB_PLOT5:
 ;
 PRTSTR:
     LD    A,(HL)                    ;[105E] 
-    CP    $0D                       ;[105F] 
+    CP    CR                        ;[105F] 
     RET   Z                         ;[1061] 
     RST   $08                       ;[1062] 
     INC   HL                        ;[1063] 
@@ -2542,11 +2546,11 @@ PRTSTR:
 ;
 ; Flash cursor and scan keyboard. (flash rate is in HL)
 ;
-CURSOR_INPUT:
-    CALL  FLASH_CURSOR              ;[1066] 
+INPKEY:
+    CALL  CFLASH                    ;[1066] 
     CALL  KEY                       ;[1069] 
     OR    A                         ;[106C] 
-    JR    Z,CURSOR_INPUT            ;[106D] 
+    JR    Z,INPKEY                  ;[106D] 
     RET                             ;[106F] 
 
 ;
@@ -2577,32 +2581,32 @@ DISPLAY_BUFFER2:
 ;
 ; Loop until CR.
 ;
-LINP_LOOP:
+FINDCR:
     LD    A,(DE)                    ;[108D] 
     CP    $0D                       ;[108E] 
     RET   Z                         ;[1090] 
     INC   B                         ;[1091] 
     INC   DE                        ;[1092] 
-    JR    LINP_LOOP                 ;[1093] 
+    JR    FINDCR                    ;[1093] 
 
 ;
 ; Output the cursor.
 ;
-FLASH_CURSOR:
+CFLASH:
     EXX                             ;[1095] 
     DEC   HL                        ;[1096] Decrement flash delay counter
     LD    A,H                       ;[1097] 
     OR    L                         ;[1098] 
-    JR    NZ,FLASH_CURSOR_END       ;[1099] 
+    JR    NZ,CFLASH1                ;[1099] 
     LD    HL,(SYSVAR_FLASH)         ;[109B] Reset flash delay counter
 SWAP_CCHARS:
     LD    A,B                       ;[109E] Swap cursor chars
     LD    B,C                       ;[109F] 
     LD    C,A                       ;[10A0] 
     RST   $08                       ;[10A1] 
-    LD    A,$16                     ;[10A2] Backspace
+    LD    A,CLEFT                   ;[10A2] Backspace
     RST   $08                       ;[10A4] 
-FLASH_CURSOR_END:
+CFLASH1:
     EXX                             ;[10A5] 
     RET                             ;[10A6] 
 
@@ -2613,7 +2617,7 @@ CHAR_INPUT:
     EX    AF,AF'                    ;[10A7] 
     LD    A,B                       ;[10A8] 
     CP    MAXLEN                    ;[10A9] 
-    JR    NC,LINP1                  ;[10AB] 
+    JR    NC,LINP2                  ;[10AB] 
     EX    AF,AF'                    ;[10AD] 
     RST   $08                       ;[10AE] 
     INC   DE                        ;[10AF] 
@@ -2639,12 +2643,12 @@ CHAR_INPUT:
     CALL  DISPLAY_BUFFER            ;[10C5] 
     INC   B                         ;[10C8] 
     INC   C                         ;[10C9] 
-    JR    LINP1                     ;[10CA] 
+    JR    LINP2                     ;[10CA] 
 
 ;
 ; Load flash rate and cursor characters.
 ;
-CURS_VALUES:
+LINPS:
     LD    HL,INPBUF                 ;[10CC] 
     LD    D,H                       ;[10CF] 
     LD    E,L                       ;[10D0] 
@@ -2659,63 +2663,63 @@ CURS_VALUES:
 ; Carriage Return, Linefeed
 ;
 LINP_CRLF:
-    LD    (HL),$0D                  ;[10DE] 
-    JR    LINP2                     ;[10E0] 
+    LD    (HL),CR                   ;[10DE] 
+    JR    LINP9                     ;[10E0] 
 
 ;
 ; Line input routine - called via SYSVAR_LINP
 ;
 LINP:
-    CALL  CURS_VALUES               ;[10E2] 
-    LD    A,$0F                     ;[10E5] 
+    CALL  LINPS                     ;[10E2] 
+    LD    A,CUROFF                  ;[10E5] 
     RST   $08                       ;[10E7] 
-    CALL  CURSOR_INPUT              ;[10E8] 
-    CP    $11                       ;[10EB] 
+    CALL  INPKEY                    ;[10E8] 
+    CP    RLAST                     ;[10EB] 
     JR    NZ,LINP_CRLF              ;[10ED] 
-LINP0:
-    CALL  LINP_LOOP                 ;[10EF] 
+LINP12:
+    CALL  FINDCR                    ;[10EF] 
     CALL  DISPLAY_BUFFER            ;[10F2] 
-LINP1:
+LINP2:
     EXX                             ;[10F5] 
     LD    A,B                       ;[10F6] 
     RST   $08                       ;[10F7] 
-    LD    A,$16                     ;[10F8] 
+    LD    A,CLEFT                   ;[10F8] 
     RST   $08                       ;[10FA] 
     EXX                             ;[10FB] 
-    CALL  CURSOR_INPUT              ;[10FC] 
-LINP2:
+    CALL  INPKEY                    ;[10FC] 
+LINP9:
     CP    $20                       ;[10FF] 
     JR    NC,CHAR_INPUT             ;[1101] 
     CP    $08                       ;[1103] Backspace
-    JR    Z,LINP4                   ;[1105] 
-    CP    $0B                       ;[1107] Move right
-    JP    Z,LINP6                   ;[1109] 
-    CP    $0A                       ;[110C] Linefeed
-    JP    Z,LINP_CR                 ;[110E] 
-    CP    $16                       ;[1111] 
-    JR    Z,LINP3                   ;[1113] 
-    CP    $0C                       ;[1115] Cursor right
-    JR    Z,LINP_INP_CHR            ;[1117] 
+    JR    Z,LINP8                   ;[1105] 
+    CP    CUP                       ;[1107] Cursor up
+    JP    Z,LINPU                   ;[1109] 
+    CP    CDOWN                     ;[110C] Linefeed
+    JP    Z,LINPD                   ;[110E] 
+    CP    CLEFT                     ;[1111] 
+    JR    Z,LINP4                   ;[1113] 
+    CP    CRIGHT                    ;[1115] Cursor right
+    JR    Z,LINP6                   ;[1117] 
     CP    $05                       ;[1119] Control E?
-    JP    Z,CONTROL_E               ;[111B] 
-    CP    $0D                       ;[111E] Carriage return
-    JR    NZ,LINP1                  ;[1120] 
+    JP    Z,EDIT                    ;[111B] 
+    CP    CR                        ;[111E] Carriage return
+    JR    NZ,LINP2                  ;[1120] 
     CALL  PRTSTR                    ;[1122] 
-    LD    A,$20                     ;[1125] Space
+    LD    A,' '                     ;[1125] Space
     RST   $08                       ;[1127] 
-    LD    A,$0D                     ;[1128] Carriage return
+    LD    A,CR                      ;[1128] Carriage return
     RST   $08                       ;[112A] 
     INC   B                         ;[112B] 
     DEC   B                         ;[112C] 
     RET                             ;[112D] 
 
 ;
-; *tbd
+; Left arrow key
 ;
-LINP3:
+LINP4:
     DEC   C                         ;[112E] 
     INC   C                         ;[112F] 
-    JR    Z,LINP1                   ;[1130] 
+    JR    Z,LINP2                   ;[1130] 
     DEC   HL                        ;[1132] 
     DEC   C                         ;[1133] 
     LD    A,(HL)                    ;[1134] 
@@ -2728,26 +2732,26 @@ LINP3:
 ;
 LINP_OUTA:
     RST   $08                       ;[1139] 
-    JR    LINP1                     ;[113A] 
+    JR    LINP2                     ;[113A] 
 
 ;
-; Input char
+; Right arrow key
 ;
-LINP_INP_CHR:
+LINP6:
     LD    A,(HL)                    ;[113C] 
-    CP    $0D                       ;[113D] Carriage return
-    JR    Z,LINP1                   ;[113F] 
+    CP    CR                        ;[113D] Carriage return
+    JR    Z,LINP2                   ;[113F] 
     INC   HL                        ;[1141] 
     INC   C                         ;[1142] 
     JR    LINP_OUTA                 ;[1143] 
 
 ;
-; TBD
+; <delete> or <backspace>?
 ;
-LINP4:
+LINP8:
     DEC   C                         ;[1145] 
     INC   C                         ;[1146] 
-    JR    Z,LINP1                   ;[1147] 
+    JR    Z,LINP2                   ;[1147] 
     DEC   HL                        ;[1149] 
     PUSH  HL                        ;[114A] 
     PUSH  DE                        ;[114B] 
@@ -2767,21 +2771,21 @@ LINP4:
     DEC   DE                        ;[115B] 
     DEC   B                         ;[115C] 
     DEC   C                         ;[115D] 
-    LD    A,$16                     ;[115E] Backspace cursor
+    LD    A,CLEFT                   ;[115E] Backspace cursor
     RST   $08                       ;[1160] 
     CALL  DISPLAY_BUFFER            ;[1161] 
-    JP    LINP1                     ;[1164] 
+    JP    LINP2                     ;[1164] 
 
 ;
 ; Handle edit line - [CTRL] E
 ;
-CONTROL_E:
+EDIT:
     INC   B                         ;[1167] 
     DEC   B                         ;[1168] 
-    JP    NZ,LINP1                  ;[1169] 
-    LD    HL,DATA_LINE_NUMBER       ;[116C] Print "Line Number?"
+    JP    NZ,LINP2                  ;[1169] 
+    LD    HL,EDTMSG                 ;[116C] Print "Line Number?"
     CALL  PLINE                     ;[116F] 
-    CALL  CURS_VALUES               ;[1172] Load cursor values (rate,etc)
+    CALL  LINPS                     ;[1172] Load cursor values (rate,etc)
     CALL  LINP_CRLF                 ;[1175] 
     LD    DE,INPBUF                 ;[1178] 
     RST   $10                       ;[117B] is (DE) a space?
@@ -2790,7 +2794,7 @@ CONTROL_E:
     CALL  NZ,ERR_NOT_FOUND          ;[1182] 
     LD    HL,(SYSVAR_PRINTD)        ;[1185] 
     PUSH  HL                        ;[1188] 
-    LD    HL,SUB_LINP_EDITB         ;[1189] 
+    LD    HL,EDITS                  ;[1189] 
     LD    (SYSVAR_PRINTD),HL        ;[118C] Display driver
     LD    HL,INPBUF                 ;[118F] 
     LD    (SYSVAR_EDST),HL          ;[1192] LET Edit buffer = $6000 (beginning of RAM)
@@ -2799,18 +2803,18 @@ CONTROL_E:
     CALL  SYSVAR_DBASLN             ;[1199] Display Basic line
     POP   HL                        ;[119C] 
     LD    (SYSVAR_PRINTD),HL        ;[119D] 
-    CALL  CURS_VALUES               ;[11A0] Load cursor flash rate and chars
-    JP    LINP0                     ;[11A3] 
+    CALL  LINPS                     ;[11A0] Load cursor flash rate and chars
+    JP    LINP12                    ;[11A3] 
 
 ;
 ; Put a character into edit buffer and also handle CR
 ;
-SUB_LINP_EDITB:
+EDITS:
     PUSH  AF                        ;[11A6] 
-    CP    $1E                       ;[11A7] Clears to end of line
-    JR    NZ,SUB_LINP_EDITB1        ;[11A9] 
-    LD    A,$0D                     ;[11AB] Carriage return, linefeed
-SUB_LINP_EDITB1:
+    CP    CEL                       ;[11A7] Clears to end of line
+    JR    NZ,EDITS1                 ;[11A9] 
+    LD    A,CR                      ;[11AB] Carriage return, linefeed
+EDITS1:
     PUSH  HL                        ;[11AD] 
     LD    HL,(SYSVAR_EDST)          ;[11AE] Let HL = Edit buffer
     LD    (HL),A                    ;[11B1] 
@@ -2823,14 +2827,16 @@ SUB_LINP_EDITB1:
 ;
 ; Data. 'Line number?'
 ;
-DATA_LINE_NUMBER:
-    DB $4C,$69,$6E,$65,$20,$6E,$75,$6D      ;[11B9]  Line.num
-    DB $62,$65,$72,$3F,$20,$00              ;[11C1]  ber?..
+EDTMSG:
+    DB    "Line number? ",0         ;[11B9] 
 
-LINP6:
+;
+; Up arrow key (start of line)
+;
+LINPU:
     DEC   C                         ;[11C7] 
     INC   C                         ;[11C8] 
-    JP    Z,LINP1                   ;[11C9] 
+    JP    Z,LINP2                   ;[11C9] 
     DEC   HL                        ;[11CC] 
     DEC   C                         ;[11CD] 
     LD    A,(HL)                    ;[11CE] 
@@ -2838,19 +2844,19 @@ LINP6:
     LD    A,$16                     ;[11D0] Backspace?
     RST   $08                       ;[11D2] 
     RST   $08                       ;[11D3] 
-    JR    LINP6                     ;[11D4] 
+    JR    LINPU                     ;[11D4] 
 
 ;
-; Search (HL) and print chars until CR
+; Down arrow key (end of line)
 ;
-LINP_CR:
+LINPD:
     LD    A,(HL)                    ;[11D6] 
-    CP    $0D                       ;[11D7] 
-    JP    Z,LINP1                   ;[11D9] 
+    CP    CR                        ;[11D7] 
+    JP    Z,LINP2                   ;[11D9] 
     INC   HL                        ;[11DC] 
     INC   C                         ;[11DD] 
     RST   $08                       ;[11DE] 
-    JR    LINP_CR                   ;[11DF] 
+    JR    LINPD                     ;[11DF] 
 
 ;
 ; Non-command token table
