@@ -30,12 +30,12 @@ Free to distribute. Please include attribution.
 
 ********************** LABELS/SYMBOLS/PREFIXES ************************
 
-      * SYSVAR_     - RAM addresses used by the Lynx ROM routines
-      * RST_        - Z80 Restarts
-      * DATA_       - Data tables stored in rom (eg. PI)
-      * E<command>  - Lynx BASIC command
-      * F<name>     - Lynx BASIC functions/operators
-      * I<name>     - Validation of BASIC commands/functions.
-      * MONITOR_    - Lynx MONITOR commands
-      * VDU_        - VDU commands
-      * SUB_        - internal subroutines used by ROM
+      - SYSVAR_     - RAM addresses used by the Lynx ROM routines
+      - RST_        - Z80 Restarts
+      - DATA_       - Data tables stored in rom (eg. PI)
+      - E<command>  - Lynx BASIC command
+      - F<name>     - Lynx BASIC functions/operators
+      - I<name>     - Validation of BASIC commands/functions.
+      - MONITOR_    - Lynx MONITOR commands
+      - VDU_        - VDU commands
+      - SUB_        - internal subroutines used by ROM
