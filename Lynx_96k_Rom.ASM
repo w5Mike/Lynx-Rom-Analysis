@@ -62,16 +62,16 @@ LAHL:
 ; Execute LDIR for HL in low RAM
 ;
 ELDIR:
-; ROM OFF?
+; ROM OFF
     PUSH  BC                        ;[4027] 
-    LD    BC,$FF7F                  ;[4028] 
+    LD    BC,$FF7F                  ;[4028] Bank switching
     LD    A,$10                     ;[402B] 
     OUT   (C),A                     ;[402D] 
     POP   BC                        ;[402F] 
 ; Do LDIR
     LDIR                            ;[4030] 
-; ROM ON?
-    LD    BC,$FF7F                  ;[4032] 
+; ROM ON
+    LD    BC,$FF7F                  ;[4032] Bank switching
     XOR   A                         ;[4035] 
     OUT   (C),A                     ;[4036] 
     RET                             ;[4038] 
