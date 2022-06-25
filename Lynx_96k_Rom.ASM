@@ -1,6 +1,24 @@
-;
-;   z88dk-dis -o 0x4000 -x "Lynx_48k_Rom.sym" "lynx96-3.rom" > lynx96-3.z88dk.syms.asm
-;
+;***********************************************************************
+;*
+;*          Camputers Lynx 96k ROM disassembly (version L014)
+;*          -------------------------------------------------
+;*
+;*   Reconstructed from Camputers Lynx "Mark II" source code (Version 505, 31 July 87)
+;*
+;*   Disassembly, collation and formatting by: Mike Panter 25/06/2022.
+;*
+;*   Additional credit to: Russell Davis  (online archive of materials)
+;*                         Pete Todd      (knowledge, insight and Pale)
+;*
+;*   WARNING: May contain inaccuracies - use at own risk.
+;*
+;*   Free to distribute. Please include attribution.
+;*
+;* ---------------------------------------------------------------------
+;*     DECOMPILED USING: z88dk-dis -o 0x4000 -x "Lynx_48k_Rom.sym" "lynx96-3.rom"
+;*     COMPILE/ASSEMBLE: z88dk-z80asm -b -mz80 Lynx_96k_Rom.asm
+;* ---------------------------------------------------------------------
+;*
     NOP                             ;[4000] 
     JP    EXINIT                    ;[4001] 
 
