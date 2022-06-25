@@ -16,9 +16,14 @@
 ;*
 ;* ---------------------------------------------------------------------
 ;*     DECOMPILED USING: z88dk-dis -o 0x4000 -x "Lynx_48k_Rom.sym" "lynx96-3.rom"
-;*     COMPILE/ASSEMBLE: z88dk-z80asm -b -mz80 Lynx_96k_Rom.asm
+;*     COMPILE/ASSEMBLE: z88dk-z80asm -b -mz80 Lynx_96k_Rom.ASM
 ;* ---------------------------------------------------------------------
 ;*
+;
+include "Lynx_48k_Rom.ASM"
+
+;ORG $4000
+;
     NOP                             ;[4000] 
     JP    EXINIT                    ;[4001] 
 
@@ -27,14 +32,14 @@
 LWRAM:
 ROMOFF:
     PUSH  BC                        ;[4004]
-    LD    BC,$FF7F                  ;[4005]
+    LD    BC,$FF7F                  ;[4005] Bank switching
     LD    A,$10                     ;[4008]
     OUT   (C),A                     ;[400A]
     POP   BC                        ;[400C]
     RET                             ;[400D]
 ROMON:
     PUSH  BC                        ;[400E]
-    LD    BC,$FF7F                  ;[400F]
+    LD    BC,$FF7F                  ;[400F] Bank switching
     XOR   A                         ;[4012]
     OUT   (C),A                     ;[4013]
     POP   BC                        ;[4015]
@@ -172,7 +177,7 @@ PRDEOF:
 ;
 ; Get byte to save to tape.
 ;
-EGETB
+EGETB:
     EXX                             ;[40D4] d9
     OUT   (C),D                     ;[40D5] ed 51
     INC   L                         ;[40D7] 2c
@@ -525,35 +530,35 @@ IEXTS:
 ; ASCII for EXT commands
 ;
 XT96KS:
-    DB    ZZZEXT                    ;[42BA] 27 (1b) = say how many
-	DB    80H+"E","XPLODE"          ;[42BB]
-	DB    80H+"K","LAXON"           ;[42C2]
-	DB    80H+"L","ASER"            ;[42C7]
-	DB    80H+"Z","AP"              ;[42CD]
-	DB    80H+"S","TORE"            ;[42D0]
-	DB    80H+"I","STORE"           ;[42D5]
-	DB    80H+"F","ETCH"            ;[42DB]
-	DB    80H+"W","IPE"             ;[42E0]
-	DB    80H+"B","ACK"             ;[42E4]
-	DB    80H+"S","SAVE"            ;[42E8]
-	DB    80H+"S","LOAD"            ;[42ED]
-	DB    80H+"C","SAVE"            ;[42F2]
-	DB    80H+"C","HAIN"            ;[42F7]
-	DB    80H+"T","RAP"             ;[42FC]
-	DB    80H+"N","OTRAP"           ;[4300]
-	DB    80H+"P","PRINT"           ;[4306]
-	DB    80H+"S","PRINT"           ;[430C]
-	DB    80H+"V","RESET"           ;[4312]
-	DB    80H+"C","IRCLE"           ;[4318]
-	DB    80H+"T","RIANGLE"         ;[431E]
-	DB    80H+"C","LW"              ;[4326]
-	DB    80H+"@","@@@@@"           ;[4329]
-	DB    80H+"@","@@@@@"           ;[432F]
-	DB    80H+"@","@@@@@"           ;[4335]
-	DB    80H+"@","@@@@@"           ;[433B]
-    DB    80H+"@","@@@@@"           ;[4341]
-	DB    80H+"@","@@@@@"           ;[4347]
-    DB    80h                       ;[434D]
+    DB    $1B                       ;[42BA] 27 (1b) = say how many
+	DB    $80+'E',"XPLODE"          ;[42BB]
+	DB    $80+'K',"LAXON"           ;[42C2]
+	DB    $80+'L',"ASER"            ;[42C7]
+	DB    $80+'Z',"AP"              ;[42CD]
+	DB    $80+'S',"TORE"            ;[42D0]
+	DB    $80+'I',"STORE"           ;[42D5]
+	DB    $80+'F',"ETCH"            ;[42DB]
+	DB    $80+'W',"IPE"             ;[42E0]
+	DB    $80+'B',"ACK"             ;[42E4]
+	DB    $80+'S',"SAVE"            ;[42E8]
+	DB    $80+'S',"LOAD"            ;[42ED]
+	DB    $80+'C',"SAVE"            ;[42F2]
+	DB    $80+'C',"HAIN"            ;[42F7]
+	DB    $80+'T',"RAP"             ;[42FC]
+	DB    $80+'N',"OTRAP"           ;[4300]
+	DB    $80+'P',"PRINT"           ;[4306]
+	DB    $80+'S',"PRINT"           ;[430C]
+	DB    $80+'V',"RESET"           ;[4312]
+	DB    $80+'C',"IRCLE"           ;[4318]
+	DB    $80+'T',"RIANGLE"         ;[431E]
+	DB    $80+'C',"LW"              ;[4326]
+	DB    $80+'@',"@@@@@"           ;[4329]
+	DB    $80+'@',"@@@@@"           ;[432F]
+	DB    $80+'@',"@@@@@"           ;[4335]
+	DB    $80+'@',"@@@@@"           ;[433B]
+    DB    $80+'@',"@@@@@"           ;[4341]
+	DB    $80+'@',"@@@@@"           ;[4347]
+    DB    $80                       ;[434D]
 ;
 ; Dispatch table for EXT input
 ;
@@ -609,7 +614,7 @@ XE96KS:
     DW    $49FB                     ;[43A6] VRESET
     DW    $4ACA                     ;[43A8] CIRCLE
     DW    $4D18                     ;[43AA] TRIANGLE
-    DW    $471B                     ;[43AC] CLW
+    DW    $4F1B                     ;[43AC] CLW
     DW    ERR_NOT_YET_IMP           ;[43AE] @@@@@@
     DW    ERR_NOT_YET_IMP           ;[43B0] @@@@@@
     DW    ERR_NOT_YET_IMP           ;[43B2] @@@@@@
@@ -1703,10 +1708,10 @@ EKLX:
     OUT   ($80),A                    ;[4A5E] 
     LD    DE,CYAN                    ;[4A60] 
     LD    C,$0E                      ;[4A63] 
-    CALL  $EKLAX1                    ;[4A65] 
+    CALL  EKLAX1                     ;[4A65] 
     LD    DE,ADDQ                    ;[4A68] 
     LD    C,$09                      ;[4A6B] 
-    CALL  $EKLAX1                    ;[4A6D] 
+    CALL  EKLAX1                     ;[4A6D] 
     XOR   A                          ;[4A70]
     OUT   ($80),A                    ;[4A71] Speaker off
     RET                              ;[4A73] 
