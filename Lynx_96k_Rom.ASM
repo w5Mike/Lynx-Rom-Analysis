@@ -237,7 +237,7 @@ EXINIT:
     LD    BC,FOR                    ;[4110] 01 0f 00
     LDIR                            ;[4113] ed b0
     LD    HL,$416F                  ;[4115] 21 6f 41
-    LD    DE,$6276                  ;[4118] 11 76 62
+    LD    DE,SYSVAR_FLIGHT          ;[4118] 11 76 62
     LD    BC,CONT                   ;[411B] 01 15 00
     LDIR                            ;[411E] ed b0
 ;
@@ -265,7 +265,7 @@ CHG2:
     LD    ($623E),A                 ;[414B] 32 3e 62
     LD    A,$C3                     ;[414E] 3e c3
     LD    HL,$4745                  ;[4150] 21 45 47
-    LD    ($622A),A                 ;[4153] 32 2a 62
+    LD    (SYSVAR_EXECSUB),A        ;[4153] 32 2a 62
     LD    ($622B),HL                ;[4156] 22 2b 62
     CALL  $4800                     ;[4159] cd 00 48
     CALL  $43BA                     ;[415C] cd ba 43
@@ -1102,7 +1102,7 @@ WRADV:
     LD      HL,ERROR_PRINT                  ;[470F] 21 56 3b
     EX      (SP),HL                         ;[4712] e3
     LD      C,A                             ;[4713] 4f
-    LD      HL,($61F6)                      ;[4714] 2a f6 61
+    LD      HL,(SYSVAR_CURRLP)              ;[4714] 2a f6 61
     LD      A,(HL)                          ;[4717] 7e
     CP      $80                             ;[4718] fe 80
     JR      Z,$4740                         ;[471A] 28 24
@@ -1124,7 +1124,7 @@ WRADV:
     JR      NZ,$4740                        ;[4737] 20 07
     LD      SP,($61D2)                      ;[4739] ed 7b d2 61
     JP      EXEC2                           ;[473D] c3 be 24
-    LD      HL,($629A)                      ;[4740] 2a 9a 62
+    LD      HL,(SYSVAR_ERRTBL)                      ;[4740] 2a 9a 62
     LD      A,C                             ;[4743] 79
     RET                                     ;[4744] c9
 
@@ -1318,7 +1318,7 @@ WRADV:
     PUSH    BC                              ;[4803] c5
     IN      A,($7D)                         ;[4804] db 7d
     LD      HL,$48CB                        ;[4806] 21 cb 48
-    LD      ($6202),HL                      ;[4809] 22 02 62
+    LD      (SYSVAR_LPRNTD),HL              ;[4809] 22 02 62
     LD      HL,$4847                        ;[480C] 21 47 48
     LD      DE,$61BC                        ;[480F] 11 bc 61
     LD      BC,PAPER                        ;[4812] 01 07 00
@@ -1367,7 +1367,7 @@ WRADV:
     PUSH    DE                              ;[4850] d5
     PUSH    BC                              ;[4851] c5
     LD      HL,$48D0                        ;[4852] 21 d0 48
-    LD      ($6202),HL                      ;[4855] 22 02 62
+    LD      (SYSVAR_LPRNTD),HL              ;[4855] 22 02 62
     LD      HL,$48C1                        ;[4858] 21 c1 48
     LD      DE,$61BC                        ;[485B] 11 bc 61
     LD      BC,DOKE                         ;[485E] 01 0a 00
@@ -1654,7 +1654,7 @@ WRADV:
     INC     HL                              ;[4A10] 23
     DJNZ    $4A0A                           ;[4A11] 10 f7
     LD      HL,$177B                        ;[4A13] 21 7b 17
-    LD      DE,$6254                        ;[4A16] 11 54 62
+    LD      DE,SYSVAR_CURSORX               ;[4A16] 11 54 62
     LD      BC,MOVE                         ;[4A19] 01 22 00
     LDIR                                    ;[4A1C] ed b0
     LD      A,$04                           ;[4A1E] 3e 04
@@ -2137,7 +2137,7 @@ EZAP4:
     POP     HL                              ;[4CD7] e1
     LD      D,B                             ;[4CD8] 50
     PUSH    DE                              ;[4CD9] d5
-    CALL    $626C                           ;[4CDA] cd 6c 62
+    CALL    SYSVAR_OUTB                     ;[4CDA] cd 6c 62
     LD      HL,SYSVAR_STRBUF                ;[4CDD] 21 07 64
     LD      A,(HL)                          ;[4CE0] 7e
     EXX                                     ;[4CE1] d9
@@ -2151,7 +2151,7 @@ EZAP4:
     POP     HL                              ;[4CE9] e1
     PUSH    HL                              ;[4CEA] e5
     PUSH    DE                              ;[4CEB] d5
-    CALL    $626C                           ;[4CEC] cd 6c 62
+    CALL    SYSVAR_OUTB                     ;[4CEC] cd 6c 62
     LD      A,$FF                           ;[4CEF] 3e ff
     POP     BC                              ;[4CF1] c1
     LD      C,$00                           ;[4CF2] 0e 00
@@ -2166,7 +2166,7 @@ EZAP4:
     DEC     B                               ;[4CFF] 05
     JR      Z,$4D14                         ;[4D00] 28 12
     PUSH    BC                              ;[4D02] c5
-    CALL    $626C                           ;[4D03] cd 6c 62
+    CALL    SYSVAR_OUTB                     ;[4D03] cd 6c 62
     POP     BC                              ;[4D06] c1
     JP      $4CF5                           ;[4D07] c3 f5 4c
     LD      A,E                             ;[4D0A] 7b
@@ -2176,7 +2176,7 @@ EZAP4:
     CPL                                     ;[4D0E] 2f
     POP     HL                              ;[4D0F] e1
     POP     HL                              ;[4D10] e1
-    CALL    $626C                           ;[4D11] cd 6c 62
+    CALL    SYSVAR_OUTB                     ;[4D11] cd 6c 62
     RET                                     ;[4D14] c9
 
     POP     HL                              ;[4D15] e1
@@ -2509,12 +2509,12 @@ EZAP4:
     RET                             ;[4F1A] c9
 
     CALL  $4F41                     ;[4F1B] cd 41 4f
-    LD    HL,($6256)                ;[4F1E] 2a 56 62
+    LD    HL,(SYSVAR_WINDST)        ;[4F1E] 2a 56 62
     LD    DE,($6258)                ;[4F21] ed 5b 58 62
     LD    A,L                       ;[4F25] 7d
-    LD    ($6254),A                 ;[4F26] 32 54 62
+    LD    (SYSVAR_CURSORX),A        ;[4F26] 32 54 62
     LD    A,E                       ;[4F29] 7b
-    LD    ($6255),A                 ;[4F2A] 32 55 62
+    LD    (SYSVAR_CURSORY),A        ;[4F2A] 32 55 62
     ADD   HL,HL                     ;[4F2D] 29
     LD    A,D                       ;[4F2E] 7a
     SUB   E                         ;[4F2F] 93
@@ -2532,11 +2532,11 @@ EZAP4:
     INC   E                         ;[4F3D] 1c
     DEC   A                         ;[4F3E] 3d
     JR    NZ,$4F33                  ;[4F3F] 20 f2
-    LD    HL,($625B)                ;[4F41] 2a 5b 62
+    LD    HL,(SYSVAR_INKST)         ;[4F41] 2a 5b 62
     LD    E,H                       ;[4F44] 5c
     LD    H,L                       ;[4F45] 65
     LD    L,E                       ;[4F46] 6b
-    LD    ($625B),HL                ;[4F47] 22 5b 62
+    LD    (SYSVAR_INKST),HL         ;[4F47] 22 5b 62
     RET                             ;[4F4A] c9
 
     RST   $38                       ;[4F4B] ff
