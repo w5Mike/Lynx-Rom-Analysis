@@ -21,6 +21,7 @@
 ;
 EXT_ROM     EQU $4000   ; External ROM address
 XROM        EQU $E000
+PZ	        EQU $FF     ; "no next page" mark
 ;TEDIT       EQU 5       ; unused
 RLAST       EQU 17      ; Input related
 MAXLEN      EQU 240     ; Maximum length of input buffer

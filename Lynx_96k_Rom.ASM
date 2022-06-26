@@ -16,13 +16,25 @@
 ;*
 ;* ---------------------------------------------------------------------
 ;*     DECOMPILED USING: z88dk-dis -o 0x4000 -x "Lynx_48k_Rom.sym" "lynx96-3.rom"
-;*     COMPILE/ASSEMBLE: z88dk-z80asm -b -mz80 Lynx_96k_Rom.ASM
+;*     COMPILE/ASSEMBLE: z88dk-z80asm -split-bin -b -mz80 -o"Lynx_Rom" "Lynx_48k_Rom.ASM" "Lynx_96k_Rom.ASM"
 ;* ---------------------------------------------------------------------
 ;*
 ;
-include "Lynx_48k_Rom.ASM"
+EXTERN INTFP, ERR_TYPE_MISMATCH, ERR_OUT_OF_DATA, ERR_NOT_YET_IMP, ERR_SYNTAX, RST_10
+EXTERN LNUM1, PN, TEST_IS_LOOP_END, SUB_INDENT, SKIP_LNUM, SUB_PRINT_KEYWORD, PRINT_BAS_LINE
+EXTERN PRINT_STRING, DISPLAY_SPACE, PNE1, DO_INDENT, IMON, _BEEP, D6845, ERR_BAD_TAPE
+EXTERN ERR_NUM_OUT_RANGE, ERR_OUT_OF_MEM, ERR_OVERFLOW, ERR_SOMETHG_MISSG, ERROR_PRINT
+EXTERN EXEC2, FLOAT_ZERO, FPINT, GET_VAR_ADDR, IDPOKE, IE4CR, IE6CR, IINK, ILOAD, IREAD
+EXTERN IREM, MOTOFF, RBYTE, READ_STRING_EXPR, READ_STRING_VAR, RP, RSYNC, STRING_EXEC
+EXTERN SUB_PLOT3, TAPE_READ, TEST_FOR_STR_EXP, TEST_FOR_STRING, TEST_IS_COMMA
+EXTERN VPTR_IS_STR, WRITE_FNAME, WSYNC
+;
+include "Lynx.def"
+include "Tokens.def"
 
-;ORG $4000
+SECTION R96k
+ORG -1
+PHASE $4000
 ;
     NOP                             ;[4000] 
     JP    EXINIT                    ;[4001] 
@@ -49,8 +61,8 @@ ROMON:
 ;
 LAHL:
     PUSH  BC                        ;[4017] 
-    PUSH  DE                        ;[4018] 
-    LD    BC,$FF7F                  ;[4019] 
+    PUSH  DE                        ;[4018] Rom off
+    LD    BC,$FF7F                  ;[4019] Bank switching
     LD    DE,$1000                  ;[401C] 
     OUT   (C),D                     ;[401F] 
     LD    A,(HL)                    ;[4021] 
@@ -62,16 +74,13 @@ LAHL:
 ; Execute LDIR for HL in low RAM
 ;
 ELDIR:
-; ROM OFF
-    PUSH  BC                        ;[4027] 
+    PUSH  BC                        ;[4027] ROMOFF
     LD    BC,$FF7F                  ;[4028] Bank switching
     LD    A,$10                     ;[402B] 
     OUT   (C),A                     ;[402D] 
     POP   BC                        ;[402F] 
-; Do LDIR
-    LDIR                            ;[4030] 
-; ROM ON
-    LD    BC,$FF7F                  ;[4032] Bank switching
+    LDIR                            ;[4030] LDIR
+    LD    BC,$FF7F                  ;[4032] ROMON
     XOR   A                         ;[4035] 
     OUT   (C),A                     ;[4036] 
     RET                             ;[4038] 
@@ -84,167 +93,145 @@ ELDIR:
 ; Set C for EOF.
 ;
 RNUM:
-    CALL  ROMOFF                    ;[4039] cd 04 40
-    PUSH  DE                        ;[403C] d5
-    CALL  $40B8                     ;[403D] cd b8 40
-    BIT   7,A                       ;[4040] cb 7f
-    JP    NZ,$40C8                  ;[4042] c2 c8 40
-    BIT   6,A                       ;[4045] cb 77
-    JR    NZ,$407A                  ;[4047] 20 31
-    BIT   5,A                       ;[4049] cb 6f
-    JR    NZ,$4057                  ;[404B] 20 0a
-    LD    D,$00                     ;[404D] 16 00
-    BIT   4,A                       ;[404F] cb 67
-    JR    Z,$405E                   ;[4051] 28 0b
-    AND   $0F                       ;[4053] e6 0f
-    JR    $405A                     ;[4055] 18 03
-    CALL  $40B8                     ;[4057] cd b8 40
-    LD    D,A                       ;[405A] 57
-    CALL  $40B8                     ;[405B] cd b8 40
-    LD    E,A                       ;[405E] 5f
-    PUSH  BC                        ;[405F] c5
-    PUSH  HL                        ;[4060] e5
-    EX    DE,HL                     ;[4061] eb
-    CALL  $400E                     ;[4062] cd 0e 40
-    CALL  INTFP                     ;[4065] cd c4 34
-    LD    B,$05                     ;[4068] 06 05
-    LD    HL,SYSVAR_WRA1            ;[406A] 21 e5 62
-    LD    A,(HL)                    ;[406D] 7e
-    INC   HL                        ;[406E] 23
-    LD    (IX+$00),A                ;[406F] dd 77 00
-    INC   IX                        ;[4072] dd 23
-    DJNZ  $406D                     ;[4074] 10 f7
-    POP   HL                        ;[4076] e1
-    POP   BC                        ;[4077] c1
-    POP   DE                        ;[4078] d1
-    RET                             ;[4079] c9
-
-    LD    E,$05                     ;[407A] 1e 05
-    CALL  $40B8                     ;[407C] cd b8 40
-    LD    (IX+$00),A                ;[407F] dd 77 00
-    INC   IX                        ;[4082] dd 23
-    DEC   E                         ;[4084] 1d
-    JR    NZ,$407C                  ;[4085] 20 f5
-    POP   DE                        ;[4087] d1
-    JP    $400E                     ;[4088] c3 0e 40
-    CALL  LWRAM                     ;[408B] cd 04 40
-    PUSH  DE                        ;[408E] d5
-    LD    E,(IX-$01)                ;[408F] dd 5e ff
-    CALL  $40B8                     ;[4092] cd b8 40
-    BIT   7,A                       ;[4095] cb 7f
-    JP    Z,$40C8                   ;[4097] ca c8 40
-    RES   7,A                       ;[409A] cb bf
-    LD    D,A                       ;[409C] 57
-    INC   D                         ;[409D] 14
-    DEC   D                         ;[409E] 15
-    JR    Z,$40B0                   ;[409F] 28 0f
-    CALL  $40B8                     ;[40A1] cd b8 40
-    INC   E                         ;[40A4] 1c
-    DEC   E                         ;[40A5] 1d
-    JR    Z,$409E                   ;[40A6] 28 f6
-    LD    (IX+$00),A                ;[40A8] dd 77 00
-    INC   IX                        ;[40AB] dd 23
-    DEC   E                         ;[40AD] 1d
-    JR    $409E                     ;[40AE] 18 ee
-    LD    (IX+$00),$0D              ;[40B0] dd 36 00 0d
-    POP   DE                        ;[40B4] d1
-    JP    $400E                     ;[40B5] c3 0e 40
+    CALL  ROMOFF                    ;[4039] 
+    PUSH  DE                        ;[403C] 
+    CALL  PRDBYT                    ;[403D] control byte
+    BIT   7,A                       ;[4040] 
+    JP    NZ,PRDTM                  ;[4042] 1 = string (type mismatch)
+    BIT   6,A                       ;[4045] 
+    JR    NZ,PRDN5                  ;[4047] 1 = f.p.
+    BIT   5,A                       ;[4049] 
+    JR    NZ,PRDN1                  ;[404B] 
+    LD    D,$00                     ;[404D] 
+    BIT   4,A                       ;[404F] 
+    JR    Z,PRDN3                   ;[4051] 
+    AND   $0F                       ;[4053] 
+    JR    PRDN2                     ;[4055] 
+PRDN1:
+    CALL  PRDBYT                    ;[4057] 
+PRDN2:
+    LD    D,A                       ;[405A] 
+    CALL  PRDBYT                    ;[405B] 
+PRDN3:  
+    LD    E,A                       ;[405E] now DE = number
+    PUSH  BC                        ;[405F] 
+    PUSH  HL                        ;[4060] 
+    EX    DE,HL                     ;[4061] 
+    CALL  ROMON                     ;[4062] 
+    CALL  INTFP                     ;[4065] number to WRA1
+    LD    B,$05                     ;[4068] 
+    LD    HL,SYSVAR_WRA1            ;[406A] 
+PRDN4:
+    LD    A,(HL)                    ;[406D] floating point
+    INC   HL                        ;[406E] 
+    LD    (IX+$00),A                ;[406F] 
+    INC   IX                        ;[4072] 
+    DJNZ  PRDN4                     ;[4074] 
+    POP   HL                        ;[4076] 
+    POP   BC                        ;[4077] 
+    POP   DE                        ;[4078] 
+    RET                             ;[4079] 
+PRDN5:
+    LD    E,$05                     ;[407A]
+PRDN6:
+    CALL  PRDBYT                    ;[407C]
+    LD    (IX+$00),A                ;[407F]
+    INC   IX                        ;[4082]
+    DEC   E                         ;[4084]
+    JR    NZ,$407C                  ;[4085]
+PRDN7:
+    POP   DE                        ;[4087]
+    JP    ROMON                     ;[4088]
+;
+; Read string
+;
+RSTR:
+    CALL  ROMOFF                    ;[408B] 
+    PUSH  DE                        ;[408E] 
+    LD    E,(IX-1)                  ;[408F] max size for string
+    CALL  PRDBYT                    ;[4092] control byte
+    BIT   7,A                       ;[4095] 
+    JP    Z,PRDTM                   ;[4097] 
+    RES   7,A                       ;[409A] 
+    LD    D,A                       ;[409C] length in file
+    INC   D                         ;[409D] 
+PRDS1:
+    DEC   D                         ;[409E] 
+    JR    Z,PRDS2                   ;[409F] 
+    CALL  PRDBYT                    ;[40A1] get char
+    INC   E                         ;[40A4] 
+    DEC   E                         ;[40A5] 
+    JR    Z,PRDS1                   ;[40A6] ignore if no room
+    LD    (IX+$00),A                ;[40A8] 
+    INC   IX                        ;[40AB] 
+    DEC   E                         ;[40AD] 
+    JR    PRDS1                     ;[40AE] 
+PRDS2:
+    LD    (IX+0),SZ                 ;[40B0] 
+    POP   DE                        ;[40B4] 
+    JP    ROMON                     ;[40B5] 
 ;
 ; Read byte from software file
 ; NB Assumes interrupts already disabled *******
 ;
 PRDBYT:
-    LD    A,H                       ;[40B8] 7c
-    CP    B                         ;[40B9] b8
-    JR    NZ,PRDB2                  ;[40BA] 20 05
-    LD    A,L                       ;[40BC] 7d
-    CP    C                         ;[40BD] b9
-    JP    Z,$40CE                   ;[40BE] ca ce 40
+    LD    A,H                       ;[40B8] 
+    CP    B                         ;[40B9] 
+    JR    NZ,PRDB2                  ;[40BA] 
+    LD    A,L                       ;[40BC] 
+    CP    C                         ;[40BD] 
+    JP    Z,PRDEOF                  ;[40BE] 
 PRDB2:
-    INC   L                         ;[40C1] 2c
-    JR    NZ,PRDB3                  ;[40C2] 20 02
-    LD    H,(HL)                    ;[40C4] 66
-    INC   L                         ;[40C5] 2c
+    INC   L                         ;[40C1] 
+    JR    NZ,PRDB3                  ;[40C2] 
+    LD    H,(HL)                    ;[40C4] 
+    INC   L                         ;[40C5] 
 PRDB3: 
-    LD    A,(HL)                    ;[40C6] 7e
-    RET                             ;[40C7] c9
+    LD    A,(HL)                    ;[40C6] 
+    RET                             ;[40C7] 
 PRDTM:
-    CALL  ROMON                     ;[40C8] cd 0e 40
-    CALL  ERR_TYPE_MISMATCH         ;[40CB] cd 23 3b
+    CALL  ROMON                     ;[40C8] 
+    CALL  ERR_TYPE_MISMATCH         ;[40CB] 
 PRDEOF:
-    CALL  ROMON                     ;[40CE] cd 0e 40
-    CALL  ERR_OUT_OF_DATA           ;[40D1] cd 1a 3b
+    CALL  ROMON                     ;[40CE] 
+    CALL  ERR_OUT_OF_DATA           ;[40D1] 
 ;
 ; Get byte to save to tape.
 ;
 EGETB:
-    EXX                             ;[40D4] d9
-    OUT   (C),D                     ;[40D5] ed 51
-    INC   L                         ;[40D7] 2c
-    JR    NZ,$40DC                  ;[40D8] 20 02
-    LD    H,(HL)                    ;[40DA] 66
-    INC   L                         ;[40DB] 2c
+    EXX                             ;[40D4] 
+    OUT   (C),D                     ;[40D5] 
+    INC   L                         ;[40D7] 
+    JR    NZ,GTBYT1                 ;[40D8] 
+    LD    H,(HL)                    ;[40DA] 
+    INC   L                         ;[40DB] 
 GTBYT1:
-    LD    A,(HL)                    ;[40DC] 7e
-    OUT   (C),E                     ;[40DD] ed 59
-    EXX                             ;[40DF] d9
-    RET                             ;[40E0] c9
-;
-; Length of this RAM
-;
-LWLEN	equ $-LWRAM
+    LD    A,(HL)                    ;[40DC] 
+    OUT   (C),E                     ;[40DD] 
+    EXX                             ;[40DF] 
+    RET                             ;[40E0] 
 ;
 ; Padding
 ;
-    NOP                             ;[40E1] 00
-    NOP                             ;[40E2] 00
-    NOP                             ;[40E3] 00
-    NOP                             ;[40E4] 00
-    NOP                             ;[40E5] 00
-    NOP                             ;[40E6] 00
-    NOP                             ;[40E7] 00
-    NOP                             ;[40E8] 00
-    NOP                             ;[40E9] 00
-    NOP                             ;[40EA] 00
-    NOP                             ;[40EB] 00
-    NOP                             ;[40EC] 00
-    NOP                             ;[40ED] 00
-    NOP                             ;[40EE] 00
-    NOP                             ;[40EF] 00
-    NOP                             ;[40F0] 00
-    NOP                             ;[40F1] 00
-    NOP                             ;[40F2] 00
-    NOP                             ;[40F3] 00
-    NOP                             ;[40F4] 00
-    NOP                             ;[40F5] 00
-    NOP                             ;[40F6] 00
-    NOP                             ;[40F7] 00
-    NOP                             ;[40F8] 00
-    NOP                             ;[40F9] 00
-    NOP                             ;[40FA] 00
-    NOP                             ;[40FB] 00
-    NOP                             ;[40FC] 00
-    NOP                             ;[40FD] 00
-    NOP                             ;[40FE] 00
-    NOP                             ;[40FF] 00
+DEFS 31,0
 ;
 ; Extra initialization.
 ; Copy ROM to RAM
 ;
 EXINIT:
-    LD    HL,LWRAM                  ;[4100] 21 04 40
-    LD    D,H                       ;[4103] 54
-    LD    E,L                       ;[4104] 5d
-    LD    BC,LWLEN                  ;[4105] 01 dd 00
-    LDIR                            ;[4108] ed b0
-    LD    HL,$4160                  ;[410A] 21 60 41
-    LD    DE,$61C6                  ;[410D] 11 c6 61
-    LD    BC,FOR                    ;[4110] 01 0f 00
-    LDIR                            ;[4113] ed b0
-    LD    HL,$416F                  ;[4115] 21 6f 41
-    LD    DE,SYSVAR_FLIGHT          ;[4118] 11 76 62
-    LD    BC,CONT                   ;[411B] 01 15 00
-    LDIR                            ;[411E] ed b0
+    LD    HL,LWRAM                  ;[4100] 
+    LD    D,H                       ;[4103] 
+    LD    E,L                       ;[4104] 
+    LD    BC,$00DD                  ;[4105] (LWLEN EQU $-LWRAM)
+    LDIR                            ;[4108] 
+    LD    HL,$4160                  ;[410A] 
+    LD    DE,$61C6                  ;[410D] 
+    LD    BC,FOR                    ;[4110] 
+    LDIR                            ;[4113] 
+    LD    HL,$416F                  ;[4115] 
+    LD    DE,SYSVAR_FLIGHT          ;[4118] 
+    LD    BC,CONT                   ;[411B] 
+    LDIR                            ;[411E] 
 ;
 ; Change some 48K values.
 ;
@@ -279,22 +266,14 @@ CHG2:
 ;
 ; Initial values of RAM.
 ;
-UPROM:
-    LD    (BC),A                    ;[4160] 02
-    NOP                             ;[4161] 00
-    NOP                             ;[4162] 00
-    RST   $38                       ;[4163] ff
-    NOP                             ;[4164] 00
-    RST   $38                       ;[4165] ff
-    NOP                             ;[4166] 00
-    RST   $38                       ;[4167] ff
-    NOP                             ;[4168] 00
-    NOP                             ;[4169] 00
-    NOP                             ;[416A] 00
-    NOP                             ;[416B] 00
-    NOP                             ;[416C] 00
-    NOP                             ;[416D] 00
-    ADC   B                         ;[416E] 88
+UPROM:	
+    DB    2                         ; next free page
+	DB    0                         ; current file
+	DB    0,PZ,0,PZ,0,PZ,0,0        ; file info
+	DW    0                         ; error variable
+	DW    0                         ; EXEC stack pointer
+	DB    88H                       ; lightpen offset
+;
 UPLEN	equ $-UPROM
 ;
     JP    $4981                     ;[416F] c3 81 49
@@ -306,12 +285,9 @@ UPLEN	equ $-UPROM
     JP    $470F                     ;[4181] c3 0f 47
 ;
 EXTTAB:
-EXT_ASCII:
-    DW    XT96KS                    ;[4184] ASCII for EXT commands
-EXT_INPUT:
-    DW    XI96KS                    ;[4186] addr's for EXT input
-EXT_EXEC:
-    DW    XE96KS                    ;[4188] addr's for EXT exec
+EXT_ASCII: DW XT96KS                ;[4184] ASCII for EXT commands
+EXT_INPUT: DW XI96KS                ;[4186] addr's for EXT input
+EXT_EXEC:  DW XE96KS                ;[4188] addr's for EXT exec
 ;
 ; Search for tokenable word.
 ; HL points to start of table,
@@ -1136,187 +1112,11 @@ WRADV:
     POP     HL                              ;[4745] e1
     LD      ($61D2),SP                      ;[4746] ed 73 d2 61
     JP      (HL)                            ;[474A] e9
-    RST     $38                             ;[474B] ff
-    RST     $38                             ;[474C] ff
-    RST     $38                             ;[474D] ff
-    RST     $38                             ;[474E] ff
-    RST     $38                             ;[474F] ff
-    RST     $38                             ;[4750] ff
-    RST     $38                             ;[4751] ff
-    RST     $38                             ;[4752] ff
-    RST     $38                             ;[4753] ff
-    RST     $38                             ;[4754] ff
-    RST     $38                             ;[4755] ff
-    RST     $38                             ;[4756] ff
-    RST     $38                             ;[4757] ff
-    RST     $38                             ;[4758] ff
-    RST     $38                             ;[4759] ff
-    RST     $38                             ;[475A] ff
-    RST     $38                             ;[475B] ff
-    RST     $38                             ;[475C] ff
-    RST     $38                             ;[475D] ff
-    RST     $38                             ;[475E] ff
-    RST     $38                             ;[475F] ff
-    RST     $38                             ;[4760] ff
-    RST     $38                             ;[4761] ff
-    RST     $38                             ;[4762] ff
-    RST     $38                             ;[4763] ff
-    RST     $38                             ;[4764] ff
-    RST     $38                             ;[4765] ff
-    RST     $38                             ;[4766] ff
-    RST     $38                             ;[4767] ff
-    RST     $38                             ;[4768] ff
-    RST     $38                             ;[4769] ff
-    RST     $38                             ;[476A] ff
-    RST     $38                             ;[476B] ff
-    RST     $38                             ;[476C] ff
-    RST     $38                             ;[476D] ff
-    RST     $38                             ;[476E] ff
-    RST     $38                             ;[476F] ff
-    RST     $38                             ;[4770] ff
-    RST     $38                             ;[4771] ff
-    RST     $38                             ;[4772] ff
-    RST     $38                             ;[4773] ff
-    RST     $38                             ;[4774] ff
-    RST     $38                             ;[4775] ff
-    RST     $38                             ;[4776] ff
-    RST     $38                             ;[4777] ff
-    RST     $38                             ;[4778] ff
-    RST     $38                             ;[4779] ff
-    RST     $38                             ;[477A] ff
-    RST     $38                             ;[477B] ff
-    RST     $38                             ;[477C] ff
-    RST     $38                             ;[477D] ff
-    RST     $38                             ;[477E] ff
-    RST     $38                             ;[477F] ff
-    RST     $38                             ;[4780] ff
-    RST     $38                             ;[4781] ff
-    RST     $38                             ;[4782] ff
-    RST     $38                             ;[4783] ff
-    RST     $38                             ;[4784] ff
-    RST     $38                             ;[4785] ff
-    RST     $38                             ;[4786] ff
-    RST     $38                             ;[4787] ff
-    RST     $38                             ;[4788] ff
-    RST     $38                             ;[4789] ff
-    RST     $38                             ;[478A] ff
-    RST     $38                             ;[478B] ff
-    RST     $38                             ;[478C] ff
-    RST     $38                             ;[478D] ff
-    RST     $38                             ;[478E] ff
-    RST     $38                             ;[478F] ff
-    RST     $38                             ;[4790] ff
-    RST     $38                             ;[4791] ff
-    RST     $38                             ;[4792] ff
-    RST     $38                             ;[4793] ff
-    RST     $38                             ;[4794] ff
-    RST     $38                             ;[4795] ff
-    RST     $38                             ;[4796] ff
-    RST     $38                             ;[4797] ff
-    RST     $38                             ;[4798] ff
-    RST     $38                             ;[4799] ff
-    RST     $38                             ;[479A] ff
-    RST     $38                             ;[479B] ff
-    RST     $38                             ;[479C] ff
-    RST     $38                             ;[479D] ff
-    RST     $38                             ;[479E] ff
-    RST     $38                             ;[479F] ff
-    RST     $38                             ;[47A0] ff
-    RST     $38                             ;[47A1] ff
-    RST     $38                             ;[47A2] ff
-    RST     $38                             ;[47A3] ff
-    RST     $38                             ;[47A4] ff
-    RST     $38                             ;[47A5] ff
-    RST     $38                             ;[47A6] ff
-    RST     $38                             ;[47A7] ff
-    RST     $38                             ;[47A8] ff
-    RST     $38                             ;[47A9] ff
-    RST     $38                             ;[47AA] ff
-    RST     $38                             ;[47AB] ff
-    RST     $38                             ;[47AC] ff
-    RST     $38                             ;[47AD] ff
-    RST     $38                             ;[47AE] ff
-    RST     $38                             ;[47AF] ff
-    RST     $38                             ;[47B0] ff
-    RST     $38                             ;[47B1] ff
-    RST     $38                             ;[47B2] ff
-    RST     $38                             ;[47B3] ff
-    RST     $38                             ;[47B4] ff
-    RST     $38                             ;[47B5] ff
-    RST     $38                             ;[47B6] ff
-    RST     $38                             ;[47B7] ff
-    RST     $38                             ;[47B8] ff
-    RST     $38                             ;[47B9] ff
-    RST     $38                             ;[47BA] ff
-    RST     $38                             ;[47BB] ff
-    RST     $38                             ;[47BC] ff
-    RST     $38                             ;[47BD] ff
-    RST     $38                             ;[47BE] ff
-    RST     $38                             ;[47BF] ff
-    RST     $38                             ;[47C0] ff
-    RST     $38                             ;[47C1] ff
-    RST     $38                             ;[47C2] ff
-    RST     $38                             ;[47C3] ff
-    RST     $38                             ;[47C4] ff
-    RST     $38                             ;[47C5] ff
-    RST     $38                             ;[47C6] ff
-    RST     $38                             ;[47C7] ff
-    RST     $38                             ;[47C8] ff
-    RST     $38                             ;[47C9] ff
-    RST     $38                             ;[47CA] ff
-    RST     $38                             ;[47CB] ff
-    RST     $38                             ;[47CC] ff
-    RST     $38                             ;[47CD] ff
-    RST     $38                             ;[47CE] ff
-    RST     $38                             ;[47CF] ff
-    RST     $38                             ;[47D0] ff
-    RST     $38                             ;[47D1] ff
-    RST     $38                             ;[47D2] ff
-    RST     $38                             ;[47D3] ff
-    RST     $38                             ;[47D4] ff
-    RST     $38                             ;[47D5] ff
-    RST     $38                             ;[47D6] ff
-    RST     $38                             ;[47D7] ff
-    RST     $38                             ;[47D8] ff
-    RST     $38                             ;[47D9] ff
-    RST     $38                             ;[47DA] ff
-    RST     $38                             ;[47DB] ff
-    RST     $38                             ;[47DC] ff
-    RST     $38                             ;[47DD] ff
-    RST     $38                             ;[47DE] ff
-    RST     $38                             ;[47DF] ff
-    RST     $38                             ;[47E0] ff
-    RST     $38                             ;[47E1] ff
-    RST     $38                             ;[47E2] ff
-    RST     $38                             ;[47E3] ff
-    RST     $38                             ;[47E4] ff
-    RST     $38                             ;[47E5] ff
-    RST     $38                             ;[47E6] ff
-    RST     $38                             ;[47E7] ff
-    RST     $38                             ;[47E8] ff
-    RST     $38                             ;[47E9] ff
-    RST     $38                             ;[47EA] ff
-    RST     $38                             ;[47EB] ff
-    RST     $38                             ;[47EC] ff
-    RST     $38                             ;[47ED] ff
-    RST     $38                             ;[47EE] ff
-    RST     $38                             ;[47EF] ff
-    RST     $38                             ;[47F0] ff
-    RST     $38                             ;[47F1] ff
-    RST     $38                             ;[47F2] ff
-    RST     $38                             ;[47F3] ff
-    RST     $38                             ;[47F4] ff
-    RST     $38                             ;[47F5] ff
-    RST     $38                             ;[47F6] ff
-    RST     $38                             ;[47F7] ff
-    RST     $38                             ;[47F8] ff
-    RST     $38                             ;[47F9] ff
-    RST     $38                             ;[47FA] ff
-    RST     $38                             ;[47FB] ff
-    RST     $38                             ;[47FC] ff
-    RST     $38                             ;[47FD] ff
-    RST     $38                             ;[47FE] ff
-    RST     $38                             ;[47FF] ff
+;
+; Padding 
+;
+DEFS 181, $FF
+;
     PUSH    AF                              ;[4800] f5
     PUSH    HL                              ;[4801] e5
     PUSH    DE                              ;[4802] d5
@@ -2544,185 +2344,21 @@ EZAP4:
     LD    (SYSVAR_INKST),HL         ;[4F47] 22 5b 62
     RET                             ;[4F4A] c9
 
-    RST   $38                       ;[4F4B] ff
-    RST   $38                       ;[4F4C] ff
-    RST   $38                       ;[4F4D] ff
-    RST   $38                       ;[4F4E] ff
-    RST   $38                       ;[4F4F] ff
-    RST   $38                       ;[4F50] ff
-    RST   $38                       ;[4F51] ff
-    RST   $38                       ;[4F52] ff
-    RST   $38                       ;[4F53] ff
-    RST   $38                       ;[4F54] ff
-    RST   $38                       ;[4F55] ff
-    RST   $38                       ;[4F56] ff
-    RST   $38                       ;[4F57] ff
-    RST   $38                       ;[4F58] ff
-    RST   $38                       ;[4F59] ff
-    RST   $38                       ;[4F5A] ff
-    RST   $38                       ;[4F5B] ff
-    RST   $38                       ;[4F5C] ff
-    RST   $38                       ;[4F5D] ff
-    RST   $38                       ;[4F5E] ff
-    RST   $38                       ;[4F5F] ff
-    RST   $38                       ;[4F60] ff
-    RST   $38                       ;[4F61] ff
-    RST   $38                       ;[4F62] ff
-    RST   $38                       ;[4F63] ff
-    RST   $38                       ;[4F64] ff
-    RST   $38                       ;[4F65] ff
-    RST   $38                       ;[4F66] ff
-    RST   $38                       ;[4F67] ff
-    RST   $38                       ;[4F68] ff
-    RST   $38                       ;[4F69] ff
-    RST   $38                       ;[4F6A] ff
-    RST   $38                       ;[4F6B] ff
-    RST   $38                       ;[4F6C] ff
-    RST   $38                       ;[4F6D] ff
-    RST   $38                       ;[4F6E] ff
-    RST   $38                       ;[4F6F] ff
-    RST   $38                       ;[4F70] ff
-    RST   $38                       ;[4F71] ff
-    RST   $38                       ;[4F72] ff
-    RST   $38                       ;[4F73] ff
-    RST   $38                       ;[4F74] ff
-    RST   $38                       ;[4F75] ff
-    RST   $38                       ;[4F76] ff
-    RST   $38                       ;[4F77] ff
-    RST   $38                       ;[4F78] ff
-    RST   $38                       ;[4F79] ff
-    RST   $38                       ;[4F7A] ff
-    RST   $38                       ;[4F7B] ff
-    RST   $38                       ;[4F7C] ff
-    RST   $38                       ;[4F7D] ff
-    RST   $38                       ;[4F7E] ff
-    RST   $38                       ;[4F7F] ff
-    RST   $38                       ;[4F80] ff
-    RST   $38                       ;[4F81] ff
-    RST   $38                       ;[4F82] ff
-    RST   $38                       ;[4F83] ff
-    RST   $38                       ;[4F84] ff
-    RST   $38                       ;[4F85] ff
-    RST   $38                       ;[4F86] ff
-    RST   $38                       ;[4F87] ff
-    RST   $38                       ;[4F88] ff
-    RST   $38                       ;[4F89] ff
-    RST   $38                       ;[4F8A] ff
-    RST   $38                       ;[4F8B] ff
-    RST   $38                       ;[4F8C] ff
-    RST   $38                       ;[4F8D] ff
-    RST   $38                       ;[4F8E] ff
-    RST   $38                       ;[4F8F] ff
-    RST   $38                       ;[4F90] ff
-    RST   $38                       ;[4F91] ff
-    RST   $38                       ;[4F92] ff
-    RST   $38                       ;[4F93] ff
-    RST   $38                       ;[4F94] ff
-    RST   $38                       ;[4F95] ff
-    RST   $38                       ;[4F96] ff
-    RST   $38                       ;[4F97] ff
-    RST   $38                       ;[4F98] ff
-    RST   $38                       ;[4F99] ff
-    RST   $38                       ;[4F9A] ff
-    RST   $38                       ;[4F9B] ff
-    RST   $38                       ;[4F9C] ff
-    RST   $38                       ;[4F9D] ff
-    RST   $38                       ;[4F9E] ff
-    RST   $38                       ;[4F9F] ff
-    RST   $38                       ;[4FA0] ff
-    RST   $38                       ;[4FA1] ff
-    RST   $38                       ;[4FA2] ff
-    RST   $38                       ;[4FA3] ff
-    RST   $38                       ;[4FA4] ff
-    RST   $38                       ;[4FA5] ff
-    RST   $38                       ;[4FA6] ff
-    RST   $38                       ;[4FA7] ff
-    RST   $38                       ;[4FA8] ff
-    RST   $38                       ;[4FA9] ff
-    RST   $38                       ;[4FAA] ff
-    RST   $38                       ;[4FAB] ff
-    RST   $38                       ;[4FAC] ff
-    RST   $38                       ;[4FAD] ff
-    RST   $38                       ;[4FAE] ff
-    RST   $38                       ;[4FAF] ff
-    RST   $38                       ;[4FB0] ff
-    RST   $38                       ;[4FB1] ff
-    RST   $38                       ;[4FB2] ff
-    RST   $38                       ;[4FB3] ff
-    RST   $38                       ;[4FB4] ff
-    RST   $38                       ;[4FB5] ff
-    RST   $38                       ;[4FB6] ff
-    RST   $38                       ;[4FB7] ff
-    RST   $38                       ;[4FB8] ff
-    RST   $38                       ;[4FB9] ff
-    RST   $38                       ;[4FBA] ff
-    RST   $38                       ;[4FBB] ff
-    RST   $38                       ;[4FBC] ff
-    RST   $38                       ;[4FBD] ff
-    RST   $38                       ;[4FBE] ff
-    RST   $38                       ;[4FBF] ff
-    RST   $38                       ;[4FC0] ff
-    RST   $38                       ;[4FC1] ff
-    RST   $38                       ;[4FC2] ff
-    RST   $38                       ;[4FC3] ff
-    RST   $38                       ;[4FC4] ff
-    RST   $38                       ;[4FC5] ff
-    RST   $38                       ;[4FC6] ff
-    RST   $38                       ;[4FC7] ff
-    RST   $38                       ;[4FC8] ff
-    RST   $38                       ;[4FC9] ff
-    RST   $38                       ;[4FCA] ff
-    RST   $38                       ;[4FCB] ff
-    RST   $38                       ;[4FCC] ff
-    RST   $38                       ;[4FCD] ff
-    RST   $38                       ;[4FCE] ff
-    RST   $38                       ;[4FCF] ff
-    RST   $38                       ;[4FD0] ff
-    RST   $38                       ;[4FD1] ff
-    RST   $38                       ;[4FD2] ff
-    RST   $38                       ;[4FD3] ff
-    RST   $38                       ;[4FD4] ff
-    RST   $38                       ;[4FD5] ff
-    RST   $38                       ;[4FD6] ff
-    RST   $38                       ;[4FD7] ff
-    RST   $38                       ;[4FD8] ff
-    RST   $38                       ;[4FD9] ff
-    RST   $38                       ;[4FDA] ff
-    RST   $38                       ;[4FDB] ff
-    RST   $38                       ;[4FDC] ff
-    RST   $38                       ;[4FDD] ff
-    RST   $38                       ;[4FDE] ff
-    RST   $38                       ;[4FDF] ff
-    RST   $38                       ;[4FE0] ff
-    RST   $38                       ;[4FE1] ff
-    RST   $38                       ;[4FE2] ff
-    RST   $38                       ;[4FE3] ff
-    RST   $38                       ;[4FE4] ff
-    RST   $38                       ;[4FE5] ff
-    RST   $38                       ;[4FE6] ff
-    RST   $38                       ;[4FE7] ff
-    RST   $38                       ;[4FE8] ff
-    RST   $38                       ;[4FE9] ff
-    RST   $38                       ;[4FEA] ff
-    RST   $38                       ;[4FEB] ff
-    RST   $38                       ;[4FEC] ff
-    RST   $38                       ;[4FED] ff
-    RST   $38                       ;[4FEE] ff
-    RST   $38                       ;[4FEF] ff
+;
+; Padding
+;
+DEFS 165,$FF
+;
+; Unknown values. Unused?
+;
     LD    H,H                       ;[4FF0] 64
     LD    E,C                       ;[4FF1] 59
     LD    H,H                       ;[4FF2] 64
     LD    D,E                       ;[4FF3] 53
     LD    E,B                       ;[4FF4] 58
-    NOP                             ;[4FF5] 00
-    NOP                             ;[4FF6] 00
-    NOP                             ;[4FF7] 00
-    NOP                             ;[4FF8] 00
-    NOP                             ;[4FF9] 00
-    NOP                             ;[4FFA] 00
-    NOP                             ;[4FFB] 00
-    NOP                             ;[4FFC] 00
-    NOP                             ;[4FFD] 00
-    NOP                             ;[4FFE] 00
-    NOP                             ;[4FFF] 00
-    
+;
+; Padding
+;
+DEFS 11,$0
+;
+DEPHASE
