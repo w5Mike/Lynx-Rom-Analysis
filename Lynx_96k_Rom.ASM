@@ -16,7 +16,7 @@
 ;*
 ;* ---------------------------------------------------------------------
 ;*     DECOMPILED USING: z88dk-dis -o 0x4000 -x "Lynx_48k_Rom.sym" "lynx96-3.rom"
-;*     COMPILE/ASSEMBLE: z88dk-z80asm -split-bin -b -mz80 -o"Lynx_Rom" "Lynx_48k_Rom.ASM" "Lynx_96k_Rom.ASM"
+;*     COMPILE/ASSEMBLE: z88dk-z80asm -split-bin -b -mz80 -o"Lynx" "Lynx_48k_Rom.ASM" "Lynx_96k_Rom.ASM"
 ;* ---------------------------------------------------------------------
 ;*
 ;
@@ -32,8 +32,7 @@ EXTERN VPTR_IS_STR, WRITE_FNAME, WSYNC
 include "Lynx.def"
 include "Tokens.def"
 
-SECTION R96k
-ORG -1
+SECTION _96k_3
 PHASE $4000
 ;
     NOP                             ;[4000] 
@@ -235,23 +234,24 @@ EXINIT:
 ;
 ; Change some 48K values.
 ;
-    LD    A,($6226)                 ;[4120] 3a 26 62
+    LD    A,(SYSVAR_EEXT+2)         ;[4120] EXT done already?
     CP    $40                       ;[4123] fe 40
-    JR    NC,$4143                  ;[4125] 30 1c
+    JR    NC,CHG2                   ;[4125] 30 1c
     LD    HL,$61E6                  ;[4127] 21 e6 61
     LD    B,$08                     ;[412A] 06 08
 CHG1:
     LD    (HL),$00                  ;[412C] 36 00
     INC   HL                        ;[412E] 23
     DJNZ  $412C                     ;[412F] 10 fb
-CHG2:
+
     LD    HL,$41CD                  ;[4131] 21 cd 41
     LD    ($6222),HL                ;[4134] 22 22 62
     LD    HL,$4295                  ;[4137] 21 95 42
     LD    ($6225),HL                ;[413A] 22 25 62
     LD    HL,$420C                  ;[413D] 21 0c 42
     LD    ($62B3),HL                ;[4140] 22 b3 62
-    LD    HL,$4184                  ;[4143] 21 84 41
+CHG2:
+    LD    HL,EXTTAB                 ;[4143] 21 84 41
     LD    ($61E8),HL                ;[4146] 22 e8 61
     LD    A,$41                     ;[4149] 3e 41
     LD    ($623E),A                 ;[414B] 32 3e 62

@@ -52,9 +52,7 @@ PUBLIC VPTR_IS_STR, WRITE_FNAME, WSYNC
 include "Lynx.def"
 include "Tokens.def"
 
-SECTION R48k
-;DEFS $4000,0
-ORG -1
+SECTION _48k_1
 
 ;
 ; Start. Disable interrupts. Jump to 3B.
@@ -4987,6 +4985,8 @@ EUNTIL:
     PUSH  DE                        ;[1FFA] 
     CALL  POP_A_RSTACK              ;[1FFB] 
     CP    REPEAT                    ;[1FFE] 
+SECTION _48k_2
+PHASE $2000
 EUNT1:
     CALL  NZ,ERR_UNTIL_NO_REPEAT    ;[2000] 
     CALL  POP_HL_RSTACK             ;[2003] 
@@ -10129,7 +10129,7 @@ CRLF:
 ;
 REGIST:
     LD    IX,REGMSG                 ;[3CBB] 
-    LD    DE,TRAPREGS               ;[3CBF] 
+    LD    DE,TRAPAF                 ;[3CBF] 
     LD    B,12                      ;[3CC2] 
 REGST1:
     PUSH  BC                        ;[3CC4] 
@@ -10497,7 +10497,7 @@ UPDAT2:
 ;
 UPDAT:
     LD    HL,REGMSG                 ;[3E6E] 
-    LD    IX,TRAPREGS               ;[3E71] 
+    LD    IX,TRAPAF               ;[3E71] 
 UPDAT0:
     PUSH  BC                        ;[3E75] 
     PUSH  HL                        ;[3E76] 
@@ -10521,7 +10521,7 @@ UPDAT1:
 ; Monitor X. Display registers.
 ;
 PREG:
-    LD    DE,TRAPREGS               ;[3E8E] 
+    LD    DE,TRAPAF               ;[3E8E] 
     LD    B,4                       ;[3E91] 
     CALL  PREGS                     ;[3E93] 
     LD    A,CEL                     ;[3E96] 
@@ -10546,7 +10546,7 @@ PREGS:
     RET                             ;[3EB5] 
 
 PFLAG:
-    LD    A,(TRAPREGS)              ;[3EB6] 
+    LD    A,(TRAPAF)                ;[3EB6] 
     LD    HL,FLGMSG                 ;[3EB9] 
     LD    C,A                       ;[3EBC] 
     SCF                             ;[3EBD] 
@@ -10774,3 +10774,4 @@ SUB_MOD:
     JP    ADD                       ;[3FFB] 
     RST   $38                       ;[3FFE] 
     NOP                             ;[3FFF] 
+DEPHASE
