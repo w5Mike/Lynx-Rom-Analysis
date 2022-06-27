@@ -83,18 +83,62 @@ KDALTG      EQU $C020
 
 ;
 ; Lynx System RAM locations, prior to the start of user ram (Basic).
-; (taken from Camputers Lynx Mark II source code - RAM/E02 1-Apr-84)
+; Taken from Camputers Lynx Mark II source code - RAM/E02 1-Apr-84.
+; (note: not all RAM locations are used in all ROMS. Depends)
 ;
-INPBUF      EQU $6000           ;[=$6000] Input buffer (length: MAXLEN+20=260 bytes)
-MONSTACK    EQU INPBUF+260      ;[=$6104] Monitor stack
-TRAPREGS    EQU MONSTACK+150    ;[=$619A] Registers: AF,HL,DE,BC,AF',HL',DE',BC',IX,IY
-TRAPSP      EQU TRAPREGS+20     ;[=$61AE] SP
-TRAPPC      EQU TRAPSP+2        ;[=$61B0] PC
-GOPC        EQU TRAPPC+2        ;[=$61B2] 
-BRKPST      EQU GOPC+3          ;[=$61B5] 
-MONST       EQU BRKPST+3        ;[=$61B8] Store used in M,L,W etc
-MONSP       EQU MONST+2         ;[=$61BA] SP Store
-
+DEFVARS $6000
+{
+    INPBUF      DS.B MAXLEN+20      ;[6000] Input buffer
+	MONSTACK    DS.B 150	        ;[6104] Monitor stack
+    TRAPAF      DS.B 2	            ;[619A] Registers AF
+    TRAPHL      DS.B 2              ;[619C] HL
+    TRAPDE      DS.B 2              ;[619E] DE
+    TRAPBC      DS.B 2              ;[61A0] BC
+    TRAPAF_     DS.B 2              ;[61A2] AF'
+    TRAPHL_     DS.B 2              ;[61A4] HL'
+    TRAPDE_     DS.B 2              ;[61A6] DE'
+    TRAPBC_     DS.B 2              ;[61A8] BC'
+    TRAPIX      DS.B 2              ;[61AA] IX
+    TRAPIY      DS.B 2              ;[61AC] IY
+    TRAPSP      DS.B 2              ;[61AE] SP
+    TRAPPC      DS.B 2              ;[61B0] PC
+    GOPC        DS.B 3              ;[61B2]
+    BRKPST      DS.B 3              ;[61B5]
+    MONST	    DS.B 2              ;[61B8] Store used in M,L,W etc
+    MONSP       DS.B 2              ;[61BA] SP Store
+    ;
+    ; Add the 50 extra bytes 30-Oct-83
+    ;
+    LXFLAG      DS.B 4              ;[61BC] CTRL chars on printer
+    NLFLAG      DS.B 1              ;[61C0] whether char causes new line
+    BUFSIZ      DS.B 1              ;[61C1] printer buffer size
+    BUFCT       DS.B 1              ;[61C2] # of chars in buffer
+    BUFDLY      DS.B 1              ;[61C3] *** OLD SPRINT ROUTINE ONLY ***
+    PRTDLY      DS.B 1              ;[61C4]
+    FFDLY       DS.B 1              ;[61C5]
+    NXFRPG      DS.B 1              ;[61C6] next free page
+    KFILE 	    DS.B 1              ;[61C7] current data store
+    KNXFIL      DS.B 1              ;[61C8] next one in chain
+    KFSTPG      DS.B 1              ;[61C9] first page
+    KWRPTR      DS.B 2              ;[61CA] write pointer
+    KRDPTR      DS.B 2              ;[61CC] read pointer
+    KFILEN      DS.B 2              ;[61CE] length of store
+    ERRVR       DS.B 2              ;[61D0] addr of error variable
+    EXECSP      DS.B 2              ;[61D2] save SP on EXEC
+    LPOFFS      DS.B 1              ;[61D4] lightpen offset
+    QTFLG       DS.B 1              ;[61D5] for PP
+    BRKRAM      DS.B 3              ;[61D6] <BREAK> key routine
+    CLSRAM      DS.B 3              ;[61D9]
+    CELRAM      DS.B 3              ;[61DB] clear to end of line
+    AGBNK       DS.B 2              ;[61DE]
+    MODST       DS.B 1              ;[61E1] high/low res mode
+    CURINC      DS.B 1              ;[61E2] inc of CURSRX per char
+    INTFLG      DS.B 1              ;[61E3] whether allow EI
+    PORT80      DS.B 1              ;[61E4] preserve status of port 80
+    PORT82      DS.B 1              ;[61E5]
+    EXTRAM      DS.B 8              ;[61E6] 4 addresses for EXT
+    ;------ end of extra bytes
+}
 ;
 ; Lynx system variables as listed in "Lynx User" 1 magazine (June 1983):
 ;
