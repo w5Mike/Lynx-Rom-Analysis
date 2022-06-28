@@ -27,7 +27,7 @@ EXTERN ERR_NUM_OUT_RANGE, ERR_OUT_OF_MEM, ERR_OVERFLOW, ERR_SOMETHG_MISSG, ERROR
 EXTERN EXEC2, FLOAT_ZERO, FPINT, GET_VAR_ADDR, IDPOKE, IE4CR, IE6CR, IINK, ILOAD, IREAD
 EXTERN IREM, MOTOFF, RBYTE, READ_STRING_EXPR, READ_STRING_VAR, RP, RSYNC, STRING_EXEC
 EXTERN SUB_PLOT3, TAPE_READ, TEST_FOR_STR_EXP, TEST_FOR_STRING, TEST_IS_COMMA
-EXTERN VPTR_IS_STR, WRITE_FNAME, WSYNC
+EXTERN VPTR_IS_STR, WRITE_FNAME, WSYNC, VROM, DFTW
 ;
 include "Lynx.def"
 include "Tokens.def"
@@ -101,7 +101,7 @@ RNUM:
     JR    NZ,PRDN5                  ;[4047] 1 = f.p.
     BIT   5,A                       ;[4049] 
     JR    NZ,PRDN1                  ;[404B] 
-    LD    D,$00                     ;[404D] 
+    LD    D,0                       ;[404D] 
     BIT   4,A                       ;[404F] 
     JR    Z,PRDN3                   ;[4051] 
     AND   $0F                       ;[4053] 
@@ -118,7 +118,7 @@ PRDN3:
     EX    DE,HL                     ;[4061] 
     CALL  ROMON                     ;[4062] 
     CALL  INTFP                     ;[4065] number to WRA1
-    LD    B,$05                     ;[4068] 
+    LD    B,5                       ;[4068] 
     LD    HL,SYSVAR_WRA1            ;[406A] 
 PRDN4:
     LD    A,(HL)                    ;[406D] floating point
@@ -137,7 +137,7 @@ PRDN6:
     LD    (IX+$00),A                ;[407F]
     INC   IX                        ;[4082]
     DEC   E                         ;[4084]
-    JR    NZ,$407C                  ;[4085]
+    JR    NZ,PRDN6                  ;[4085]
 PRDN7:
     POP   DE                        ;[4087]
     JP    ROMON                     ;[4088]
@@ -210,56 +210,61 @@ GTBYT1:
     EXX                             ;[40DF] 
     RET                             ;[40E0] 
 ;
+; Length of the "Low Ram" section above - to be copied to RAM (in EXINIT)
+; (the PHASE command messes up the calculation by $4000, so deduct $4000)
+;
+LWLEN	equ $-LWRAM-$4000
+;
 ; Padding
 ;
 DEFS 31,0
 ;
 ; Extra initialization.
-; Copy ROM to RAM
+; Copy ROM (LWRAM) to LOW RAM
 ;
 EXINIT:
-    LD    HL,LWRAM                  ;[4100] 
-    LD    D,H                       ;[4103] 
+    LD    HL,LWRAM                  ;[4100] copy from HL (rom) to HL (ram)!
+    LD    D,H                       ;[4103] (rom/ram reflection)
     LD    E,L                       ;[4104] 
-    LD    BC,$00DD                  ;[4105] (LWLEN EQU $-LWRAM)
-    LDIR                            ;[4108] 
-    LD    HL,$4160                  ;[410A] 
-    LD    DE,$61C6                  ;[410D] 
-    LD    BC,FOR                    ;[4110] 
+    LD    BC,LWLEN                  ;[4105] 
+    LDIR                            ;[4108] Copy the "Low Ram" rom section to RAM
+    LD    HL,UPROM                  ;[410A] 
+    LD    DE,NXFRPG                 ;[410D] 
+    LD    BC,$0F                    ;[4110] 
     LDIR                            ;[4113] 
     LD    HL,$416F                  ;[4115] 
     LD    DE,SYSVAR_FLIGHT          ;[4118] 
-    LD    BC,CONT                   ;[411B] 
+    LD    BC,$15                    ;[411B]
     LDIR                            ;[411E] 
 ;
 ; Change some 48K values.
 ;
     LD    A,(SYSVAR_EEXT+2)         ;[4120] EXT done already?
-    CP    $40                       ;[4123] fe 40
-    JR    NC,CHG2                   ;[4125] 30 1c
-    LD    HL,$61E6                  ;[4127] 21 e6 61
-    LD    B,$08                     ;[412A] 06 08
+    CP    $40                       ;[4123] 
+    JR    NC,CHG2                   ;[4125] 
+    LD    HL,EXTRAM                 ;[4127]
+    LD    B,$08                     ;[412A] 
 CHG1:
-    LD    (HL),$00                  ;[412C] 36 00
+    LD    (HL),0                    ;[412C] 
     INC   HL                        ;[412E] 23
-    DJNZ  $412C                     ;[412F] 10 fb
+    DJNZ  CHG1                      ;[412F] 10 fb
 
-    LD    HL,$41CD                  ;[4131] 21 cd 41
-    LD    ($6222),HL                ;[4134] 22 22 62
+    LD    HL,IEXTS                  ;[4131] 21 cd 41
+    LD    (SYSVAR_IEXT+1),HL        ;[4134] 22 22 62
     LD    HL,$4295                  ;[4137] 21 95 42
-    LD    ($6225),HL                ;[413A] 22 25 62
+    LD    (SYSVAR_EEXT+1),HL        ;[413A] 22 25 62
     LD    HL,$420C                  ;[413D] 21 0c 42
-    LD    ($62B3),HL                ;[4140] 22 b3 62
+    LD    (SYSVAR_DBASLN+1),HL      ;[4140] 22 b3 62
 CHG2:
     LD    HL,EXTTAB                 ;[4143] 21 84 41
-    LD    ($61E8),HL                ;[4146] 22 e8 61
-    LD    A,$41                     ;[4149] 3e 41
-    LD    ($623E),A                 ;[414B] 32 3e 62
-    LD    A,$C3                     ;[414E] 3e c3
+    LD    (EXTRAM+2),HL             ;[4146] 22 e8 61
+    LD    A,EXT                     ;[4149] 3e 41
+    LD    (SYSVAR_KTBL+4),A         ;[414B] 32 3e 62
+    LD    A,FN1                     ;[414E] 3e c3
     LD    HL,$4745                  ;[4150] 21 45 47
     LD    (SYSVAR_EXECSUB),A        ;[4153] 32 2a 62
-    LD    ($622B),HL                ;[4156] 22 2b 62
-    CALL  $4800                     ;[4159] cd 00 48
+    LD    (SYSVAR_EXECSUB+1),HL     ;[4156] 22 2b 62
+    CALL  EPPR                      ;[4159] cd 00 48
     CALL  $43BA                     ;[415C] cd ba 43
     RET                             ;[415F] c9
 
@@ -267,22 +272,22 @@ CHG2:
 ; Initial values of RAM.
 ;
 UPROM:	
-    DB    2                         ; next free page
-	DB    0                         ; current file
-	DB    0,PZ,0,PZ,0,PZ,0,0        ; file info
-	DW    0                         ; error variable
-	DW    0                         ; EXEC stack pointer
-	DB    88H                       ; lightpen offset
+    DB    2                         ;[4160] next free page
+	DB    0                         ;[4161] current file
+	DB    0,PZ,0,PZ,0,PZ,0,0        ;[4162] file info
+	DW    0                         ;[416A] error variable
+	DW    0                         ;[416C] EXEC stack pointer
+	DB    $88                       ;[416E] lightpen offset
+UPLEN	equ ASMPC-UPROM
 ;
-UPLEN	equ $-UPROM
 ;
-    JP    $4981                     ;[416F] c3 81 49
-    JP    $49C4                     ;[4172] c3 c4 49
-    JP    ERR_NOT_YET_IMP           ;[4175] c3 32 3b
-    JP    ERR_NOT_YET_IMP           ;[4178] c3 32 3b
-    JP    ERR_NOT_YET_IMP           ;[417B] c3 32 3b
-    JP    ERR_NOT_YET_IMP           ;[417E] c3 32 3b
-    JP    $470F                     ;[4181] c3 0f 47
+    JP    $4981                     ;[416F] Lightpen function
+    JP    $49C4                     ;[4171] Joystick function 
+    JP    ERR_NOT_YET_IMP           ;[4175] User0
+    JP    ERR_NOT_YET_IMP           ;[4178] User1
+    JP    ERR_NOT_YET_IMP           ;[417B] User2
+    JP    ERR_NOT_YET_IMP           ;[417E] User3
+    JP    $470F                     ;[4181] Called during error.
 ;
 EXTTAB:
 EXT_ASCII: DW XT96KS                ;[4184] ASCII for EXT commands
@@ -357,7 +362,7 @@ HL2A:
     PUSH  DE                        ;[41C1] d5
     RLCA                            ;[41C2] 07
     LD    E,A                       ;[41C3] 5f
-    LD    D,$00                     ;[41C4] 16 00
+    LD    D,0                       ;[41C4] 16 00
     ADD   HL,DE                     ;[41C6] 19
     LD    A,(HL)                    ;[41C7] 7e
     INC   HL                        ;[41C8] 23
@@ -408,6 +413,7 @@ IEXTS:
     CALL  HL2A                      ;[4205] cd c1 41
     EX    (SP),HL                   ;[4208] e3
     JP    RST_10                    ;[4209] c3 10 00
+
     PUSH  IX                        ;[420C] dd e5
     POP   HL                        ;[420E] e1
     PUSH  HL                        ;[420F] e5
@@ -482,6 +488,7 @@ IEXTS:
     JP    Z,DO_INDENT               ;[428F] ca 40 28
     RST   $08                       ;[4292] cf
     JR    $428B                     ;[4293] 18 f6
+
     PUSH  IX                        ;[4295] dd e5
     AND   $C0                       ;[4297] e6 c0
     RLCA                            ;[4299] 07
@@ -574,22 +581,22 @@ XE96KS:
     DW    EKLX                      ;[4386] KLAXON
     DW    ELSR                      ;[4388] LASER
     DW    EZAP                      ;[438A] ZAP
-    DW    $44D5                     ;[438C] STORE
-    DW    $452C                     ;[438E] ISTORE
-    DW    $4596                     ;[4390] FETCH
-    DW    $45C1                     ;[4392] WIPE
-    DW    $45E2                     ;[4394] BACK
-    DW    $465B                     ;[4396] SSAVE
-    DW    $45F1                     ;[4398] SLOAD
-    DW    $4665                     ;[439A] CSAVE
-    DW    $46C1                     ;[439C] CHAIN
-    DW    $46F8                     ;[439E] TRAP
-    DW    $4708                     ;[43A0] NOTRAP
-    DW    $4800                     ;[43A2] PPRINT
-    DW    $484E                     ;[43A4] SPRINT
-    DW    $49FB                     ;[43A6] VRESET
-    DW    $4ACA                     ;[43A8] CIRCLE
-    DW    $4D18                     ;[43AA] TRIANGLE
+    DW    EPWR                      ;[438C] STORE
+    DW    EIST                      ;[438E] ISTORE
+    DW    EPRD                      ;[4390] FETCH
+    DW    EWIP                      ;[4392] WIPE
+    DW    EBAK                      ;[4394] BACK
+    DW    ESSV                      ;[4396] SSAVE
+    DW    ESLD                      ;[4398] SLOAD
+    DW    ECSV                      ;[439A] CSAVE
+    DW    ECHN                      ;[439C] CHAIN
+    DW    ETRP                      ;[439E] TRAP
+    DW    ENTR                      ;[43A0] NOTRAP
+    DW    EPPR                      ;[43A2] PPRINT
+    DW    ESPR                      ;[43A4] SPRINT
+    DW    EVRS                      ;[43A6] VRESET
+    DW    ECIR                      ;[43A8] CIRCLE
+    DW    ETRI                      ;[43AA] TRIANGLE
     DW    $4F1B                     ;[43AC] CLW
     DW    ERR_NOT_YET_IMP           ;[43AE] @@@@@@
     DW    ERR_NOT_YET_IMP           ;[43B0] @@@@@@
@@ -617,7 +624,7 @@ XE96KS:
 
     LD    A,($61C6)                 ;[43D0] 3a c6 61
     LD    H,A                       ;[43D3] 67
-    LD    L,$00                     ;[43D4] 2e 00
+    LD    L,0                       ;[43D4] 2e 00
     INC   A                         ;[43D6] 3c
     LD    (HL),A                    ;[43D7] 77
     INC   H                         ;[43D8] 24
@@ -638,46 +645,58 @@ XE96KS:
     DJNZ  $43EB                     ;[43F4] 10 f5
     RET                             ;[43F6] c9
 
-    LD    HL,$61C7                  ;[43F7] 21 c7 61
-    BIT   7,(HL)                    ;[43FA] cb 7e
-    CALL  NZ,ERR_NOT_YET_IMP        ;[43FC] c4 32 3b
-    PUSH  HL                        ;[43FF] e5
-    RST   $18                       ;[4400] df
-    INC   DE                        ;[4401] 13
-    DEC   H                         ;[4402] 25
-    INC   H                         ;[4403] 24
-    CALL  NZ,ERR_NUM_OUT_RANGE      ;[4404] c4 29 3b
-    DEC   A                         ;[4407] 3d
-    CP    $30                       ;[4408] fe 30
-    CALL  NC,ERR_NUM_OUT_RANGE      ;[440A] d4 29 3b
-    INC   A                         ;[440D] 3c
-    POP   HL                        ;[440E] e1
-    BIT   6,(HL)                    ;[440F] cb 76
-    JR    Z,$4417                   ;[4411] 28 04
-    RES   6,(HL)                    ;[4413] cb b6
-    CP    (HL)                      ;[4415] be
-    RET   Z                         ;[4416] c8
-    LD    (HL),A                    ;[4417] 77
-    DEC   A                         ;[4418] 3d
-    LD    H,$00                     ;[4419] 26 00
-    LD    L,A                       ;[441B] 6f
-    ADD   HL,HL                     ;[441C] 29
-    ADD   HL,HL                     ;[441D] 29
-    ADD   HL,HL                     ;[441E] 29
-    PUSH  DE                        ;[441F] d5
-    LD    DE,S                      ;[4420] 11 80 00
-    ADD   HL,DE                     ;[4423] 19
-    LD    DE,$61C8                  ;[4424] 11 c8 61
-    LD    BC,RANDOM                 ;[4427] 01 08 00
-    CALL  ELDIR                     ;[442A] cd 27 40
-    POP   DE                        ;[442D] d1
-    RET                             ;[442E] c9
-
+;
+; Read file number from program,
+; then get info about file & put
+; info into upper RAM.
+;
+GETINF:
+    LD    HL,$61C7                  ;[43F7] 
+    BIT   7,(HL)                    ;[43FA] 48K Lynx?
+    CALL  NZ,ERR_NOT_YET_IMP        ;[43FC] yes, "not yet implemented"
+    PUSH  HL                        ;[43FF] 
+    RST   $18                       ;[4400] file no. to HL and A
+    INC   DE                        ;[4401] start of next arg.
+    DEC   H                         ;[4402] test high byte
+    INC   H                         ;[4403]
+    CALL  NZ,ERR_NUM_OUT_RANGE      ;[4404] must be 0
+    DEC   A                         ;[4407] nos. start at 1
+    CP    $30                       ;[4408] 
+    CALL  NC,ERR_NUM_OUT_RANGE      ;[440A] 
+    INC   A                         ;[440D] 
+    POP   HL                        ;[440E] 
+    BIT   6,(HL)                    ;[440F] valid info?
+    JR    Z,$4417                   ;[4411] 
+    RES   6,(HL)                    ;[4413] 
+    CP    (HL)                      ;[4415] about this file?
+    RET   Z                         ;[4416] then do no more
+GTINF0:
+    LD    (HL),A                    ;[4417] 
+GTINF1:
+    DEC   A                         ;[4418] 
+    LD    H,0                       ;[4419] 
+    LD    L,A                       ;[441B] 
+    ADD   HL,HL                     ;[441C] 8*(file number)
+    ADD   HL,HL                     ;[441D] 
+    ADD   HL,HL                     ;[441E] 
+    PUSH  DE                        ;[441F] save program pointer
+    LD    DE,S                      ;[4420] info in low RAM
+    ADD   HL,DE                     ;[4423] point to this file
+    LD    DE,KNXFIL                 ;[4424] info in high RAM
+    LD    BC,8                      ;[4427] 
+    CALL  ELDIR                     ;[442A] copy info
+    POP   DE                        ;[442D] 
+    RET                             ;[442E] 
+;
+; Put updated info about file
+; from high RAM into low RAM.
+;
+PUTINF:
     LD    HL,$61C7                  ;[442F] 21 c7 61
     LD    A,(HL)                    ;[4432] 7e
     SET   6,(HL)                    ;[4433] cb f6
     DEC   A                         ;[4435] 3d
-    LD    H,$00                     ;[4436] 26 00
+    LD    H,0                       ;[4436] 26 00
     LD    L,A                       ;[4438] 6f
     ADD   HL,HL                     ;[4439] 29
     ADD   HL,HL                     ;[443A] 29
@@ -689,9 +708,14 @@ XE96KS:
     LD    BC,RANDOM                 ;[4444] 01 08 00
     LDIR                            ;[4447] ed b0
     RET                             ;[4449] c9
-
+;
+; Attach unused pages to current file
+; Set Z if file not started and no
+; free page is available.
+;
+ATTACH:
     LD    HL,($61CA)                ;[444A] 2a ca 61
-    LD    L,$00                     ;[444D] 2e 00
+    LD    L,0                       ;[444D] 2e 00
     LD    A,H                       ;[444F] 7c
     CP    $FF                       ;[4450] fe ff
     LD    A,($61C6)                 ;[4452] 3a c6 61
@@ -703,7 +727,7 @@ XE96KS:
     LD    ($61C9),A                 ;[445A] 32 c9 61
     LD    ($61CA),HL                ;[445D] 22 ca 61
     LD    ($61CC),HL                ;[4460] 22 cc 61
-    LD    H,$00                     ;[4463] 26 00
+    LD    H,0                       ;[4463] 26 00
     LD    ($61CE),HL                ;[4465] 22 ce 61
     CP    $FF                       ;[4468] fe ff
     RET                             ;[446A] c9
@@ -712,7 +736,7 @@ DETACH:
     LD    A,H                       ;[446E] 7c
     CP    $FF                       ;[446F] fe ff
     RET   Z                         ;[4471] c8
-    LD    L,$00                     ;[4472] 2e 00
+    LD    L,0                       ;[4472] 2e 00
     CALL  LAHL                      ;[4474] cd 17 40
     LD    (HL),$FF                  ;[4477] 36 ff
     LD    ($61C6),A                 ;[4479] 32 c6 61
@@ -871,14 +895,14 @@ EIST9:
     LD    ($61CA),HL                ;[4567] update file info
     LD    ($61CE),BC                ;[456A] 
     CALL  $446B                     ;[456E] 
-    CALL  $442F                     ;[4571] 
+    CALL  PUTINF                    ;[4571] 
     RET                             ;[4574] 
 ;
 ; Open software file.
 ;
 WROPEN:
-    CALL  $43F7                     ;[4575] 
-    CALL  $444A                     ;[4578] 
+    CALL  GETINF                    ;[4575] 
+    CALL  ATTACH                    ;[4578] 
     CALL  Z,ERR_OUT_OF_MEM          ;[457B] 
     LD    HL,($61CA)                ;[457E] 
     LD    BC,($61CE)                ;[4581] 
@@ -899,52 +923,70 @@ WRADV:
     POP   AF                        ;[4594] 
     RET                             ;[4595] 
 ;
-    CALL    $43F7                           ;[4596] cd f7 43
-    LD      HL,($61CC)                      ;[4599] 2a cc 61
-    LD      BC,($61CA)                      ;[459C] ed 4b ca 61
-    PUSH    BC                              ;[45A0] c5
-    PUSH    HL                              ;[45A1] e5
-    CALL    VPTR_IS_STR                     ;[45A2] cd 13 21
-    PUSH    HL                              ;[45A5] e5
-    POP     IX                              ;[45A6] dd e1
-    POP     HL                              ;[45A8] e1
-    POP     BC                              ;[45A9] c1
-    JR      C,$45B1                         ;[45AA] 38 05
-    CALL    $4039                           ;[45AC] cd 39 40
-    JR      $45B4                           ;[45AF] 18 03
-    CALL    $408B                           ;[45B1] cd 8b 40
-    LD      A,(DE)                          ;[45B4] 1a
-    INC     DE                              ;[45B5] 13
-    CP      $2C                             ;[45B6] fe 2c
-    JR      Z,$45A0                         ;[45B8] 28 e6
-    LD      ($61CC),HL                      ;[45BA] 22 cc 61
-    CALL    $442F                           ;[45BD] cd 2f 44
-    RET                                     ;[45C0] c9
+EPRD:
+    CALL  GETINF                    ;[4596] get file info
+    LD    HL,($61CC)                ;[4599] read-pointer
+    LD    BC,($61CA)                ;[459C] last byte written
+EPRD1: 
+    PUSH  BC                        ;[45A0] 
+    PUSH  HL                        ;[45A1] 
+    CALL  VPTR_IS_STR               ;[45A2] addr of var into HL
+    PUSH  HL                        ;[45A5] 
+    POP   IX                        ;[45A6] 
+    POP   HL                        ;[45A8] file info
+    POP   BC                        ;[45A9] 
+    JR    C,EPRD2                   ;[45AA] C set if string
+    CALL  RNUM                      ;[45AC] use RAM routines
+    JR    EPRD3                     ;[45AF] 
+EPRD2:
+    CALL  RSTR                      ;[45B1] 
+EPRD3:
+    LD    A,(DE)                    ;[45B4] look at terminator
+    INC   DE                        ;[45B5] 
+    CP    $2C                       ;[45B6] 
+    JR    Z,EPRD1                   ;[45B8] repeat if more args
+    LD    ($61CC),HL                ;[45BA] update file info
+    CALL  PUTINF                    ;[45BD] 
+    RET                             ;[45C0] 
 
-    CALL    $43F7                           ;[45C1] cd f7 43
-    CALL    $444A                           ;[45C4] cd 4a 44
+;
+; Wipe a software file.
+;
+EWIP:
+    CALL    GETINF                          ;[45C1] cd f7 43
+    CALL    ATTACH                          ;[45C4] cd 4a 44
     LD      HL,$61C9                        ;[45C7] 21 c9 61
     LD      A,(HL)                          ;[45CA] 7e
     LD      ($61C6),A                       ;[45CB] 32 c6 61
     LD      A,$FF                           ;[45CE] 3e ff
     LD      (HL),A                          ;[45D0] 77
     LD      H,A                             ;[45D1] 67
-    LD      L,$00                           ;[45D2] 2e 00
+    LD      L,0                             ;[45D2] 2e 00
     LD      ($61CA),HL                      ;[45D4] 22 ca 61
     LD      ($61CC),HL                      ;[45D7] 22 cc 61
-    LD      H,$00                           ;[45DA] 26 00
+    LD      H,0                             ;[45DA] 26 00
     LD      ($61CE),HL                      ;[45DC] 22 ce 61
-    JP      $442F                           ;[45DF] c3 2f 44
-    CALL    $43F7                           ;[45E2] cd f7 43
+    JP      PUTINF                          ;[45DF] c3 2f 44
+;
+; Back to start of software file
+;
+EBAK:
+    CALL    GETINF                          ;[45E2] cd f7 43
     LD      A,($61C9)                       ;[45E5] 3a c9 61
     LD      H,A                             ;[45E8] 67
-    LD      L,$00                           ;[45E9] 2e 00
+    LD      L,0                             ;[45E9] 2e 00
     LD      ($61CC),HL                      ;[45EB] 22 cc 61
-    JP      $442F                           ;[45EE] c3 2f 44
-    CALL    $43F7                           ;[45F1] cd f7 43
-    CALL    $444A                           ;[45F4] cd 4a 44
+    JP      PUTINF                          ;[45EE] c3 2f 44
+;
+; Execute EXT SLOAD, load RAM file
+; Append data if file exists.
+;
+ESLD:
+    CALL    GETINF                          ;[45F1] cd f7 43
+    CALL    ATTACH                          ;[45F4] cd 4a 44
     JR      Z,$464F                         ;[45F7] 28 56
     CALL    TAPE_READ                       ;[45F9] cd 26 0c
+EDLD1:
     LD      HL,($61CA)                      ;[45FC] 2a ca 61
     CALL    RSYNC                           ;[45FF] cd 65 0b
     CALL    RBYTE                           ;[4602] cd 85 0b
@@ -955,8 +997,9 @@ WRADV:
     CALL    RBYTE                           ;[460D] cd 85 0b
     LD      B,A                             ;[4610] 47
     PUSH    BC                              ;[4611] c5
-    LD      E,$00                           ;[4612] 1e 00
+    LD      E,0                             ;[4612] 1e 00
     JR      $462A                           ;[4614] 18 14
+EDLD2:
     CALL    RBYTE                           ;[4616] cd 85 0b
     LD      D,A                             ;[4619] 57
     ADD     E                               ;[461A] 83
@@ -968,8 +1011,10 @@ WRADV:
     JR      Z,$464F                         ;[4624] 28 29
     LD      H,A                             ;[4626] 67
     INC     L                               ;[4627] 2c
+EDLD3:
     LD      (HL),D                          ;[4628] 72
     DEC     BC                              ;[4629] 0b
+EDLD4:
     LD      A,B                             ;[462A] 78
     OR      C                               ;[462B] b1
     JR      NZ,$4616                        ;[462C] 20 e8
@@ -986,16 +1031,28 @@ WRADV:
     JR      Z,$45FC                         ;[4644] 28 b6
     CALL    $446B                           ;[4646] cd 6b 44
     CALL    MOTOFF                          ;[4649] cd fb 0c
-    JP      $442F                           ;[464C] c3 2f 44
+    JP      PUTINF                          ;[464C] c3 2f 44
+EDLD8:
     CALL    MOTOFF                          ;[464F] cd fb 0c
     CALL    ERR_OUT_OF_MEM                  ;[4652] cd 4d 3b
+EDLD9:
     CALL    MOTOFF                          ;[4655] cd fb 0c
     CALL    ERR_BAD_TAPE                    ;[4658] cd f9 3a
-    CALL    $43F7                           ;[465B] cd f7 43
+;
+; Execute EXT SSAVE, save a
+; single RAM file onto tape.
+;
+ESSV:
+    CALL    GETINF                          ;[465B] cd f7 43
     XOR     A                               ;[465E] af
     LD      ($61C8),A                       ;[465F] 32 c8 61
     JP      $4668                           ;[4662] c3 68 46
-    CALL    $43F7                           ;[4665] cd f7 43
+;
+; Execute EXT CSAVE, save a chain
+; of RAM files to tape.
+;
+ECSV:
+    CALL    GETINF                          ;[4665] cd f7 43
     EXX                                     ;[4668] d9
     LD      BC,$FF7F                        ;[4669] 01 7f ff
     LD      DE,$1000                        ;[466C] 11 00 10
@@ -1004,7 +1061,7 @@ WRADV:
     EXX                                     ;[4673] d9
     LD      A,($61C9)                       ;[4674] 3a c9 61
     LD      H,A                             ;[4677] 67
-    LD      L,$00                           ;[4678] 2e 00
+    LD      L,0                             ;[4678] 2e 00
     EXX                                     ;[467A] d9
     CALL    WSYNC                           ;[467B] cd 93 0b
     LD      A,$44                           ;[467E] 3e 44
@@ -1014,7 +1071,7 @@ WRADV:
     CALL    SYSVAR_WBYTE                    ;[4688] cd a6 62
     LD      A,B                             ;[468B] 78
     CALL    SYSVAR_WBYTE                    ;[468C] cd a6 62
-    LD      E,$00                           ;[468F] 1e 00
+    LD      E,0                             ;[468F] 1e 00
     JR      $469C                           ;[4691] 18 09
     CALL    $40D4                           ;[4693] cd d4 40
     CALL    SYSVAR_WBYTE                    ;[4696] cd a6 62
@@ -1039,7 +1096,13 @@ WRADV:
     CALL    SYSVAR_WBYTE                    ;[46B8] cd a6 62
     CALL    SYSVAR_WBYTE                    ;[46BB] cd a6 62
     JP      MOTOFF                          ;[46BE] c3 fb 0c
-    CALL    $43F7                           ;[46C1] cd f7 43
+;
+; Execute EXT CHAIN, chain second
+; file onto first.
+; Check non-circular.
+;
+ECHN:
+    CALL    GETINF                          ;[46C1] cd f7 43
     RST     $18                             ;[46C4] df
     DEC     H                               ;[46C5] 25
     INC     H                               ;[46C6] 24
@@ -1050,8 +1113,9 @@ WRADV:
     LD      HL,$61C7                        ;[46D0] 21 c7 61
     LD      B,(HL)                          ;[46D3] 46
     JR      $46E4                           ;[46D4] 18 0e
+ECHN1:
     DEC     A                               ;[46D6] 3d
-    LD      H,$00                           ;[46D7] 26 00
+    LD      H,0                             ;[46D7] 26 00
     LD      L,A                             ;[46D9] 6f
     ADD     HL,HL                           ;[46DA] 29
     ADD     HL,HL                           ;[46DB] 29
@@ -1059,15 +1123,23 @@ WRADV:
     LD      DE,S                            ;[46DD] 11 80 00
     ADD     HL,DE                           ;[46E0] 19
     CALL    LAHL                            ;[46E1] cd 17 40
+ECHN2:
     CP      B                               ;[46E4] b8
     CALL    Z,ERR_OVERFLOW                  ;[46E5] cc 3e 3b
     OR      A                               ;[46E8] b7
     JR      NZ,$46D6                        ;[46E9] 20 eb
     LD      HL,$61C8                        ;[46EB] 21 c8 61
     LD      (HL),C                          ;[46EE] 71
-    JP      $442F                           ;[46EF] c3 2f 44
+    JP      PUTINF                          ;[46EF] c3 2f 44
+; Syntax check & execution of
+; EXT M$TRAP, set up variable to
+; trap error code.
+;
+ITRP:
     CALL    IREAD                           ;[46F2] cd 21 27
     JP      IMON                            ;[46F5] c3 db 26
+;
+ETRP:
     CALL    GET_VAR_ADDR                    ;[46F8] cd 18 22
     LD      ($61D0),HL                      ;[46FB] 22 d0 61
     EX      DE,HL                           ;[46FE] eb
@@ -1075,7 +1147,11 @@ WRADV:
     LD      BC,NEXT                         ;[4702] 01 05 00
     LDIR                                    ;[4705] ed b0
     RET                                     ;[4707] c9
-
+;
+; Execute EXT NOTRAP, remove
+; error trap.
+;
+ENTR:
     LD      HL,LET                          ;[4708] 21 00 00
     LD      ($61D0),HL                      ;[470B] 22 d0 61
     RET                                     ;[470E] c9
@@ -1093,7 +1169,7 @@ WRADV:
     JR      Z,$4735                         ;[4721] 28 12
     PUSH    HL                              ;[4723] e5
     LD      L,C                             ;[4724] 69
-    LD      H,$00                           ;[4725] 26 00
+    LD      H,0                             ;[4725] 26 00
     CALL    INTFP                           ;[4727] cd c4 34
     LD      HL,SYSVAR_WRA1                  ;[472A] 21 e5 62
     POP     DE                              ;[472D] d1
@@ -1117,6 +1193,13 @@ WRADV:
 ;
 DEFS 181, $FF
 ;
+;----------------------------------------------------------
+;
+;		***  PRINTER ROUTINES  ***
+;
+; Initialize parallel printer
+;
+EPPR:
     PUSH    AF                              ;[4800] f5
     PUSH    HL                              ;[4801] e5
     PUSH    DE                              ;[4802] d5
@@ -1157,7 +1240,7 @@ DEFS 181, $FF
     LD      (HL),$01                        ;[4841] 36 01
     RET                                     ;[4843] c9
 
-    LD      (HL),$00                        ;[4844] 36 00
+    LD      (HL),0                          ;[4844] 36 00
     RET                                     ;[4846] c9
 
     NOP                                     ;[4847] 00
@@ -1167,6 +1250,10 @@ DEFS 181, $FF
     RRCA                                    ;[484B] 0f
     LD      D,B                             ;[484C] 50
     NOP                                     ;[484D] 00
+;
+; Initialize serial printer
+;
+ESPR:
     PUSH    AF                              ;[484E] f5
     PUSH    HL                              ;[484F] e5
     PUSH    DE                              ;[4850] d5
@@ -1174,6 +1261,7 @@ DEFS 181, $FF
     LD      HL,$48D0                        ;[4852] 21 d0 48
     LD      (SYSVAR_LPRNTD),HL              ;[4855] 22 02 62
     LD      HL,$48C1                        ;[4858] 21 c1 48
+ESPRT1:
     LD      DE,$61BC                        ;[485B] 11 bc 61
     LD      BC,DOKE                         ;[485E] 01 0a 00
     LDIR                                    ;[4861] ed b0
@@ -1205,7 +1293,7 @@ DEFS 181, $FF
     LD      (HL),$01                        ;[488D] 36 01
     JR      $4894                           ;[488F] 18 03
     LD      A,(HL)                          ;[4891] 7e
-    LD      (HL),$00                        ;[4892] 36 00
+    LD      (HL),0                          ;[4892] 36 00
     ADD     $10                             ;[4894] c6 10
     LD      B,A                             ;[4896] 47
     PUSH    BC                              ;[4897] c5
@@ -1244,7 +1332,7 @@ DEFS 181, $FF
     ADD     A                               ;[48C9] 87
     ADD     A                               ;[48CA] 87
     PUSH    DE                              ;[48CB] d5
-    LD      E,$00                           ;[48CC] 1e 00
+    LD      E,0                             ;[48CC] 1e 00
     JR      $48D3                           ;[48CE] 18 03
     PUSH    DE                              ;[48D0] d5
     LD      E,$01                           ;[48D1] 1e 01
@@ -1286,7 +1374,7 @@ DEFS 181, $FF
     RET                                     ;[490B] c9
 
     LD      HL,$4943                        ;[490C] 21 43 49
-    LD      B,$00                           ;[490F] 06 00
+    LD      B,0                             ;[490F] 06 00
     LD      C,A                             ;[4911] 4f
     ADD     HL,BC                           ;[4912] 09
     LD      A,(HL)                          ;[4913] 7e
@@ -1360,7 +1448,7 @@ DEFS 181, $FF
     INC     HL                              ;[496F] 23
     RR      C                               ;[4970] cb 19
     DJNZ    $496C                           ;[4972] 10 f8
-    LD      C,$00                           ;[4974] 0e 00
+    LD      C,0                             ;[4974] 0e 00
     RR      C                               ;[4976] cb 19
     RET                                     ;[4978] c9
 
@@ -1372,99 +1460,112 @@ DEFS 181, $FF
     EX      AF,AF'                          ;[497E] 08
     NOP                                     ;[497F] 00
     NOP                                     ;[4980] 00
-    CALL    FPINT                           ;[4981] cd 97 34
-    DEC     H                               ;[4984] 25
-    INC     H                               ;[4985] 24
-    CALL    NZ,ERR_NUM_OUT_RANGE            ;[4986] c4 29 3b
-    LD      C,$87                           ;[4989] 0e 87
-    LD      A,$11                           ;[498B] 3e 11
-    OUT     ($86),A                         ;[498D] d3 86
-    IN      E,(C)                           ;[498F] ed 58
-    INC     L                               ;[4991] 2c
-    DEC     L                               ;[4992] 2d
-    JR      Z,$49AD                         ;[4993] 28 18
-    DEC     L                               ;[4995] 2d
-    CALL    NZ,ERR_NUM_OUT_RANGE            ;[4996] c4 29 3b
-    DEC     A                               ;[4999] 3d
-    OUT     ($86),A                         ;[499A] d3 86
-    IN      D,(C)                           ;[499C] ed 50
-    EX      DE,HL                           ;[499E] eb
-    ADD     HL,HL                           ;[499F] 29
-    ADD     HL,HL                           ;[49A0] 29
-    ADD     HL,HL                           ;[49A1] 29
-    LD      A,($61D4)                       ;[49A2] 3a d4 61
-    AND     $0F                             ;[49A5] e6 0f
-    RLCA                                    ;[49A7] 07
-    SUB     $10                             ;[49A8] d6 10
-    ADD     H                               ;[49AA] 84
-    JR      $49BE                           ;[49AB] 18 11
-    SLA     E                               ;[49AD] cb 23
-    SLA     E                               ;[49AF] cb 23
-    SLA     E                               ;[49B1] cb 23
-    LD      A,($61D4)                       ;[49B3] 3a d4 61
-    AND     $F0                             ;[49B6] e6 f0
-    RRCA                                    ;[49B8] 0f
-    RRCA                                    ;[49B9] 0f
-    RRCA                                    ;[49BA] 0f
-    SUB     $28                             ;[49BB] d6 28
-    ADD     E                               ;[49BD] 83
-    LD      L,A                             ;[49BE] 6f
-    LD      H,$00                           ;[49BF] 26 00
-    JP      INTFP                           ;[49C1] c3 c4 34
-    CALL    FPINT                           ;[49C4] cd 97 34
-    DEC     H                               ;[49C7] 25
-    INC     H                               ;[49C8] 24
-    CALL    NZ,ERR_NUM_OUT_RANGE            ;[49C9] c4 29 3b
-    LD      C,$7A                           ;[49CC] 0e 7a
-    INC     L                               ;[49CE] 2c
-    DEC     L                               ;[49CF] 2d
-    JR      Z,$49D7                         ;[49D0] 28 05
-    DEC     L                               ;[49D2] 2d
-    CALL    NZ,ERR_NUM_OUT_RANGE            ;[49D3] c4 29 3b
-    INC     C                               ;[49D6] 0c
-    IN      A,(C)                           ;[49D7] ed 78
-    CPL                                     ;[49D9] 2f
-    PUSH    AF                              ;[49DA] f5
-    AND     $0F                             ;[49DB] e6 0f
-    LD      E,A                             ;[49DD] 5f
-    LD      D,$00                           ;[49DE] 16 00
-    LD      HL,$49F0                        ;[49E0] 21 f0 49
-    ADD     HL,DE                           ;[49E3] 19
-    LD      L,(HL)                          ;[49E4] 6e
-    LD      H,$00                           ;[49E5] 26 00
-    POP     AF                              ;[49E7] f1
-    BIT     5,A                             ;[49E8] cb 6f
-    JR      Z,$49ED                         ;[49EA] 28 01
-    INC     H                               ;[49EC] 24
-    JP      INTFP                           ;[49ED] c3 c4 34
-    NOP                                     ;[49F0] 00
-    EX      AF,AF'                          ;[49F1] 08
-    INC     B                               ;[49F2] 04
-    NOP                                     ;[49F3] 00
-    LD      B,$07                           ;[49F4] 06 07
-    DEC     B                               ;[49F6] 05
-    NOP                                     ;[49F7] 00
-    LD      (BC),A                          ;[49F8] 02
-    LD      BC,$AF03                        ;[49F9] 01 03 af
-    OUT     ($80),A                         ;[49FC] d3 80
-    LD      BC,$FF7F                        ;[49FE] 01 7f ff
-    OUT     (C),A                           ;[4A01] ed 79
-    LD      B,$10                           ;[4A03] 06 10
-    LD      C,$87                           ;[4A05] 0e 87
-    LD      HL,D6845                        ;[4A07] 21 56 00
-    OUT     ($86),A                         ;[4A0A] d3 86
-    LD      E,(HL)                          ;[4A0C] 5e
-    OUT     (C),E                           ;[4A0D] ed 59
-    INC     A                               ;[4A0F] 3c
-    INC     HL                              ;[4A10] 23
-    DJNZ    $4A0A                           ;[4A11] 10 f7
-    LD      HL,$177B                        ;[4A13] 21 7b 17
-    LD      DE,SYSVAR_CURSORX               ;[4A16] 11 54 62
-    LD      BC,MOVE                         ;[4A19] 01 22 00
-    LDIR                                    ;[4A1C] ed b0
-    LD      A,$04                           ;[4A1E] 3e 04
-    RST     $08                             ;[4A20] cf
-    RET                                     ;[4A21] c9
+;
+;------ LIGHTPEN ------
+;
+; Argument 0 = X,1= Y.
+; Range 0 to 256 each way (like text window)
+;
+    CALL  FPINT                      ;[4981] cd 97 34
+    DEC   H                          ;[4984] 25
+    INC   H                          ;[4985] 24
+    CALL  NZ,ERR_NUM_OUT_RANGE       ;[4986] c4 29 3b
+    LD    C,$87                      ;[4989] 0e 87
+    LD    A,$11                      ;[498B] 3e 11
+    OUT   ($86),A                    ;[498D] d3 86
+    IN    E,(C)                      ;[498F] ed 58
+    INC   L                          ;[4991] 2c
+    DEC   L                          ;[4992] 2d
+    JR    Z,$49AD                    ;[4993] 28 18
+    DEC   L                          ;[4995] 2d
+    CALL  NZ,ERR_NUM_OUT_RANGE       ;[4996] c4 29 3b
+    DEC   A                          ;[4999] 3d
+    OUT   ($86),A                    ;[499A] d3 86
+    IN    D,(C)                      ;[499C] ed 50
+    EX    DE,HL                      ;[499E] eb
+    ADD   HL,HL                      ;[499F] 29
+    ADD   HL,HL                      ;[49A0] 29
+    ADD   HL,HL                      ;[49A1] 29
+    LD    A,($61D4)                  ;[49A2] 3a d4 61
+    AND   $0F                        ;[49A5] e6 0f
+    RLCA                             ;[49A7] 07
+    SUB   $10                        ;[49A8] d6 10
+    ADD   H                          ;[49AA] 84
+    JR    $49BE                      ;[49AB] 18 11
+    SLA   E                          ;[49AD] cb 23
+    SLA   E                          ;[49AF] cb 23
+    SLA   E                          ;[49B1] cb 23
+    LD    A,($61D4)                  ;[49B3] 3a d4 61
+    AND   $F0                        ;[49B6] e6 f0
+    RRCA                             ;[49B8] 0f
+    RRCA                             ;[49B9] 0f
+    RRCA                             ;[49BA] 0f
+    SUB   $28                        ;[49BB] d6 28
+    ADD   E                          ;[49BD] 83
+    LD    L,A                        ;[49BE] 6f
+    LD    H,0                        ;[49BF] 26 00
+    JP    INTFP                      ;[49C1] c3 c4 34
+;
+; Joystick
+; Here with stick no. 0 or 1 in
+; WRA1. Return position in WRA1.
+;
+FJOY:
+    CALL  FPINT                      ;[49C4] stick no. to HL
+    DEC   H                          ;[49C7] 
+    INC   H                          ;[49C8] 
+    CALL  NZ,ERR_NUM_OUT_RANGE       ;[49C9] 
+    LD    C,$7A                      ;[49CC] ports are 7A,7B
+    INC   L                          ;[49CE] 
+    DEC   L                          ;[49CF] 
+    JR    Z,FJOYS1                   ;[49D0]
+    DEC   L                          ;[49D2] 
+    CALL  NZ,ERR_NUM_OUT_RANGE       ;[49D3] 
+    INC   C                          ;[49D6] 
+FJOYS1:
+    IN    A,(C)                      ;[49D7] 
+    CPL                              ;[49D9] 
+    PUSH  AF                         ;[49DA] 
+    AND   00001111B                  ;[49DB] direction bits
+    LD    E,A                        ;[49DD] 
+    LD    D,0                        ;[49DE] 
+    LD    HL,JOYTAB                  ;[49E0] 
+    ADD   HL,DE                      ;[49E3] 
+    LD    L,(HL)                     ;[49E4] 
+    LD    H,0                        ;[49E5] 
+    POP   AF                         ;[49E7] 
+    BIT   5,A                        ;[49E8] "fire" bit
+    JR    Z,FJOYS2                   ;[49EA] 
+    INC   H                          ;[49EC] 
+FJOYS2:
+    JP    INTFP                      ;[49ED] 
+;
+JOYTAB:	
+    DB    0,8,4,0,6,7,5,0,2,1,3      ;[49F0]
+;
+;------ VIDEO RESET ------
+;
+EVRS:
+    XOR   A                          ;[49FB] 
+    OUT   ($80),A                    ;[49FC] 
+    LD    BC,$FF7F                   ;[49FE] 
+    OUT   (C),A                      ;[4A01] 
+    LD    B,$10                      ;[4A03] 
+    LD    C,$87                      ;[4A05] 
+    LD    HL,D6845                   ;[4A07] 
+    OUT   ($86),A                    ;[4A0A] 
+    LD    E,(HL)                     ;[4A0C] 
+    OUT   (C),E                      ;[4A0D] 
+    INC   A                          ;[4A0F] 
+    INC   HL                         ;[4A10] 
+    DJNZ  $4A0A                      ;[4A11] 
+    LD    HL,VROM                    ;[4A13] 
+    LD    DE,SYSVAR_CURSORX          ;[4A16] 
+    LD    BC,MOVE                    ;[4A19] 
+    LDIR                             ;[4A1C] 
+    LD    A,$04                      ;[4A1E] 
+    RST   $08                        ;[4A20] 
+    RET                              ;[4A21] 
 ;
 ; Sounds
 ; EXPLODE
@@ -1587,8 +1688,9 @@ EZAP4:
     OUT   ($80),A                    ;[4AC7] 
     RET                              ;[4AC9] 
 ;
+; EXT CIRCLE
 ;
-;
+ECIR:
     RST     $18                             ;[4ACA] df
     INC     DE                              ;[4ACB] 13
     PUSH    HL                              ;[4ACC] e5
@@ -1602,7 +1704,7 @@ EZAP4:
     PUSH    HL                              ;[4AD4] e5
     LD      B,$0E                           ;[4AD5] 06 0e
     LD      HL,$6410                        ;[4AD7] 21 10 64
-    LD      (HL),$00                        ;[4ADA] 36 00
+    LD      (HL),0                          ;[4ADA] 36 00
     INC     HL                              ;[4ADC] 23
     DJNZ    $4ADA                           ;[4ADD] 10 fb
     LD      DE,$640F                        ;[4ADF] 11 0f 64
@@ -1845,7 +1947,7 @@ EZAP4:
     JP      M,$4C83                         ;[4C43] fa 83 4c
     LD      HL,$641B                        ;[4C46] 21 1b 64
     LD      A,(HL)                          ;[4C49] 7e
-    LD      B,$00                           ;[4C4A] 06 00
+    LD      B,0                             ;[4C4A] 06 00
     AND     A                               ;[4C4C] a7
     JP      M,$4C5D                         ;[4C4D] fa 5d 4c
     JR      NZ,$4C83                        ;[4C50] 20 31
@@ -1887,7 +1989,7 @@ EZAP4:
     LD      DE,SYSVAR_STRBUF                ;[4C84] 11 07 64
     LD      (DE),A                          ;[4C87] 12
     LD      L,A                             ;[4C88] 6f
-    LD      H,$00                           ;[4C89] 26 00
+    LD      H,0                             ;[4C89] 26 00
     ADD     HL,HL                           ;[4C8B] 29
     ADD     HL,HL                           ;[4C8C] 29
     ADD     HL,HL                           ;[4C8D] 29
@@ -1898,7 +2000,7 @@ EZAP4:
     SRL     E                               ;[4C92] cb 3b
     SRL     E                               ;[4C94] cb 3b
     SRL     E                               ;[4C96] cb 3b
-    LD      D,$00                           ;[4C98] 16 00
+    LD      D,0                             ;[4C98] 16 00
     ADD     HL,DE                           ;[4C9A] 19
     EX      DE,HL                           ;[4C9B] eb
     POP     HL                              ;[4C9C] e1
@@ -1907,7 +2009,7 @@ EZAP4:
     SRL     E                               ;[4C9F] cb 3b
     SRL     E                               ;[4CA1] cb 3b
     SRL     E                               ;[4CA3] cb 3b
-    LD      D,$00                           ;[4CA5] 16 00
+    LD      D,0                             ;[4CA5] 16 00
     ADD     HL,DE                           ;[4CA7] 19
     LD      A,B                             ;[4CA8] 78
     LD      DE,$FF80                        ;[4CA9] 11 80 ff
@@ -1959,7 +2061,7 @@ EZAP4:
     CALL    SYSVAR_OUTB                     ;[4CEC] cd 6c 62
     LD      A,$FF                           ;[4CEF] 3e ff
     POP     BC                              ;[4CF1] c1
-    LD      C,$00                           ;[4CF2] 0e 00
+    LD      C,0                             ;[4CF2] 0e 00
     POP     HL                              ;[4CF4] e1
     DEC     HL                              ;[4CF5] 2b
     LD      DE,SYSVAR_STRBUF                ;[4CF6] 11 07 64
@@ -1987,7 +2089,10 @@ EZAP4:
     POP     HL                              ;[4D15] e1
     POP     HL                              ;[4D16] e1
     RET                                     ;[4D17] c9
-
+;
+; EXT TRIANGLE
+; 
+ETRI:
     RST     $18                             ;[4D18] df
     INC     DE                              ;[4D19] 13
     PUSH    HL                              ;[4D1A] e5
@@ -2006,19 +2111,21 @@ EZAP4:
     RST     $18                             ;[4D27] df
     INC     DE                              ;[4D28] 13
     PUSH    HL                              ;[4D29] e5
-    LD      C,$00                           ;[4D2A] 0e 00
-    LD      DE,$6417                        ;[4D2C] 11 17 64
+    LD      C,0                             ;[4D2A] 0e 00
+    LD      DE,SYSVAR_STRBUF+16             ;[4D2C] 11 17 64
     LD      B,$03                           ;[4D2F] 06 03
+LL1:
     POP     HL                              ;[4D31] e1
     BIT     7,H                             ;[4D32] cb 7c
     JP      NZ,ERR_NUM_OUT_RANGE            ;[4D34] c2 29 3b
     LD      A,L                             ;[4D37] 7d
-    CP      $FC                             ;[4D38] fe fc
+    CP      252                             ;[4D38] fe fc
     JP      NC,ERR_NUM_OUT_RANGE            ;[4D3A] d2 29 3b
     LD      (DE),A                          ;[4D3D] 12
     CP      C                               ;[4D3E] b9
-    JR      C,$4D42                         ;[4D3F] 38 01
+    JR      C,TRI1                          ;[4D3F] 38 01
     LD      C,A                             ;[4D41] 4f
+TRI1:
     DEC     DE                              ;[4D42] 1b
     POP     HL                              ;[4D43] e1
     BIT     7,H                             ;[4D44] cb 7c
@@ -2026,42 +2133,48 @@ EZAP4:
     LD      A,L                             ;[4D49] 7d
     LD      (DE),A                          ;[4D4A] 12
     DEC     DE                              ;[4D4B] 1b
-    DJNZ    $4D31                           ;[4D4C] 10 e3
+    DJNZ    LL1                             ;[4D4C] 10 e3
+;
     LD      A,C                             ;[4D4E] 79
-    LD      HL,$6418                        ;[4D4F] 21 18 64
+    LD      HL,SYSVAR_STRBUF+17             ;[4D4F] 21 18 64
     LD      B,$03                           ;[4D52] 06 03
     DEC     HL                              ;[4D54] 2b
     CP      (HL)                            ;[4D55] be
-    JR      NZ,$4D59                        ;[4D56] 20 01
+    JR      NZ,TRI2                         ;[4D56] 20 01
     LD      E,B                             ;[4D58] 58
+TRI2:
     DEC     HL                              ;[4D59] 2b
     DJNZ    $4D54                           ;[4D5A] 10 f8
     DEC     HL                              ;[4D5C] 2b
     LD      (HL),E                          ;[4D5D] 73
     LD      B,$03                           ;[4D5E] 06 03
-    LD      HL,$6418                        ;[4D60] 21 18 64
+    LD      HL,SYSVAR_STRBUF+17             ;[4D60] 21 18 64
     LD      C,$FD                           ;[4D63] 0e fd
+TRI3:
     DEC     HL                              ;[4D65] 2b
     LD      A,(HL)                          ;[4D66] 7e
     CP      C                               ;[4D67] b9
-    JR      Z,$4D6D                         ;[4D68] 28 03
-    JR      NC,$4D6E                        ;[4D6A] 30 02
+    JR      Z,TRI4                          ;[4D68] 28 03
+    JR      NC,TRI5                         ;[4D6A] 30 02
     LD      C,A                             ;[4D6C] 4f
+TRI4:
     LD      E,B                             ;[4D6D] 58
+TRI5:
     DEC     HL                              ;[4D6E] 2b
-    DJNZ    $4D65                           ;[4D6F] 10 f4
-    LD      HL,$6411                        ;[4D71] 21 11 64
+    DJNZ    TRI3                            ;[4D6F] 10 f4
+    LD      HL,SYSVAR_STRBUF+10             ;[4D71] 21 11 64
     LD      A,(HL)                          ;[4D74] 7e
     LD      C,A                             ;[4D75] 4f
     XOR     E                               ;[4D76] ab
     LD      D,A                             ;[4D77] 57
-    JR      NZ,$4D7F                        ;[4D78] 20 05
+    JR      NZ,TAU                          ;[4D78] 20 05
     INC     A                               ;[4D7A] 3c
     LD      E,A                             ;[4D7B] 5f
     INC     A                               ;[4D7C] 3c
     LD      C,A                             ;[4D7D] 4f
     INC     C                               ;[4D7E] 0c
-    LD      B,$00                           ;[4D7F] 06 00
+TAU:
+    LD      B,0                             ;[4D7F] 06 00
     DEC     HL                              ;[4D81] 2b
     PUSH    HL                              ;[4D82] e5
     SLA     C                               ;[4D83] cb 21
@@ -2093,7 +2206,7 @@ EZAP4:
     LD      HL,$6410                        ;[4DB3] 21 10 64
     POP     BC                              ;[4DB6] c1
     PUSH    BC                              ;[4DB7] c5
-    LD      B,$00                           ;[4DB8] 06 00
+    LD      B,0                             ;[4DB8] 06 00
     SLA     C                               ;[4DBA] cb 21
     ADD     HL,BC                           ;[4DBC] 09
     PUSH    HL                              ;[4DBD] e5
@@ -2131,7 +2244,7 @@ EZAP4:
     LD      (HL),B                          ;[4E03] 70
     LD      B,$06                           ;[4E04] 06 06
     LD      HL,$6418                        ;[4E06] 21 18 64
-    LD      (HL),$00                        ;[4E09] 36 00
+    LD      (HL),0                          ;[4E09] 36 00
     INC     HL                              ;[4E0B] 23
     DJNZ    $4E09                           ;[4E0C] 10 fb
     LD      HL,$6419                        ;[4E0E] 21 19 64
@@ -2201,6 +2314,7 @@ EZAP4:
     XOR     L                               ;[4E7E] ad
     ADD     $01                             ;[4E7F] c6 01
     LD      L,A                             ;[4E81] 6f
+
     LD      C,L                             ;[4E82] 4d
     POP     HL                              ;[4E83] e1
     EX      (SP),HL                         ;[4E84] e3
@@ -2217,7 +2331,7 @@ EZAP4:
     ADD     $01                             ;[4E90] c6 01
     LD      E,A                             ;[4E92] 5f
     LD      A,C                             ;[4E93] 79
-    LD      C,$00                           ;[4E94] 0e 00
+    LD      C,0                             ;[4E94] 0e 00
     CALL    $4F04                           ;[4E96] cd 04 4f
     LD      E,C                             ;[4E99] 59
     LD      C,A                             ;[4E9A] 4f
@@ -2226,7 +2340,7 @@ EZAP4:
     POP     HL                              ;[4E9D] e1
     EX      (SP),HL                         ;[4E9E] e3
     XOR     H                               ;[4E9F] ac
-    LD      B,$00                           ;[4EA0] 06 00
+    LD      B,0                             ;[4EA0] 06 00
     JP      P,$4EB3                         ;[4EA2] f2 b3 4e
     LD      B,$FF                           ;[4EA5] 06 ff
     LD      A,E                             ;[4EA7] 7b
@@ -2249,7 +2363,7 @@ EZAP4:
     LD      (DE),A                          ;[4EC0] 12
     AND     A                               ;[4EC1] a7
     JP      P,$4EC9                         ;[4EC2] f2 c9 4e
-    LD      B,$00                           ;[4EC5] 06 00
+    LD      B,0                             ;[4EC5] 06 00
     JR      $4ECD                           ;[4EC7] 18 04
     JR      Z,$4ECD                         ;[4EC9] 28 02
     LD      B,$FF                           ;[4ECB] 06 ff
@@ -2262,7 +2376,7 @@ EZAP4:
     LD    (DE),A                    ;[4ED4] 12
     AND   A                         ;[4ED5] a7
     JP    P,$4EDD                   ;[4ED6] f2 dd 4e
-    LD    C,$00                     ;[4ED9] 0e 00
+    LD    C,0                       ;[4ED9] 0e 00
     JR    $4EE1                     ;[4EDB] 18 04
     JR    Z,$4EE1                   ;[4EDD] 28 02
     LD    C,$FF                     ;[4EDF] 0e ff
@@ -2284,7 +2398,7 @@ EZAP4:
     JP    (HL)                      ;[4EF3] e9
     POP   HL                        ;[4EF4] e1
     POP   BC                        ;[4EF5] c1
-    LD    E,$00                     ;[4EF6] 1e 00
+    LD    E,0                       ;[4EF6] 1e 00
     JP    (HL)                      ;[4EF8] e9
     LD    A,(DE)                    ;[4EF9] 1a
     ADD   (HL)                      ;[4EFA] 86
@@ -2312,10 +2426,13 @@ EZAP4:
     RL    C                         ;[4F17] cb 11
     RLA                             ;[4F19] 17
     RET                             ;[4F1A] c9
-
-    CALL  $4F41                     ;[4F1B] cd 41 4f
+;
+; CLW
+;
+ECLW:
+    CALL  SW                        ;[4F1B] cd 41 4f
     LD    HL,(SYSVAR_WINDST)        ;[4F1E] 2a 56 62
-    LD    DE,($6258)                ;[4F21] ed 5b 58 62
+    LD    DE,(SYSVAR_WINDST+2)      ;[4F21] ed 5b 58 62
     LD    A,L                       ;[4F25] 7d
     LD    (SYSVAR_CURSORX),A        ;[4F26] 32 54 62
     LD    A,E                       ;[4F29] 7b
@@ -2326,6 +2443,7 @@ EZAP4:
     LD    B,L                       ;[4F30] 45
     LD    C,H                       ;[4F31] 4c
     INC   C                         ;[4F32] 0c
+CLW1:
     PUSH  AF                        ;[4F33] f5
     LD    A,E                       ;[4F34] 7b
     PUSH  BC                        ;[4F35] c5
@@ -2336,7 +2454,8 @@ EZAP4:
     POP   AF                        ;[4F3C] f1
     INC   E                         ;[4F3D] 1c
     DEC   A                         ;[4F3E] 3d
-    JR    NZ,$4F33                  ;[4F3F] 20 f2
+    JR    NZ,CLW1                   ;[4F3F] 20 f2
+SW:
     LD    HL,(SYSVAR_INKST)         ;[4F41] 2a 5b 62
     LD    E,H                       ;[4F44] 5c
     LD    H,L                       ;[4F45] 65
