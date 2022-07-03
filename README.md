@@ -1,4 +1,4 @@
-Camputers Lynx 48k ROM disassembly (version L014)
+Camputers Lynx 48k/96k ROM disassembly (version L014)
 =================================================
 
 Originally, this assembly code was reconstructed from Lynx 48k eprom memory images, and supplemented with information from Lynx User Magazine Issue 1 (Camputers, June 1983, pages 16-18) and Nilug News (Issue 6) by R.B.Poate. It has now been supplemented with Camputers Lynx "Mark II" source code (circa: 1-Apr-1984) (see below).
