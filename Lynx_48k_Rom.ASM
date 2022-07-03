@@ -38,11 +38,11 @@
 ;
 ; Lynx global definitions (see separate files)
 ;
-PUBLIC INTFP, ERR_TYPE_MISMATCH, ERR_OUT_OF_DATA, ERR_NOT_YET_IMP, ERR_SYNTAX, RST_10
+PUBLIC INTFP, ERR_TYPE_MISMATCH, ERR_OUT_OF_DATA, ERR_NOT_YET_IMP, ERR_SYNTAX, SPACE
 PUBLIC LNUM1, PN, TEST_IS_LOOP_END, SUB_INDENT, SKIP_LNUM, SUB_PRINT_KEYWORD, PRINT_BAS_LINE
-PUBLIC PRINT_STRING, DISPLAY_SPACE, PNE1, DO_INDENT, IMON, _BEEP, D6845, ERR_BAD_TAPE
+PUBLIC PRINT_STRING, DISPLAY_SPACE, PNE1, DO_INDENT, IEND, _BEEP, D6845, ERR_BAD_TAPE
 PUBLIC ERR_NUM_OUT_RANGE, ERR_OUT_OF_MEM, ERR_OVERFLOW, ERR_SOMETHG_MISSG, ERROR_PRINT
-PUBLIC EXEC2, FLOAT_ZERO, FPINT, GET_VAR_ADDR, IDPOKE, IE4CR, IE6CR, IINK, ILOAD, IREAD
+PUBLIC EXEC2, FLOAT_ZERO, FPINT, GET_VAR_ADDR, IDPOKE, IE4CR, IE6CR, IINK, ILOAD, IVRY 
 PUBLIC IREM, MOTOFF, RBYTE, READ_STRING_EXPR, READ_STRING_VAR, RP, RSYNC, STRING_EXEC
 PUBLIC SUB_PLOT3, TAPE_READ, TEST_FOR_STR_EXP, TEST_FOR_STRING, TEST_IS_COMMA
 PUBLIC VPTR_IS_STR, WRITE_FNAME, WSYNC, VROM, DFTW
@@ -79,12 +79,12 @@ LYNX_IDENT:
 ; Checks if the character at the address pointed to by DE is a space.
 ;  - If so, increments DE until it is not a space.
 ;
-RST_10:
+SPACE:
     LD    A,(DE)                    ;[0010] 
     CP    ' '                       ;[0011] 
     RET   NZ                        ;[0013] 
     INC   DE                        ;[0014] 
-    JR    RST_10                    ;[0015] 
+    JR    SPACE                     ;[0015] 
     NOP                             ;[0017] 
 
 ;
@@ -1049,7 +1049,7 @@ OUTB:
     PUSH  AF                        ;[0860] 
     EX    AF,AF'                    ;[0861] 
     PUSH  HL                        ;[0862] 
-    LD    HL,(SYSVAR_INKST)         ;[0863] 
+    LD    HL,(SYSVAR_INKST)         ;[0863] H'=paper L'=ink
     EXX                             ;[0866] 
     PUSH  DE                        ;[0867] 
     LD    E,C                       ;[0868] 
@@ -3152,33 +3152,33 @@ XTTBLS:
 ; Input syntax checking table. Validation routine addresses for BASIC words.
 ;
 XITBLS:
-    DW    ILET                      ;[1560] 
+    DW    ILET                      ;[1560] LET
     DW    IVDU                      ;[1562] VDU
     DW    IDEFPROC                  ;[1564] DEFPROC
     DW    IPROC                     ;[1566] PROC
-    DW    IMON                      ;[1568] ENDPROC
+    DW    IEND                      ;[1568] ENDPROC
     DW    INEXT                     ;[156A] NEXT
     DW    IINK                      ;[156C] INK
     DW    IINK                      ;[156E] PAPER
-    DW    IMON                      ;[1570] RANDOM
+    DW    IEND                      ;[1570] RANDOM
     DW    ILOAD                     ;[1572] VERIFY
     DW    IDPOKE                    ;[1574] DPOKE
     DW    IDPOKE                    ;[1576] POINT
     DW    IDPOKE                    ;[1578] POKE
-    DW    IMON                      ;[157A] END
-    DW    IMON                      ;[157C] STOP
+    DW    IEND                      ;[157A] END
+    DW    IEND                      ;[157C] STOP
     DW    IFOR                      ;[157E] FOR
     DW    IGOTO                     ;[1580] GOTO
     DW    IGOTO                     ;[1582] GOSUB
-    DW    IMON                      ;[1584] RETURN
-    DW    IMON                      ;[1586] CLS
+    DW    IEND                      ;[1584] RETURN
+    DW    IEND                      ;[1586] CLS
     DW    IRESTORE                  ;[1588] RUN
-    DW    IMON                      ;[158A] CONT
+    DW    IEND                      ;[158A] CONT
     DW    IDPOKE                    ;[158C] OUT
     DW    IREM                      ;[158E] REM
     DW    IRD                       ;[1590] READ
     DW    IREM                      ;[1592] DATA
-    DW    IMON                      ;[1594] NEW
+    DW    IEND                      ;[1594] NEW
     DW    ICALL                     ;[1596] DELETE
     DW    ILIST                     ;[1598] AUTO
     DW    IPRINT1                   ;[159A] PRINT
@@ -3207,16 +3207,16 @@ XITBLS:
     DW    IROUND                    ;[15C8] LINK
     DW    ISWAP                     ;[15CA] SWAP
     DW    IINK                      ;[15CC] WHILE
-    DW    IMON                      ;[15CE] WEND
-    DW    IMON                      ;[15D0] REPEAT
+    DW    IEND                      ;[15CE] WEND
+    DW    IEND                      ;[15D0] REPEAT
     DW    IINK                      ;[15D2] UNTIL
     DW    ICCCR                     ;[15D4] 
     DW    IPRINT                    ;[15D6] ? (PRINT)
     DW    IL1                       ;[15D8] ELSE
     DW    IINK                      ;[15DA] RESERV
-    DW    IMON                      ;[15DC] MONITOR
+    DW    IEND                      ;[15DC] MONITOR
     DW    ILIST                     ;[15DE] RENUM
-    DW    IMON                      ;[15E0] XROM
+    DW    IEND                      ;[15E0] XROM
     DW    SYSVAR_IEXT               ;[15E2] EXT
     DW    IINK                      ;[15E4] CFR
     DW    IINK                      ;[15E6] CCHAR
@@ -3226,13 +3226,13 @@ XITBLS:
     DW    IINK                      ;[15EE] ERROR
     DW    IINK                      ;[15F0] TAPE
     DW    ILOAD                     ;[15F2] MLOAD
-    DW    IMON                      ;[15F4] TEXT
+    DW    IEND                      ;[15F4] TEXT
 
 ;
 ; Command execution table. Execution routine addresses for BASIC words.
 ;
 XETBLS:
-    DW    ELET                      ;[15F6] 
+    DW    ELET                      ;[15F6] LET
     DW    EVDU                      ;[15F8] VDU
     DW    ERR_WRONG_MODE            ;[15FA] DEFPROC
     DW    EPROC                     ;[15FC] PROC
@@ -3290,7 +3290,7 @@ XETBLS:
     DW    EWEND                     ;[1664] WEND
     DW    EREPEAT                   ;[1666] REPEAT
     DW    EUNTIL                    ;[1668] UNTIL
-    DW    ERR_NOT_YET_IMP           ;[166A] 
+    DW    ERR_NOT_YET_IMP           ;[166A] FTEXT
     DW    ERR_NOT_YET_IMP           ;[166C] ? (PRINT)
     DW    ENO_EXE                   ;[166E] ELSE
     DW    ERESERVE                  ;[1670] RESERV
@@ -4494,9 +4494,9 @@ PZ1:
 ; Displays number in WRA1. 
 ;
 PN:
-    CALL  ROUND                     ;[1D59] 
+    CALL  ROUND                     ;[1D59] Round if NEC
     LD    A,(SYSVAR_WRA1)           ;[1D5C] Get exponent
-    LD    HL,SYSVAR_PRTBUF          ;[1D5F] Hl points to buffer
+    LD    HL,SYSVAR_PRTBUF          ;[1D5F] HL points to buffer
     BIT   7,A                       ;[1D62] Jp if positive
     JR    NZ,PN6                    ;[1D64] 
     LD    (HL),'-'                  ;[1D66] Else store a '-'
@@ -6249,7 +6249,7 @@ QU1:
     CALL  Z,ERR_SYNTAX              ;[25FC] 
     CP    $22                       ;[25FF] 
     JR    NZ,QU1                    ;[2601] 
-    JP    RST_10                    ;[2603] 
+    JP    SPACE                     ;[2603] 
 
 ;
 ; Validation for ROUND, TRAIL, LINK, TRACE.
@@ -6316,7 +6316,7 @@ IRD:
     POP   HL                        ;[2643] 
     CALL  TEST_FOR_STRING           ;[2644] 
     JR    Z,IREAD1                  ;[2647] 
-    CALL  IREAD                     ;[2649] 
+    CALL  IVRY                      ;[2649] 
 IREAD3:
     LD    (HL),A                    ;[264C] 
     CP    $0D                       ;[264D] 
@@ -6376,7 +6376,7 @@ ILET4:
 ILET:
     CALL  TEST_FOR_STRING           ;[267C] 
     JR    Z,ILET3                   ;[267F] 
-    CALL  IREAD                     ;[2681] 
+    CALL  IVRY                      ;[2681] 
     CP    '='                       ;[2684] 
     JP    NZ,IERR                   ;[2686] 
     LD    (HL),A                    ;[2689] 
@@ -6386,7 +6386,7 @@ ILET:
 ILET7:
     CP    ','                       ;[268F] 
     JR    Z,ILET4                   ;[2691] 
-    JP    IMON                      ;[2693] 
+    JP    IEND                      ;[2693] 
 ILET3:
     CALL  READ_STRING_VAR           ;[2696] 
     RST   $10                       ;[2699] 
@@ -6450,11 +6450,11 @@ INEXT:
 ;
 ; Validation for MON, ENDPROC, RANDOM, END, STOP, RETURN, CLS, CONT, NEW, 
 ; WEND, REPEAT, DISK, TEXT.
-;
-IMON:
+; 
+IEND:
     LD    (HL),A                    ;[26DB] 
     RST   $20                       ;[26DC] 
-    DEC   C                         ;[26DD] 
+    DB    CR                        ;[26DD] 
     RET                             ;[26DE] 
 
 ;
@@ -6494,7 +6494,7 @@ IIF:
 ;
 IINK:
     CALL  RP                        ;[2707] 
-    JP    IMON                      ;[270A] 
+    JP    IEND                      ;[270A] 
 
 ;
 ; Convert to internal language and check for a comma.
@@ -6516,22 +6516,22 @@ TEST_IS_VAR:
     LD    (HL),A                    ;[271B] 
     INC   DE                        ;[271C] 
     INC   HL                        ;[271D] 
-    JP    RST_10                    ;[271E] 
+    JP    SPACE                     ;[271E] 
 
 ;
 ; is validation routine for READ.
 ;
-IREAD:
-    CALL  TEST_ALPHA                ;[2721] 
+IVRY:
+    CALL  TEST_ALPHA                ;[2721] READ VARIABLE
     JP    C,IERR                    ;[2724] 
     LD    (HL),A                    ;[2727] 
     INC   HL                        ;[2728] 
     INC   DE                        ;[2729] 
     RST   $10                       ;[272A] 
-    CP    $28                       ;[272B] 
+    CP    '('                       ;[272B] 
     RET   NZ                        ;[272D] 
 ARARG:
-    LD    (HL),'('                  ;[272E] 
+    LD    (HL),'('                  ;[272E] ARRAY ARGUMENT
     INC   HL                        ;[2730] 
 ARG3:
     INC   DE                        ;[2731] 
@@ -6540,7 +6540,7 @@ ARG3:
     DB    ')'                       ;[2736] 
     LD    (HL),A                    ;[2737] 
     INC   HL                        ;[2738] 
-    JP    RST_10                    ;[2739] 
+    JP    SPACE                     ;[2739] 
 
 ;
 ; Validation for REM, DATA, EXT, LABEL.
@@ -6558,13 +6558,13 @@ IREM:
 ; Validation for SWAP.
 ;
 ISWAP:
-    CALL  IREAD                     ;[2745] 
+    CALL  IVRY                      ;[2745] 
     LD    (HL),A                    ;[2748] 
     CP    ','                       ;[2749] 
     JR    NZ,ISW1                   ;[274B] 
     INC   HL                        ;[274D] 
     INC   DE                        ;[274E] 
-    CALL  IREAD                     ;[274F] 
+    CALL  IVRY                      ;[274F] 
     LD    (HL),A                    ;[2752] 
     CP    CR                        ;[2753] 
     RET   Z                         ;[2755] 
@@ -6656,7 +6656,7 @@ IL3:
     LD    C,(IX+$00)                ;[27C8] 
     LD    B,(IX+$01)                ;[27CB] 
     PUSH  BC                        ;[27CE] 
-    JP    RST_10                    ;[27CF] 
+    JP    SPACE                     ;[27CF] 
 
 ;
 ; Print a word from a list (6219).
@@ -6944,7 +6944,7 @@ IPROCR:
     RST   $20                       ;[2969] 
     DB    ')'                       ;[296A] 
     RST   $10                       ;[296B] 
-    JP    IMON                      ;[296C] 
+    JP    IEND                      ;[296C] 
 
 ;
 ; Validation for DEFPPOC.
@@ -7928,7 +7928,7 @@ IDIM:
     INC   DE                        ;[2E79] 
     JR    IDIM                      ;[2E7A] 
 IDIM1:
-    CALL  IREAD                     ;[2E7C] 
+    CALL  IVRY                      ;[2E7C] 
     DEC   HL                        ;[2E7F] 
     LD    A,')'                     ;[2E80] 
     CP    (HL)                      ;[2E82] 

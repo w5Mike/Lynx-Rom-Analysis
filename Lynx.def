@@ -21,7 +21,11 @@
 ;
 EXT_ROM     EQU $4000   ; External ROM address
 XROM        EQU $E000
+;----------------------------------------------------------
 PZ	        EQU $FF     ; "no next page" mark
+MXNFIL	    EQU 48      ; max. no. of files
+FILINF	    EQU $200-MXNFIL*8 ; file info
+;----------------------------------------------------------
 ;TEDIT       EQU 5       ; unused
 RLAST       EQU 17      ; Input related
 MAXLEN      EQU 240     ; Maximum length of input buffer
@@ -116,6 +120,7 @@ DEFVARS $6000
     BUFDLY      DS.B 1              ;[61C3] *** OLD SPRINT ROUTINE ONLY ***
     PRTDLY      DS.B 1              ;[61C4]
     FFDLY       DS.B 1              ;[61C5]
+    UPRAM       DS.B 0
     NXFRPG      DS.B 1              ;[61C6] next free page
     KFILE 	    DS.B 1              ;[61C7] current data store
     KNXFIL      DS.B 1              ;[61C8] next one in chain
