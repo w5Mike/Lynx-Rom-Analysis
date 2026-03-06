@@ -6,22 +6,29 @@ Originally, this assembly code was reconstructed from Lynx 48k eprom memory imag
 Some of the labels and symbols arise from Lynx User and Nilug News, and others are my own creations for clarity. A rough database and script was used to create the disassembly listing.
 
 This code can be assembled (eg. using Z88dk) to produce a 16k ROM which is an exact replica of the original L014 ROMs (2x8k) that were supplied with the Lynx computer.
-
+-------------------------------------------------
 17/11/2021: The code has now been enhanced with information from some original source code dated Apr-1984 (kindly supplied by Russell Davis and Pete Todd - see below). The 1984 source code was written using Macro-80 Assembler and (most likely) originates from Camputers themselves. However the code is different in some ways, and looks to be an enhanced version of the original ROM (ie. a post L014 version). I refer to this code as the "Mark II source code", as it was probably targetting the later 96k and 128k Lynx models. Nevertheless, it contains many of the original rom routines. Subsequently, labels, comments, and symbols from the Mark II listing have been incorporated back into my L014 assembly, for consistency and clarity, where useful.
 
 I am unsure if the Mark II code ever made it to production. At the time of writing, an online archive of the complete Mark II source code can be found at Pete Todd's website, here: http://www.retrogubbins.co.uk/downloads/summary/20-lynx-rom-source-code
+-------------------------------------------------
+06/03/2026: Additional comments/annotations provided by CLAUDE (Anthropic's AI) under the direction of Mike Panter 06/03/2026.
+-------------------------------------------------
 
-Finally: this is just my *interpretation* of the ROMs - *not* the original source
-code. The analysis is incomplete, and may change. It's purpose is to aid understanding.
+Finally: this is just my *interpretation* of the ROMs - *not* the original source code. The analysis is incomplete, and may change. It's purpose is to aid understanding.
 
-Disassembly and analysis by: Mike Panter 26/11/2021
+Disassembly and analysis by: Mike Panter 26/11/2021, 06/03/2026
 
-Credit to: 
- - DAVIS (the original author of the Lynx ROMs @ Camputers)
+Camputers Ltd.:
+Richard Greenwood (founder), John Shirreff (system architecture), Martin Crutchley (tooling)
+
+Original ROM Development:
+ - ROM/BASIC - Davis Jansons (the original author(s) of the Lynx ROMs @ Camputers)
+ - Hardware drivers - written by Shane Voss and Fiona Mille
+ - Graphics routines were written by Michael Behrend and Ron Penrose
  - Sue Jansons (author, "Camputers Lynx User Manual", Camputers)
 
-also: 
- - Russell Davis (online archive of materials) 
+Thanks: 
+ - Russell Davis (online archive of Lynx-related materials) 
  - Pete Todd (knowledge, insight and Pale)
 
 WARNING: May contain inaccuracies - use at own risk.
