@@ -7,8 +7,15 @@
 ;*   information from Lynx User Magazine Issue 1 (Camputers, June 1983, 
 ;*   pages 16-18), Nilug News (Issue 6) by R.B.Poate, and Camputers
 ;*   Lynx "Mark II" source code (dated: 1-Apr-1984).
+;* 
+;**************************** VERSION HISTORY **************************
 ;*
 ;*   Disassembly, collation and formatting by: Mike Panter 06/11/2021.
+;*
+;*   VERSION 2 - Additional comments provided by CLAUDE (Anthropic's AI)
+;*               under the direction of Mike Panter 06/03/2026
+;*
+;**************************** Acknowledgements *************************
 ;*
 ;*   Additional credit to: Russell Davis  (online archive of materials)
 ;*                         Pete Todd      (knowledge, insight and Pale)
@@ -6523,6 +6530,7 @@ EGOSUB:
     CALL  PUSH_HL_RSTACK            ;[2299] Push line pointer for RETURN
     LD    A,GOSUB                   ;[229C] A = GOSUB token ($11)
     CALL  PUSH_A_RSTACK             ;[229E] Push frame type marker
+    LD    A,(DE)                    ;[22A1] 
 
 ;
 ; EGOTO: GOTO statement (and GOSUB target jump).
@@ -9919,9 +9927,9 @@ DATA_ANTILOG:
 ; where a full cycle = 4.0) then falls through to FSIN.
 ;
 FCOS:
-    CALL  LONE                      ;[321A] WRA1 = 1.0
-    CALL  SWAP                      ;[321D] WRA1 = x, WRA2 = 1.0
-    CALL  ADD                       ;[321F] WRA1 = x + 1.0 (shift by quarter cycle)
+    LD    HL,FLOAT_NPI2             ;[321A] 
+    CALL  LNUM2                     ;[321D] Add pi/4 to wra1
+    CALL  ADD                       ;[3220] 
     ; Falls through to FSIN
 
 ;
@@ -11325,8 +11333,6 @@ DVONE:
     LD    B,$04                     ;[385B] 4 mantissa bytes
     LD    HL,SYSVAR_WRA1+$01        ;[385D] HL -> WRA1 mantissa start
 DVONE1:
-    PUSH  BC                        ;[3860]
-
     PUSH  BC                        ;[3860] Save byte count
     RLD                             ;[3861] Rotate high nibble of (HL) through A: get high digit pair
     CALL  DVSUB                     ;[3863] Divide: A = quotient digit, E = remainder
