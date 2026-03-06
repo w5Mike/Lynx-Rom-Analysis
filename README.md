@@ -42,7 +42,7 @@ Free to distribute. Please include attribution.
  - DATA_       - Data tables stored in rom (eg. PI)
  - E<command>  - Lynx BASIC command
  - F<name>     - Lynx BASIC functions/operators
- - I<name>     - Validation of BASIC commands/ unctions.
+ - I<name>     - Validation of BASIC commands/functions.
  - MONITOR_    - Lynx MONITOR commands
  - VDU_        - VDU commands
  - SUB_        - internal subroutines used by ROM
