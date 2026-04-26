@@ -370,11 +370,11 @@ CHG2:
 ;
 UPROM:	
     DB    2                         ;[4160] NXFRPG: next free store page (page 2 = first usable)
-	DB    0                            ;[4161] KFILE: current file number (0 = none open)
-	DB    0,PZ,0,PZ,0,PZ,0,0           ;[4162] File slot data: 3 slots, each as (page, PZ-sentinel); plus 2 spare bytes
-	DW    0                            ;[416A] ERRVR: error-trap variable pointer (0 = no trap)
-	DW    0                            ;[416C] EXECSP: EXEC stack pointer (0 = not active)
-	DB    $88                          ;[416E] Lightpen calibration offset ($88 = 136 scan lines)
+	DB    0                         ;[4161] KFILE: current file number (0 = none open)
+	DB    0,PZ,0,PZ,0,PZ,0,0        ;[4162] File slot data: 3 slots, each as (page, PZ-sentinel); plus 2 spare bytes
+	DW    0                         ;[416A] ERRVR: error-trap variable pointer (0 = no trap)
+	DW    0                         ;[416C] EXECSP: EXEC stack pointer (0 = not active)
+	DB    $88                       ;[416E] Lightpen calibration offset ($88 = 136 scan lines)
 UPLEN	equ ASMPC-UPROM-$4000
 ;
 ; JUMPS: hook vectors copied into the 48k system variable area by EXINIT
